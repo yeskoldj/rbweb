@@ -10,13 +10,32 @@ import OrderCard from './OrderCard';
 import CalendarView from './CalendarView';
 import UserManagement from './UserManagement';
 
+
+type QuoteStatus = 'pending' | 'responded' | 'accepted' | 'rejected';
+
+type Quote = {
+  id: string;
+  status: QuoteStatus;
+  created_at: string;
+  estimated_price?: number | string;
+  notes?: string;
+  customer_name?: string;
+  customer_phone?: string;
+  customer_email?: string;
+  occasion?: string;
+  servings?: number;
+  [k: string]: any; // resto de campos que te lleguen de Supabase
+};
+
+
+
+
 export default function DashboardPage() {
   // -------------------------------------------------------------------------
   // State declarations (original + new ones needed for quote handling)
   // -------------------------------------------------------------------------
   const [orders, setOrders] = useState<Order[]>([]);
-  const [quotes, setQuotes] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState('orders');
+  const [quotes, setQuotes] = useState<Quote[]>([]);  const [activeTab, setActiveTab] = useState('orders');
   const [showTodayView, setShowTodayView] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -236,10 +255,11 @@ export default function DashboardPage() {
 
   const updateQuoteStatus = async (
     quoteId: string,
-    newStatus: string,
+    newStatus: QuoteStatus,
     estimatedPrice?: number,
     notes?: string
   ) => {
+
     try {
       const updateData: any = {
         status: newStatus,
@@ -478,14 +498,13 @@ export default function DashboardPage() {
   // -------------------------------------------------------------------------
   // UI helpers
   // -------------------------------------------------------------------------
-  const statusColors = {
+  const statusColors: Record<QuoteStatus, string> = {
     pending: 'bg-yellow-100 text-yellow-800',
-    baking: 'bg-orange-100 text-orange-800',
-    decorating: 'bg-purple-100 text-purple-800',
-    ready: 'bg-green-100 text-green-800',
-    completed: 'bg-blue-100 text-blue-800',
-    cancelled: 'bg-red-100 text-red-800',
+    responded: 'bg-blue-100 text-blue-800',
+    accepted: 'bg-green-100 text-green-800',
+    rejected: 'bg-red-100 text-red-800',
   };
+
 
   const getUserDisplayName = () => {
     if (currentUser?.full_name) {
@@ -1240,21 +1259,21 @@ function QuoteCard({ quote, onStatusUpdate }: { quote: any; onStatusUpdate: Func
   const [estimatedPrice, setEstimatedPrice] = useState(quote.estimated_price || '');
   const [notes, setNotes] = useState(quote.notes || '');
 
-  const statusColors = {
+  const statusColors: Record<QuoteStatus, string> = {
     pending: 'bg-yellow-100 text-yellow-800',
     responded: 'bg-blue-100 text-blue-800',
     accepted: 'bg-green-100 text-green-800',
     rejected: 'bg-red-100 text-red-800',
   };
 
-  const getStatusText = (status: string) => {
-    const statusMap: { [key: string]: string } = {
+  const getStatusText = (status: QuoteStatus) => {
+    const statusMap: Record<QuoteStatus, string> = {
       pending: 'Pendiente',
       responded: 'Respondida',
       accepted: 'Aceptada',
       rejected: 'Rechazada',
     };
-    return statusMap[status] || status;
+    return statusMap[status];
   };
 
   const handleRespond = () => {
