@@ -7,8 +7,9 @@ import { Order } from '../../lib/supabase';
 
 interface CalendarViewProps {
   orders: Order[];
-  onStatusUpdate: (orderId: string, newStatus: Order['status']) => Promise<void>;
+  onStatusUpdate: (orderId: string, newStatus: Order['status']) => void | Promise<void>;
 }
+
 
 export default function CalendarView({ orders, onStatusUpdate }: CalendarViewProps) {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -57,8 +58,19 @@ export default function CalendarView({ orders, onStatusUpdate }: CalendarViewPro
     completed: 'bg-blue-400',
     cancelled: 'bg-red-400',
   };
-  const getStatusColor = (status: Order['status']) => colors[status];
+const getStatusColor = (status: Order['status']) => {
+  const colors: Record<Order['status'], string> = {
+    pending: 'bg-yellow-400',
+    baking: 'bg-orange-400',
+    decorating: 'bg-purple-400',
+    ready: 'bg-green-400',
+    completed: 'bg-blue-400',
+    cancelled: 'bg-red-400',
+  };
+  return colors[status];
+};
 
+const getStatusText = (status: Order['status']) => {
   const statusTexts: Record<Order['status'], string> = {
     pending: 'Pendiente',
     baking: 'Horneando',
@@ -67,7 +79,8 @@ export default function CalendarView({ orders, onStatusUpdate }: CalendarViewPro
     completed: 'Completado',
     cancelled: 'Cancelado',
   };
-  const getStatusText = (status: Order['status']) => statusTexts[status];
+  return statusTexts[status];
+};
 
 
   const selectedDateOrders = getOrdersForDate(selectedDate);
@@ -117,20 +130,20 @@ export default function CalendarView({ orders, onStatusUpdate }: CalendarViewPro
                   
                   {dayOrders.length > 0 && (
                     <div className="flex flex-wrap gap-1">
-                      {['pending', 'baking', 'decorating', 'ready'].map((status) => {
+                      {(['pending', 'baking', 'decorating', 'ready'] as Order['status'][]).map((status) => {
                         const count = dayOrders.filter(o => o.status === status).length;
                         if (count === 0) return null;
-                        
                         return (
                           <div
                             key={status}
-                            className={`w-7 h-7 rounded-full ${getStatusColor(status)} text-white text-xs flex items-center justify-center font-bold shadow-sm`}
+                            className={`w-7 h-7 rounded-full ${getStatusColor(status)} ...`}
                             title={`${count} ${getStatusText(status).toLowerCase()}`}
                           >
                             {count}
                           </div>
                         );
                       })}
+
                     </div>
                   )}
                 </div>
