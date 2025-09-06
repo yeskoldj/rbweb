@@ -1,0 +1,408 @@
+
+'use client';
+
+import { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
+import Header from '../../components/Header';
+import TabBar from '../../components/TabBar';
+
+interface Order {
+  id: string;
+  user_id?: string;
+  customer_name: string;
+  customer_phone: string;
+  customer_email?: string;
+  items: any[];
+  subtotal: number;
+  tax: number;
+  total: number;
+  status: 'pending' | 'baking' | 'decorating' | 'ready' | 'completed' | 'cancelled';
+  pickup_time?: string;
+  special_requests?: string;
+  order_date: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export default function TrackOrderPage() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [searchPhone, setSearchPhone] = useState('');
+
+  useEffect(() => {
+    checkUserAndLoadOrders();
+  }, []);
+
+  const checkUserAndLoadOrders = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile) {
+          setCurrentUser(profile);
+          await loadUserOrders(profile.email);
+          setLoading(false);
+          return;
+        }
+      }
+
+      const localUser = localStorage.getItem('bakery-user');
+      if (localUser) {
+        const userData = JSON.parse(localUser);
+        setCurrentUser(userData);
+        await loadUserOrders(userData.email);
+      }
+    } catch (error) {
+      console.error('Error checking user:', error);
+    }
+    setLoading(false);
+  };
+
+  const loadUserOrders = async (userEmail: string) => {
+    try {
+      const { data: orders, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('customer_email', userEmail)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading orders from Supabase:', error);
+        loadOrdersFromLocal(userEmail);
+        return;
+      }
+
+      setOrders(orders || []);
+    } catch (error) {
+      console.error('Supabase connection error:', error);
+      loadOrdersFromLocal(userEmail);
+    }
+  };
+
+  const loadOrdersFromLocal = (userEmail: string) => {
+    const savedOrders = JSON.parse(localStorage.getItem('bakery-orders') || '[]');
+    const userOrders = savedOrders.filter((order: Order) => 
+      order.customer_email === userEmail
+    );
+    setOrders(userOrders);
+  };
+
+  const searchOrdersByPhone = async () => {
+    if (!searchPhone.trim()) return;
+
+    try {
+      const { data: orders, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('customer_phone', searchPhone.trim())
+        .order('created_at', { ascending: false });
+
+      if (!error && orders) {
+        setOrders(orders);
+        return;
+      }
+    } catch (error) {
+      console.error('Error searching in Supabase:', error);
+    }
+
+    const savedOrders = JSON.parse(localStorage.getItem('bakery-orders') || '[]');
+    const phoneOrders = savedOrders.filter((order: Order) => 
+      order.customer_phone === searchPhone.trim()
+    );
+    setOrders(phoneOrders);
+  };
+
+  const getStatusColor = (status: string) => {
+    const colors = {
+      pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      baking: 'bg-orange-100 text-orange-800 border-orange-200',
+      decorating: 'bg-purple-100 text-purple-800 border-purple-200',
+      ready: 'bg-green-100 text-green-800 border-green-200',
+      completed: 'bg-blue-100 text-blue-800 border-blue-200',
+      cancelled: 'bg-red-100 text-red-800 border-red-200'
+    };
+    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800 border-gray-200';
+  };
+
+  const getStatusIcon = (status: string) => {
+    const icons = {
+      pending: 'ri-timer-line',
+      baking: 'ri-fire-line',
+      decorating: 'ri-brush-line',
+      ready: 'ri-check-line',
+      completed: 'ri-check-double-line',
+      cancelled: 'ri-close-line'
+    };
+    return icons[status as keyof typeof icons] || 'ri-question-line';
+  };
+
+  const getStatusLabel = (status: string) => {
+    const labels = {
+      pending: 'Pending',
+      baking: 'Baking',
+      decorating: 'Decorating',
+      ready: 'Ready for Pickup',
+      completed: 'Completed',
+      cancelled: 'Cancelled'
+    };
+    return labels[status as keyof typeof labels] || status;
+  };
+
+  const getWorkflowSteps = (currentStatus: string) => {
+    const steps = [
+      { key: 'pending', label: 'Received', icon: 'ri-file-list-line' },
+      { key: 'baking', label: 'Baking', icon: 'ri-fire-line' },
+      { key: 'decorating', label: 'Decorating', icon: 'ri-brush-line' },
+      { key: 'ready', label: 'Ready', icon: 'ri-check-line' },
+      { key: 'completed', label: 'Delivered', icon: 'ri-check-double-line' }
+    ];
+
+    const currentIndex = steps.findIndex(step => step.key === currentStatus);
+    
+    return steps.map((step, index) => ({
+      ...step,
+      isActive: index <= currentIndex,
+      isCurrent: step.key === currentStatus,
+      isCompleted: index < currentIndex
+    }));
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-pink-50 to-purple-50">
+        <Header />
+        <div className="pt-20 pb-20 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-8 h-8 border-2 border-pink-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading orders...</p>
+          </div>
+        </div>
+        <TabBar />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-pink-50 to-purple-50">
+      <Header />
+      <div className="pt-20 pb-20">
+        <div className="px-4 py-6">
+          <h1 className="text-3xl font-bold text-amber-800 text-center mb-2">
+            Track Order
+          </h1>
+          <p className="text-gray-600 text-center mb-8">
+            Track your order progress in real time
+          </p>
+
+          {!currentUser && (
+            <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Search Order by Phone</h3>
+              <div className="flex space-x-3">
+                <input
+                  type="tel"
+                  value={searchPhone}
+                  onChange={(e) => setSearchPhone(e.target.value)}
+                  placeholder="Enter your phone number"
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"
+                />
+                <button
+                  onClick={searchOrdersByPhone}
+                  className="bg-gradient-to-r from-pink-400 to-teal-400 text-white px-6 py-3 rounded-lg font-medium !rounded-button hover:shadow-lg transition-all"
+                >
+                  <i className="ri-search-line"></i>
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-6">
+            {orders.length === 0 ? (
+              <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+                <div className="w-20 h-20 flex items-center justify-center bg-gradient-to-br from-pink-100 to-purple-100 rounded-full mx-auto mb-4">
+                  <i className="ri-search-line text-pink-400 text-3xl"></i>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                  {currentUser ? 'No orders found' : 'No orders found'}
+                </h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  {currentUser 
+                    ? 'When you place an order, it will appear here so you can track its progress'
+                    : 'Please verify that the phone number is correct'
+                  }
+                </p>
+                {currentUser && (
+                  <a 
+                    href="/order" 
+                    className="bg-gradient-to-r from-pink-400 to-teal-400 text-white px-6 py-3 rounded-lg font-medium !rounded-button inline-block"
+                  >
+                    Place Order
+                  </a>
+                )}
+              </div>
+            ) : (
+              orders.map(order => (
+                <div key={order.id} className="bg-white rounded-xl shadow-lg overflow-hidden">
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-800">Order #{order.id.slice(-8)}</h3>
+                        <p className="text-sm text-gray-600">
+                          {new Date(order.created_at).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-2xl font-bold text-pink-600">${order.total.toFixed(2)}</p>
+                        <div className={`px-4 py-2 rounded-full text-sm font-bold border ${getStatusColor(order.status)}`}>
+                          <i className={`${getStatusIcon(order.status)} mr-2`}></i>
+                          {getStatusLabel(order.status)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mb-6">
+                      <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                        <i className="ri-route-line text-pink-500 mr-2"></i>
+                        Order Progress
+                      </h4>
+                      <div className="relative">
+                        <div className="flex items-center justify-between">
+                          {getWorkflowSteps(order.status).map((step, index) => (
+                            <div key={step.key} className="flex flex-col items-center relative z-10">
+                              <div className={`w-12 h-12 rounded-full flex items-center justify-center border-4 ${
+                                step.isCompleted 
+                                  ? 'bg-green-500 border-green-500 text-white' 
+                                  : step.isCurrent 
+                                    ? 'bg-pink-500 border-pink-500 text-white animate-pulse'
+                                    : step.isActive
+                                      ? 'bg-pink-100 border-pink-300 text-pink-600'
+                                      : 'bg-gray-100 border-gray-300 text-gray-400'
+                              }`}>
+                                <i className={`${step.icon} text-lg`}></i>
+                              </div>
+                              <p className={`text-xs font-medium mt-2 text-center ${
+                                step.isActive ? 'text-gray-800' : 'text-gray-400'
+                              }`}>
+                                {step.label}
+                              </p>
+                              {step.isCurrent && (
+                                <div className="absolute -bottom-8 bg-pink-500 text-white px-2 py-1 rounded text-xs whitespace-nowrap">
+                                  In progress
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="absolute top-6 left-6 right-6 h-1 bg-gray-200 -z-10">
+                          <div 
+                            className="h-full bg-gradient-to-r from-pink-400 to-green-400 transition-all duration-1000"
+                            style={{ 
+                              width: `${(getWorkflowSteps(order.status).findIndex(s => s.isCurrent) / (getWorkflowSteps(order.status).length - 1)) * 100}%` 
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {order.pickup_time && (
+                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 mb-4 border border-blue-200">
+                        <div className="flex items-center">
+                          <div className="w-10 h-10 flex items-center justify-center bg-blue-100 rounded-full mr-3">
+                            <i className="ri-calendar-line text-blue-600"></i>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-blue-800">Pickup Time</p>
+                            <p className="text-blue-700">{order.pickup_time}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="mb-4">
+                      <h4 className="text-sm font-bold text-gray-700 mb-3 flex items-center">
+                        <i className="ri-shopping-bag-line text-pink-500 mr-2"></i>
+                        Your Order Items
+                      </h4>
+                      <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                        {order.items.map((item, idx) => (
+                          <div key={idx} className="flex justify-between items-center">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center text-pink-600 font-bold text-sm">
+                                {item.quantity}
+                              </div>
+                              <span className="font-medium text-gray-700">{item.name}</span>
+                            </div>
+                            <span className="font-bold text-gray-800">{item.price}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {order.special_requests && (
+                      <div className="mb-4 p-4 bg-gradient-to-r from-yellow-50 to-amber-50 rounded-xl border-l-4 border-yellow-400">
+                        <div className="flex items-start space-x-3">
+                          <i className="ri-lightbulb-line text-yellow-600 mt-0.5"></i>
+                          <div>
+                            <p className="font-bold text-yellow-800">Special Requests:</p>
+                            <p className="text-yellow-700">{order.special_requests}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="border-t pt-4 space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Subtotal:</span>
+                        <span>${order.subtotal.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Tax (3%):</span>
+                        <span>${order.tax.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between font-bold text-lg border-t pt-2">
+                        <span>Total:</span>
+                        <span className="text-pink-600">${order.total.toFixed(2)}</span>
+                      </div>
+                    </div>
+
+                    {order.status === 'ready' && (
+                      <div className="mt-4 p-4 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl text-white text-center">
+                        <div className="flex items-center justify-center mb-2">
+                          <i className="ri-check-double-line text-2xl mr-2"></i>
+                          <span className="font-bold text-lg">Your order is ready!</span>
+                        </div>
+                        <p className="text-green-100">You can come pick it up whenever you like</p>
+                      </div>
+                    )}
+
+                    {order.status === 'completed' && (
+                      <div className="mt-4 p-4 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl text-white text-center">
+                        <div className="flex items-center justify-center mb-2">
+                          <i className="ri-gift-line text-2xl mr-2"></i>
+                          <span className="font-bold text-lg">Order completed!</span>
+                        </div>
+                        <p className="text-blue-100">Thank you for choosing our bakery</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+      <TabBar />
+    </div>
+  );
+}
