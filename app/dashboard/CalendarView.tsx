@@ -4,9 +4,10 @@
 import { useState } from 'react';
 import { Order } from '../../lib/supabase';
 
+
 interface CalendarViewProps {
   orders: Order[];
-  onStatusUpdate: (orderId: string, newStatus: string) => void;
+  onStatusUpdate: (orderId: string, newStatus: Order['status']) => Promise<void>;
 }
 
 export default function CalendarView({ orders, onStatusUpdate }: CalendarViewProps) {
@@ -48,29 +49,26 @@ export default function CalendarView({ orders, onStatusUpdate }: CalendarViewPro
     }
   };
 
-  const getStatusColor = (status: string) => {
-    const colors = {
-      pending: 'bg-yellow-400',
-      baking: 'bg-orange-400',
-      decorating: 'bg-purple-400',
-      ready: 'bg-green-400',
-      completed: 'bg-blue-400',
-      cancelled: 'bg-red-400'
-    };
-    return colors[status as keyof typeof colors] || 'bg-gray-400';
+  const colors: Record<Order['status'], string> = {
+    pending: 'bg-yellow-400',
+    baking: 'bg-orange-400',
+    decorating: 'bg-purple-400',
+    ready: 'bg-green-400',
+    completed: 'bg-blue-400',
+    cancelled: 'bg-red-400',
   };
+  const getStatusColor = (status: Order['status']) => colors[status];
 
-  const getStatusText = (status: string) => {
-    const statusTexts = {
-      pending: 'Pendiente',
-      baking: 'Horneando',
-      decorating: 'Decorando',
-      ready: 'Listo',
-      completed: 'Completado',
-      cancelled: 'Cancelado'
-    };
-    return statusTexts[status as keyof typeof statusTexts] || status;
+  const statusTexts: Record<Order['status'], string> = {
+    pending: 'Pendiente',
+    baking: 'Horneando',
+    decorating: 'Decorando',
+    ready: 'Listo',
+    completed: 'Completado',
+    cancelled: 'Cancelado',
   };
+  const getStatusText = (status: Order['status']) => statusTexts[status];
+
 
   const selectedDateOrders = getOrdersForDate(selectedDate);
 
@@ -232,7 +230,7 @@ export default function CalendarView({ orders, onStatusUpdate }: CalendarViewPro
                     <div className="flex space-x-2">
                       {order.status === 'pending' && (
                         <button
-                          onClick={() => onStatusUpdate(order.id, 'baking')}
+                          onClick={() => setStatus(order.id, 'baking')}
                           className="flex-1 bg-gradient-to-r from-orange-400 to-red-400 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-orange-500 hover:to-red-500 transition-all transform hover:scale-105"
                         >
                           <i className="ri-fire-line mr-2"></i>
@@ -241,7 +239,7 @@ export default function CalendarView({ orders, onStatusUpdate }: CalendarViewPro
                       )}
                       {order.status === 'baking' && (
                         <button
-                          onClick={() => onStatusUpdate(order.id, 'decorating')}
+                          onClick={() => setStatus(order.id, 'decorating')}
                           className="flex-1 bg-gradient-to-r from-purple-400 to-pink-400 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-purple-500 hover:to-pink-500 transition-all transform hover:scale-105"
                         >
                           <i className="ri-brush-line mr-2"></i>
@@ -250,7 +248,8 @@ export default function CalendarView({ orders, onStatusUpdate }: CalendarViewPro
                       )}
                       {order.status === 'decorating' && (
                         <button
-                          onClick={() => onStatusUpdate(order.id, 'ready')}
+                          onClick={() => setStatus(order.id, 'ready')}
+
                           className="flex-1 bg-gradient-to-r from-green-400 to-emerald-400 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-green-500 hover:to-emerald-500 transition-all transform hover:scale-105"
                         >
                           <i className="ri-check-line mr-2"></i>
@@ -259,7 +258,7 @@ export default function CalendarView({ orders, onStatusUpdate }: CalendarViewPro
                       )}
                       {order.status === 'ready' && (
                         <button
-                          onClick={() => onStatusUpdate(order.id, 'completed')}
+                          onClick={() => setStatus(order.id, 'completed')}
                           className="flex-1 bg-gradient-to-r from-blue-400 to-indigo-400 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-blue-500 hover:to-indigo-500 transition-all transform hover:scale-105"
                         >
                           <i className="ri-check-double-line mr-2"></i>
