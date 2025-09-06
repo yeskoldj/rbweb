@@ -8,6 +8,7 @@ import { Order } from '../../lib/supabase';
 interface CalendarViewProps {
   orders: Order[];
   onStatusUpdate: (orderId: string, newStatus: Order['status']) => void | Promise<void>;
+  
 }
 
 
@@ -243,7 +244,7 @@ const getStatusText = (status: Order['status']) => {
                     <div className="flex space-x-2">
                       {order.status === 'pending' && (
                         <button
-                          onClick={() => setStatus(order.id, 'baking')}
+                          onClick={() => onStatusUpdate(order.id, 'baking')}
                           className="flex-1 bg-gradient-to-r from-orange-400 to-red-400 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-orange-500 hover:to-red-500 transition-all transform hover:scale-105"
                         >
                           <i className="ri-fire-line mr-2"></i>
@@ -252,7 +253,7 @@ const getStatusText = (status: Order['status']) => {
                       )}
                       {order.status === 'baking' && (
                         <button
-                          onClick={() => setStatus(order.id, 'decorating')}
+                          onClick={() => onStatusUpdate(order.id, 'decorating')}
                           className="flex-1 bg-gradient-to-r from-purple-400 to-pink-400 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-purple-500 hover:to-pink-500 transition-all transform hover:scale-105"
                         >
                           <i className="ri-brush-line mr-2"></i>
@@ -261,7 +262,7 @@ const getStatusText = (status: Order['status']) => {
                       )}
                       {order.status === 'decorating' && (
                         <button
-                          onClick={() => setStatus(order.id, 'ready')}
+                          onClick={() => onStatusUpdate(order.id, 'ready')}
 
                           className="flex-1 bg-gradient-to-r from-green-400 to-emerald-400 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-green-500 hover:to-emerald-500 transition-all transform hover:scale-105"
                         >
@@ -271,7 +272,7 @@ const getStatusText = (status: Order['status']) => {
                       )}
                       {order.status === 'ready' && (
                         <button
-                          onClick={() => setStatus(order.id, 'completed')}
+                          onClick={() => onStatusUpdate(order.id, 'completed')}
                           className="flex-1 bg-gradient-to-r from-blue-400 to-indigo-400 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-blue-500 hover:to-indigo-500 transition-all transform hover:scale-105"
                         >
                           <i className="ri-check-double-line mr-2"></i>
