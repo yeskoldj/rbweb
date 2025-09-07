@@ -9,6 +9,14 @@ import TabBar from '../../components/TabBar';
 import OrderCard from './OrderCard';
 import CalendarView from './CalendarView';
 import UserManagement from './UserManagement';
+// --- Colores para ESTADOS de ORDERS (no para quotes) ---
+const orderStatusColors: Partial<Record<Order['status'], string>> = {
+  pending: 'bg-yellow-100 text-yellow-800',
+  confirmed: 'bg-blue-100 text-blue-800',
+  in_progress: 'bg-indigo-100 text-indigo-800',
+  completed: 'bg-green-100 text-green-800',
+  cancelled: 'bg-red-100 text-red-800',
+};
 
 
 type QuoteStatus = 'pending' | 'responded' | 'accepted' | 'rejected';
@@ -832,8 +840,7 @@ export default function DashboardPage() {
                               <div className="text-right">
                                 <p className="text-2xl font-bold text-pink-600">${order.total.toFixed(2)}</p>
                                 <span
-                                  className={`px-3 py-1 rounded-full text-xs font-bold ${statusColors[order.status]} shadow-sm`}
-                                >
+                                  className={`px-3 py-1 rounded-full text-xs font-bold ${orderStatusColors[order.status] ?? 'bg-gray-100 text-gray-800'} shadow-sm`}                                >
                                   <i
                                     className={`${
                                       order.status === 'pending'
@@ -1265,6 +1272,7 @@ function QuoteCard({ quote, onStatusUpdate }: { quote: any; onStatusUpdate: Func
     accepted: 'bg-green-100 text-green-800',
     rejected: 'bg-red-100 text-red-800',
   };
+  
 
   const getStatusText = (status: QuoteStatus) => {
     const statusMap: Record<QuoteStatus, string> = {
