@@ -14,7 +14,7 @@ interface CalendarViewProps {
 
 export default function CalendarView({ orders, onStatusUpdate }: CalendarViewProps) {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-
+  const setStatus = (id: string, s: Order['status']) => onStatusUpdate(id, s);
   const getOrdersForDate = (date: string) => {
     return orders.filter(order => order.order_date === date);
   };
