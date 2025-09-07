@@ -61,45 +61,66 @@ export default function AuthPage() {
           return;
         }
 
-        if (data.user) {
-          console.log('✅ Login exitoso para usuario:', data.user.id);
-          
-          // Verificar que el usuario existe en la base de datos
-          const { data: profile, error: profileError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', data.user.id)
-            .single();
+      if (data.user) {
+        console.log('✅ Login exitoso para usuario:', data.user.id);
 
-          if (profileError && profileError.code !== 'PGRST116') {
-            console.warn('⚠️ Error al obtener perfil (puede ser normal):', profileError);
-          }
+        // 1) Leemos/creamos perfil en PROFILES
+        const isOwner = ownerEmails.includes(normalizedEmail);
+        const { data: prof, error: profErr } = await supabase
+          .from('profiles')
+          .select('id, email, full_name, role')
+          .eq('id', data.user.id)
+          .single();
 
-          // Determinar rol y permisos
-          const isOwner = ownerEmails.includes(normalizedEmail);
-          const userRole = profile?.role || (isOwner ? 'owner' : 'customer');
+        if (!prof) {
+          // si no existe, lo creamos
+          const displayName =
+            (data.user.user_metadata && (data.user.user_metadata.full_name || data.user.user_metadata.name)) ||
+            normalizedEmail.split('@')[0];
 
-          const userData = {
+          const { error: insErr } = await supabase.from('profiles').insert({
             id: data.user.id,
-            email: normalizedEmail, // Usar email normalizado
-            fullName: profile?.full_name || data.user.user_metadata?.full_name || normalizedEmail.split('@')[0],
-            isOwner: isOwner,
-            role: userRole,
-            loginTime: Date.now()
-          };
-
-          // Guardar en localStorage para compatibilidad
-          localStorage.setItem('bakery-user', JSON.stringify(userData));
-
-          console.log('👤 Usuario autenticado:', userData);
-
-          // Redirigir según el rol
-          if (isOwner || userRole === 'owner' || userRole === 'employee') {
-            router.push('/dashboard');
-          } else {
-            router.push('/');
+            email: normalizedEmail,
+            full_name: displayName,
+            role: isOwner ? 'owner' : 'customer',
+          });
+          if (insErr) {
+            console.warn('⚠️ Error creando perfil:', insErr);
           }
+        } else if (isOwner && prof.role !== 'owner') {
+          // si existe y debe ser owner, actualizamos
+          await supabase.from('profiles').update({ role: 'owner' }).eq('id', data.user.id);
         }
+
+        // 2) Cargamos perfil final
+        const { data: finalProf } = await supabase
+          .from('profiles')
+          .select('id, email, full_name, role')
+          .eq('id', data.user.id)
+          .single();
+
+        const sessionUser = {
+          id: data.user.id,
+          email: normalizedEmail,
+          full_name: finalProf?.full_name || '',
+          role: finalProf?.role || (isOwner ? 'owner' : 'customer'),
+          isOwner: (finalProf?.role || (isOwner ? 'owner' : 'customer')) === 'owner',
+          loginTime: Date.now(),
+        };
+
+        // 3) Guardamos en localStorage (dos llaves que usa tu app)
+        localStorage.setItem('bakery-user', JSON.stringify(sessionUser));
+        localStorage.setItem('dashboard_user', JSON.stringify(sessionUser));
+
+        console.log('👤 Usuario autenticado:', sessionUser);
+
+        // 4) Redirigimos
+        if (sessionUser.role === 'owner' || sessionUser.role === 'employee') {
+          router.push('/dashboard');
+        } else {
+          router.push('/');
+        }
+      }
       } else {
         // REGISTRO
         console.log('📝 Intentando registro con email:', normalizedEmail);
@@ -163,23 +184,23 @@ export default function AuthPage() {
           const userRole = isOwner ? 'owner' : 'customer';
           
           // Crear perfil en la tabla users
+          const isOwner = ownerEmails.includes(normalizedEmail);
+          const userRole = isOwner ? 'owner' : 'customer';
+
           const { error: profileError } = await supabase
-            .from('users')
-            .upsert([
+            .from('profiles')
+            .upsert(
               {
                 id: data.user.id,
-                email: normalizedEmail, // Email normalizado
+                email: normalizedEmail,
                 full_name: formData.fullName.trim(),
                 role: userRole,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              }
-            ], {
-              onConflict: 'id'
-            });
+              },
+              { onConflict: 'id' }
+            );
 
           if (profileError) {
-            console.warn('⚠️ Error creando perfil (puede ser normal si ya existe):', profileError);
+            console.warn('⚠️ Error creando/actualizando perfil:', profileError);
           }
 
           setError('');
