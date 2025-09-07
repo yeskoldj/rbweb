@@ -175,6 +175,9 @@ export default function DashboardPage() {
       setEmployeeCancelRequest(orderId);
       return;
     }
+  const handleCalendarStatusUpdate = (orderId: string, newStatus: string) => {
+    void updateOrderStatus(orderId, newStatus as Order['status']);
+  };
 
     try {
       const { error } = await supabase
@@ -1189,7 +1192,7 @@ export default function DashboardPage() {
 
               {/* Calendar Tab */}
               {activeTab === 'calendar' && (
-                <CalendarView orders={orders} onStatusUpdate={updateOrderStatus} />
+                <CalendarView orders={orders} onStatusUpdate={handleCalendarStatusUpdate} />
               )}
 
               {/* Users / Profile Tab */}
