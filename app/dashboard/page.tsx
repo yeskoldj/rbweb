@@ -175,9 +175,7 @@ export default function DashboardPage() {
       setEmployeeCancelRequest(orderId);
       return;
     }
-  const handleCalendarStatusUpdate = (orderId: string, newStatus: string) => {
-    void updateOrderStatus(orderId, newStatus as Order['status']);
-  };
+
 
     try {
       const { error } = await supabase
@@ -207,7 +205,9 @@ export default function DashboardPage() {
       updateOrderStatusLocal(orderId, newStatus);
     }
   };
-
+    const handleCalendarStatusUpdate = (orderId: string, newStatus: string) => {
+    void updateOrderStatus(orderId, newStatus as Order['status']);
+  };
   const updateOrderStatusLocal = (orderId: string, newStatus: Order['status']) => {
     const updatedOrders = orders.map((order) =>
       order.id === orderId
