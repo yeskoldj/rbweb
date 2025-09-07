@@ -1337,7 +1337,9 @@ function QuoteCard({ quote, onStatusUpdate }: { quote: any; onStatusUpdate: Func
           </div>
         </div>
         <div className="text-right">
-          <span className={`px-3 py-1 rounded-full text-xs font-bold ${quoteStatusColors[quote.status]} shadow-sm`}>
+          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+              quoteStatusColors[quote.status as QuoteStatus] ?? 'bg-gray-100 text-gray-800'
+              } shadow-sm`}>
             {getStatusText(quote.status)}
           </span>
           <p className="text-xs text-gray-500 mt-1">{new Date(quote.created_at).toLocaleDateString('es-ES')}</p>
