@@ -10,6 +10,15 @@ import OrderCard from './OrderCard';
 import CalendarView from './CalendarView';
 import UserManagement from './UserManagement';
 
+type QuoteStatus = 'pending' | 'responded' | 'accepted' | 'rejected';
+
+const quoteStatusColors: Record<QuoteStatus, string> = {
+  pending: 'bg-yellow-100 text-yellow-800',
+  responded: 'bg-blue-100 text-blue-800',
+  accepted: 'bg-green-100 text-green-800',
+  rejected: 'bg-red-100 text-red-800',
+};
+
 export default function DashboardPage() {
   // -------------------------------------------------------------------------
   // State declarations (original + new ones needed for quote handling)
@@ -1287,7 +1296,7 @@ function QuoteCard({ quote, onStatusUpdate }: { quote: any; onStatusUpdate: Func
           </div>
         </div>
         <div className="text-right">
-          <span className={`px-3 py-1 rounded-full text-xs font-bold ${statusColors[quote.status]} shadow-sm`}>
+          <span className={`px-3 py-1 rounded-full text-xs font-bold ${quoteStatusColors[quote.status as QuoteStatus]} shadow-sm`}>
             {getStatusText(quote.status)}
           </span>
           <p className="text-xs text-gray-500 mt-1">{new Date(quote.created_at).toLocaleDateString('es-ES')}</p>
