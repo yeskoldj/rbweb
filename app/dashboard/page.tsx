@@ -133,7 +133,7 @@ export default function DashboardPage() {
     if (savedOrders.length === 0) {
       const testOrder: Order = {
         id: `ORDER-${Date.now()}`,
-        user_id: null,
+        user_id: undefined,
         customer_name: 'Maria Gonzalez',
         customer_phone: '(555) 123-4567',
         customer_email: 'maria.gonzalez@email.com',
