@@ -2,365 +2,740 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Header from '../../../components/Header';
 import TabBar from '../../../components/TabBar';
-import Link from 'next/link';
 import { useLanguage } from '../../../lib/languageContext';
-
-interface CakeSize {
-  name_es: string;
-  name_en: string;
-  price: number;
-  serves_es: string;
-  serves_en: string;
-  tiers?: number;
-  shape?: string;
-}
-
-interface CakeFlavor {
-  name_es: string;
-  name_en: string;
-  price: number;
-  color: string;
-}
-
-interface CakeFilling {
-  name_es: string;
-  name_en: string;
-  price: number;
-  restriction_es?: string;
-  restriction_en?: string;
-}
-
-interface CakeShape {
-  id: string;
-  name_es: string;
-  name_en: string;
-  price: number;
-  icon: string;
-}
-
-interface CakeData {
-  id: string;
-  name_es: string;
-  name_en: string;
-  basePrice: number;
-  description_es: string;
-  description_en: string;
-  image: string;
-  sizes: CakeSize[];
-  flavors: CakeFlavor[];
-  fillings: CakeFilling[];
-  shapes: CakeShape[];
-}
 
 interface CakeCustomizerProps {
   cakeId: string;
 }
 
+interface CakeLayer {
+  id: string;
+  name: string;
+  size: string;
+  price: number;
+}
+
+interface CakeOption {
+  id: string;
+  name: string;
+  price: number;
+  color?: string;
+  icon?: string;
+  description?: string;
+}
+
+interface DecorationExtra {
+  id: string;
+  name: string;
+  price: number;
+  icon: string;
+  description: string;
+  variable?: boolean;
+}
+
 export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
-  const { language, t } = useLanguage();
-  const [cake, setCake] = useState<CakeData | null>(null);
-  const [selectedSize, setSelectedSize] = useState<CakeSize | null>(null);
-  const [selectedFlavor, setSelectedFlavor] = useState<CakeFlavor | null>(null);
-  const [selectedFilling, setSelectedFilling] = useState<CakeFilling | null>(null);
-  const [selectedShape, setSelectedShape] = useState<CakeShape | null>(null);
-  const [selectedColors, setSelectedColors] = useState<string[]>([]);
-  const [inscription, setInscription] = useState('');
-  const [specialRequests, setSpecialRequests] = useState('');
-  const [quantity, setQuantity] = useState(1);
+  const router = useRouter();
+  const { language } = useLanguage();
+  const [customizerMode, setCustomizerMode] = useState<'basic' | 'advanced'>('basic');
   const [currentStep, setCurrentStep] = useState(1);
-  const [uploadedPhoto, setUploadedPhoto] = useState<string | null>(null);
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [quantity, setQuantity] = useState(1);
+  const [isAdding, setIsAdding] = useState(false);
 
-  const availableShapes: CakeShape[] = [
-    { id: 'round', name_es: 'Redondo', name_en: 'Round', price: 0, icon: 'ri-circle-line' },
-    { id: 'square', name_es: 'Cuadrado', name_en: 'Square', price: 5, icon: 'ri-stop-line' },
-    { id: 'rectangle', name_es: 'Rectangular', name_en: 'Rectangle', price: 8, icon: 'ri-rectangle-line' }
-  ];
+  const [selectedOptions, setSelectedOptions] = useState({
+    shape: 'round',
+    layers: [] as CakeLayer[],
+    flavors: [] as string[],
+    colors: [] as string[],
+    fillings: [] as string[],
+    decorations: [] as string[],
+    inscription: '',
+    specialRequests: ''
+  });
 
-  const cakeDatabase: { [key: string]: CakeData } = {
+  // Datos de los pasteles usando imágenes reales - PRECIOS ACTUALIZADOS SEGÚN TABLA
+  const cakeProducts = {
     'birthday-classic': {
-      id: 'birthday-classic',
-      name_es: 'Pastel Clásico de Cumpleaños',
-      name_en: 'Classic Birthday Cake',
-      basePrice: 25.00,
-      description_es: 'Pastel tradicional dominicano perfecto para celebraciones',
-      description_en: 'Traditional Dominican cake perfect for celebrations',
-      image: 'https://readdy.ai/api/search-image?query=Simple%20birthday%20cake%20with%20colorful%20frosting%2C%20clean%20design%2C%20professional%20bakery%20style%2C%20celebration%20theme&width=300&height=300&seq=basic1&orientation=squarish',
-      shapes: availableShapes,
-      sizes: [
-        { name_es: '6 pulgadas - 1 nivel', name_en: '6 inches - 1 tier', price: 25.00, serves_es: '4-6 personas', serves_en: '4-6 people', tiers: 1 },
-        { name_es: '8 pulgadas - 1 nivel', name_en: '8 inches - 1 tier', price: 35.00, serves_es: '8-10 personas', serves_en: '8-10 people', tiers: 1 },
-        { name_es: '10 pulgadas - 1 nivel', name_en: '10 inches - 1 tier', price: 45.00, serves_es: '12-15 personas', serves_en: '12-15 people', tiers: 1 },
-        { name_es: '12 pulgadas - 1 nivel', name_en: '12 inches - 1 tier', price: 60.00, serves_es: '20-25 personas', serves_en: '20-25 people', tiers: 1 },
-        { name_es: '14 pulgadas - 1 nivel', name_en: '14 inches - 1 tier', price: 80.00, serves_es: '35-40 personas', serves_en: '35-40 people', tiers: 1 },
-        { name_es: '2 niveles (6" + 4")', name_en: '2 tiers (6" + 4")', price: 50.00, serves_es: '10-12 personas', serves_en: '10-12 people', tiers: 2 },
-        { name_es: '2 niveles (8" + 6")', name_en: '2 tiers (8" + 6")', price: 70.00, serves_es: '25-30 personas', serves_en: '25-30 people', tiers: 2 },
-        { name_es: '2 niveles (10" + 8")', name_en: '2 tiers (10" + 8")', price: 90.00, serves_es: '30-40 personas', serves_en: '30-40 people', tiers: 2 },
-        { name_es: '2 niveles (12" + 10")', name_en: '2 tiers (12" + 10")', price: 120.00, serves_es: '50-60 personas', serves_en: '50-60 people', tiers: 2 },
-        { name_es: '3 niveles (6" + 4" + 2")', name_en: '3 tiers (6" + 4" + 2")', price: 85.00, serves_es: '16-20 personas', serves_en: '16-20 people', tiers: 3 },
-        { name_es: '3 niveles (8" + 6" + 4")', name_en: '3 tiers (8" + 6" + 4")', price: 105.00, serves_es: '35-40 personas', serves_en: '35-40 people', tiers: 3 },
-        { name_es: '3 niveles (10" + 8" + 6")', name_en: '3 tiers (10" + 8" + 6")', price: 135.00, serves_es: '45-55 personas', serves_en: '45-55 people', tiers: 3 }
-      ],
-      flavors: [
-        { name_es: 'Vainilla', name_en: 'Vanilla', price: 0, color: '#F5E6A3' },
-        { name_es: 'Chocolate', name_en: 'Chocolate', price: 0, color: '#8B4513' },
-        { name_es: 'Fresa', name_en: 'Strawberry', price: 2.00, color: '#FFB6C1' },
-        { name_es: 'Red Velvet', name_en: 'Red Velvet', price: 5.00, color: '#DC143C' }
-      ],
-      fillings: [
-        { name_es: 'Sin Relleno', name_en: 'No Filling', price: 0 },
-        { name_es: 'Buttercream', name_en: 'Buttercream', price: 3.00 },
-        { name_es: 'Crema de Queso', name_en: 'Cream Cheese', price: 4.00 },
-        { name_es: 'Fresas Frescas', name_en: 'Fresh Strawberries', price: 5.00 },
-        { name_es: 'Tres Leches', name_en: 'Tres Leches', price: 8.00, restriction_es: 'Solo para pasteles de un nivel', restriction_en: 'Single level cakes only' },
-        { name_es: 'Dulce de Leche', name_en: 'Dulce de Leche', price: 6.00 }
-      ]
+      name: 'Pastel Clásico de Cumpleaños',
+      basePrice: 20,
+      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/58a3f870af7fe55c1b2733bc57137538.png'
+    },
+    'birthday-deluxe': {
+      name: 'Pastel Deluxe de Cumpleaños',
+      basePrice: 30,
+      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/def4b1d4d19f7bb63fe8ed7acc40b9e6.png'
+    },
+    'wedding-elegant': {
+      name: 'Pastel Elegante de Boda',
+      basePrice: 55,
+      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/b55c6989623b0711cfe5124c88d92ed0.png'
+    },
+    'quince-princess': {
+      name: 'Pastel Princesa de Quinceañera',
+      basePrice: 45,
+      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/04879db0557315e718d30f6f01a65327.png'
+    },
+    'graduation': {
+      name: 'Pastel de Graduación',
+      basePrice: 35,
+      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/58a3f870af7fe55c1b2733bc57137538.png'
     },
     'photo-cake-basic': {
-      id: 'photo-cake-basic',
-      name_es: 'Photo Cake Básico',
-      name_en: 'Basic Photo Cake',
-      basePrice: 35.00,
-      description_es: 'Pastel personalizado con tu foto favorita impresa',
-      description_en: 'Personalized cake with your favorite photo printed',
-      image: 'https://readdy.ai/api/search-image?query=Photo%20cake%20with%20edible%20image%20print%2C%20Dominican%20bakery%20style%2C%20personalized%20cake%20design%2C%20professional%20photo%20printing%20on%20cake%2C%20custom%20celebration%20cake%2C%20high%20quality%20edible%20photo&width=300&height=300&seq=photocakebasic1&orientation=squarish',
-      shapes: availableShapes,
-      sizes: [
-        { name_es: '8 pulgadas', name_en: '8 inches', price: 35.00, serves_es: '8-12 personas', serves_en: '8-12 people', tiers: 1 },
-        { name_es: '10 pulgadas', name_en: '10 inches', price: 50.00, serves_es: '15-20 personas', serves_en: '15-20 people', tiers: 1 }
-      ],
-      flavors: [
-        { name_es: 'Vainilla', name_en: 'Vanilla', price: 0, color: '#F5E6A3' },
-        { name_es: 'Chocolate', name_en: 'Chocolate', price: 0, color: '#8B4513' },
-        { name_es: 'Tres Leches', name_en: 'Tres Leches', price: 8.00, color: '#FFF8DC' }
-      ],
-      fillings: [
-        { name_es: 'Sin Relleno', name_en: 'No Filling', price: 0 },
-        { name_es: 'Buttercream', name_en: 'Buttercream', price: 3.00 },
-        { name_es: 'Crema de Queso', name_en: 'Cream Cheese', price: 4.00 },
-        { name_es: 'Fresas Frescas', name_en: 'Fresh Strawberries', price: 5.00 }
-      ]
+      name: 'Photo Cake Básico',
+      basePrice: 25,
+      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/def4b1d4d19f7bb63fe8ed7acc40b9e6.png'
     },
     'photo-cake-premium': {
-      id: 'photo-cake-premium',
-      name_es: 'Photo Cake Premium',
-      name_en: 'Premium Photo Cake',
-      basePrice: 50.00,
-      description_es: 'Photo cake con decoraciones adicionales alrededor de la imagen',
-      description_en: 'Photo cake with additional decorations around the image',
-      image: 'https://readdy.ai/api/search-image?query=Premium%20photo%20cake%20with%20edible%20image%20and%20decorative%20frosting%20borders%2C%20Dominican%20bakery%20quality%2C%20enhanced%20design%20with%20flowers%20and%20borders%20around%20photo%2C%20luxury%20personalized%20cake&width=300&height=300&seq=photocakepremium1&orientation=squarish',
-      shapes: availableShapes,
-      sizes: [
-        { name_es: '8 pulgadas', name_en: '8 inches', price: 50.00, serves_es: '8-12 personas', serves_en: '8-12 people', tiers: 1 },
-        { name_es: '10 pulgadas', name_en: '10 inches', price: 70.00, serves_es: '15-20 personas', serves_en: '15-20 people', tiers: 1 },
-        { name_es: '2 niveles (8" + 6")', name_en: '2 tiers (8" + 6")', price: 95.00, serves_es: '20-25 personas', serves_en: '20-25 people', tiers: 2 }
-      ],
-      flavors: [
-        { name_es: 'Vainilla', name_en: 'Vanilla', price: 0, color: '#F5E6A3' },
-        { name_es: 'Chocolate', name_en: 'Chocolate', price: 0, color: '#8B4513' },
-        { name_es: 'Red Velvet', name_en: 'Red Velvet', price: 8.00, color: '#DC143C' },
-        { name_es: 'Tres Leches', name_en: 'Tres Leches', price: 10.00, color: '#FFF8DC' }
-      ],
-      fillings: [
-        { name_es: 'Sin Relleno', name_en: 'No Filling', price: 0 },
-        { name_es: 'Buttercream', name_en: 'Buttercream', price: 3.00 },
-        { name_es: 'Crema de Queso', name_en: 'Cream Cheese', price: 4.00 },
-        { name_es: 'Fresas Frescas', name_en: 'Fresh Strawberries', price: 5.00 },
-        { name_es: 'Dulce de Leche', name_en: 'Dulce de Leche', price: 6.00 }
-      ]
+      name: 'Photo Cake Premium',
+      basePrice: 35,
+      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/b55c6989623b0711cfe5124c88d92ed0.png'
     }
   };
 
-  const availableColors = [
-    { name_es: 'Rosa', name_en: 'Pink', value: '#FF69B4' },
-    { name_es: 'Azul', name_en: 'Blue', value: '#4169E1' },
-    { name_es: 'Verde', name_en: 'Green', value: '#32CD32' },
-    { name_es: 'Amarillo', name_en: 'Yellow', value: '#FFD700' },
-    { name_es: 'Morado', name_en: 'Purple', value: '#9370DB' },
-    { name_es: 'Rojo', name_en: 'Red', value: '#DC143C' },
-    { name_es: 'Blanco', name_en: 'White', value: '#FFFFFF' }
+  // Formas disponibles
+  const shapeOptions: CakeOption[] = [
+    { id: 'round', name: 'Redondo', price: 0, icon: 'ri-circle-line' },
+    { id: 'square', name: 'Cuadrado', price: 5, icon: 'ri-stop-line' },
+    { id: 'rectangle', name: 'Rectangular', price: 8, icon: 'ri-rectangle-line' }
   ];
 
-  const steps = [
-    { id: 1, title_es: 'Forma', title_en: 'Shape', icon: 'ri-shape-line' },
-    { id: 2, title_es: 'Tamaño', title_en: 'Size', icon: 'ri-stack-line' },
-    { id: 3, title_es: 'Sabor', title_en: 'Flavor', icon: 'ri-cake-3-line' },
-    ...(cake?.id.includes('photo') ? [{ id: 4, title_es: 'Foto', title_en: 'Photo', icon: 'ri-image-line' }] : [{ id: 4, title_es: 'Colores', title_en: 'Colors', icon: 'ri-palette-line' }]),
-    { id: 5, title_es: 'Detalles', title_en: 'Details', icon: 'ri-edit-line' }
+  // TAMAÑOS ACTUALIZADOS SEGÚN TABLA OFICIAL
+  const sizeOptions = [
+    { id: '6', name: '6 pulgadas', price: 20, serves: '4-6 personas' },
+    { id: '8', name: '8 pulgadas', price: 30, serves: '8-10 personas' },
+    { id: '10', name: '10 pulgadas', price: 35, serves: '10-15 personas' },
+    { id: '12', name: '12 pulgadas', price: 55, serves: '20-25 personas' },
+    { id: '14', name: '14 pulgadas', price: 80, serves: '35-40 personas' }
   ];
 
+  // Sabores disponibles
+  const flavorOptions: CakeOption[] = [
+    { id: 'vanilla', name: 'Vainilla', price: 0, color: '#F5E6A3' },
+    { id: 'chocolate', name: 'Chocolate', price: 0, color: '#8B4513' },
+    { id: 'strawberry', name: 'Fresa', price: 3, color: '#FFB6C1' },
+    { id: 'red-velvet', name: 'Red Velvet', price: 5, color: '#DC143C' },
+    { id: 'tres-leches', name: 'Tres Leches', price: 8, color: '#FFF8DC' },
+    { id: 'coconut', name: 'Coco', price: 5, color: '#FFFFFF' },
+    { id: 'lemon', name: 'Limón', price: 4, color: '#FFFF99' },
+    { id: 'carrot', name: 'Zanahoria', price: 6, color: '#DEB887' }
+  ];
+
+  // Colores de decoración
+  const colorOptions: CakeOption[] = [
+    { id: 'white', name: 'Blanco', price: 0, color: '#FFFFFF' },
+    { id: 'pink', name: 'Rosa', price: 3, color: '#FF69B4' },
+    { id: 'blue', name: 'Azul', price: 3, color: '#4169E1' },
+    { id: 'purple', name: 'Morado', price: 3, color: '#9370DB' },
+    { id: 'green', name: 'Verde', price: 3, color: '#32CD32' },
+    { id: 'yellow', name: 'Amarillo', price: 3, color: '#FFD700' },
+    { id: 'red', name: 'Rojo', price: 3, color: '#DC143C' },
+    { id: 'gold', name: 'Dorado', price: 8, color: '#FFD700' },
+    { id: 'silver', name: 'Plateado', price: 8, color: '#C0C0C0' }
+  ];
+
+  // Rellenos disponibles
+  const fillingOptions: CakeOption[] = [
+    { id: 'none', name: 'Sin Relleno', price: 0 },
+    { id: 'buttercream', name: 'Buttercream', price: 4 },
+    { id: 'cream-cheese', name: 'Crema de Queso', price: 5 },
+    { id: 'strawberry-jam', name: 'Mermelada de Fresa', price: 5 },
+    { id: 'chocolate-ganache', name: 'Ganache de Chocolate', price: 7 },
+    { id: 'dulce-leche', name: 'Dulce de Leche', price: 7 },
+    { id: 'fresh-fruits', name: 'Frutas Frescas', price: 10 },
+    { id: 'custard', name: 'Crema Pastelera', price: 6 }
+  ];
+
+  // DECORACIONES ACTUALIZADAS SEGÚN TABLA OFICIAL
+  const decorationOptions: DecorationExtra[] = [
+    { id: 'natural-flowers', name: 'Flores Naturales', price: 30, icon: 'ri-flower-line', description: 'Flores frescas comestibles' },
+    { id: 'flower-cascade', name: 'Cascada de Flores', price: 60, icon: 'ri-water-flash-line', description: 'Cascada decorativa de flores' },
+    { id: 'drips', name: 'Derretidos', price: 20, icon: 'ri-drop-line', description: 'Efecto de chocolate derretido' },
+    { id: 'sugar-flowers', name: 'Flores de Azúcar', price: 20, icon: 'ri-plant-line', description: 'Flores hechas de azúcar', variable: true },
+    { id: 'pearls', name: 'Perlas', price: 10, icon: 'ri-bubble-chart-line', description: 'Perlas comestibles decorativas', variable: true },
+    { id: 'balls', name: 'Bolas', price: 15, icon: 'ri-checkbox-blank-circle-line', description: 'Bolas decorativas de azúcar', variable: true },
+    { id: 'cut-out', name: 'Cut Out', price: 15, icon: 'ri-scissors-cut-line', description: 'Formas cortadas personalizadas', variable: true },
+    { id: 'butterflies', name: 'Mariposas', price: 10, icon: 'ri-service-line', description: 'Mariposas decorativas comestibles' },
+    { id: 'bows', name: 'Lazos', price: 7, icon: 'ri-gift-line', description: 'Lazos decorativos de fondant' },
+    { id: 'fake-flowers', name: 'Flores de Mentira', price: 20, icon: 'ri-leaf-line', description: 'Flores artificiales decorativas' }
+  ];
+
+  // COMBINACIONES PREDEFINIDAS ACTUALIZADAS SEGÚN TABLA OFICIAL
+  const basicTierOptions = [
+    {
+      id: 'single-6',
+      name: '1 Nivel - 6"',
+      description: '4-6 personas',
+      price: 20,
+      layers: [{ id: 'layer-1', name: 'Nivel 1', size: '6', price: 20 }],
+      icon: 'ri-circle-line'
+    },
+    {
+      id: 'single-8',
+      name: '1 Nivel - 8"',
+      description: '8-10 personas',
+      price: 30,
+      layers: [{ id: 'layer-1', name: 'Nivel 1', size: '8', price: 30 }],
+      icon: 'ri-circle-line'
+    },
+    {
+      id: 'single-10',
+      name: '1 Nivel - 10"',
+      description: '10-15 personas',
+      price: 35,
+      layers: [{ id: 'layer-1', name: 'Nivel 1', size: '10', price: 35 }],
+      icon: 'ri-circle-line'
+    },
+    {
+      id: 'double-6',
+      name: '2 Niveles - Doble 6"',
+      description: '10-12 personas',
+      price: 70,
+      layers: [
+        { id: 'layer-1', name: 'Nivel 1', size: '6', price: 35 },
+        { id: 'layer-2', name: 'Nivel 2', size: '6', price: 35 }
+      ],
+      icon: 'ri-stack-line'
+    },
+    {
+      id: 'double-8',
+      name: '2 Niveles - Doble 8"',
+      description: '25-30 personas',
+      price: 80,
+      layers: [
+        { id: 'layer-1', name: 'Nivel 1', size: '8', price: 40 },
+        { id: 'layer-2', name: 'Nivel 2', size: '8', price: 40 }
+      ],
+      icon: 'ri-stack-line'
+    },
+    {
+      id: 'double-10',
+      name: '2 Niveles - Doble 10"',
+      description: '30-40 personas',
+      price: 115,
+      layers: [
+        { id: 'layer-1', name: 'Nivel 1', size: '10', price: 57.5 },
+        { id: 'layer-2', name: 'Nivel 2', size: '10', price: 57.5 }
+      ],
+      icon: 'ri-stack-line'
+    },
+    {
+      id: 'double-12',
+      name: '2 Niveles - Doble 12"',
+      description: '50-60 personas',
+      price: 135,
+      layers: [
+        { id: 'layer-1', name: 'Nivel 1', size: '12', price: 67.5 },
+        { id: 'layer-2', name: 'Nivel 2', size: '12', price: 67.5 }
+      ],
+      icon: 'ri-stack-line'
+    },
+    {
+      id: 'triple-6',
+      name: '3 Niveles - Triple 6"',
+      description: '15-18 personas',
+      price: 90,
+      layers: [
+        { id: 'layer-1', name: 'Nivel 1', size: '6', price: 30 },
+        { id: 'layer-2', name: 'Nivel 2', size: '6', price: 30 },
+        { id: 'layer-3', name: 'Nivel 3', size: '6', price: 30 }
+      ],
+      icon: 'ri-stack-fill'
+    },
+    {
+      id: 'triple-8',
+      name: '3 Niveles - Triple 8"',
+      description: '24-30 personas',
+      price: 115,
+      layers: [
+        { id: 'layer-1', name: 'Nivel 1', size: '8', price: 38.33 },
+        { id: 'layer-2', name: 'Nivel 2', size: '8', price: 38.33 },
+        { id: 'layer-3', name: 'Nivel 3', size: '8', price: 38.33 }
+      ],
+      icon: 'ri-stack-fill'
+    },
+    {
+      id: 'triple-10',
+      name: '3 Niveles - Triple 10"',
+      description: '30-45 personas',
+      price: 140,
+      layers: [
+        { id: 'layer-1', name: 'Nivel 1', size: '10', price: 46.67 },
+        { id: 'layer-2', name: 'Nivel 2', size: '10', price: 46.67 },
+        { id: 'layer-3', name: 'Nivel 3', size: '10', price: 46.67 }
+      ],
+      icon: 'ri-stack-fill'
+    }
+  ];
+
+  // Pasos para modo básico
+  const basicSteps = [
+    { id: 1, title: 'Forma', icon: 'ri-shape-line' },
+    { id: 2, title: 'Tamaño', icon: 'ri-stack-line' },
+    { id: 3, title: 'Sabor', icon: 'ri-cake-3-line' },
+    { id: 4, title: 'Colores', icon: 'ri-palette-line' },
+    { id: 5, title: 'Detalles', icon: 'ri-edit-line' }
+  ];
+
+  // Pasos para modo avanzado
+  const advancedSteps = [
+    { id: 1, title: 'Forma', icon: 'ri-shape-line' },
+    { id: 2, title: 'Niveles', icon: 'ri-stack-line' },
+    { id: 3, title: 'Sabores', icon: 'ri-cake-3-line' },
+    { id: 4, title: 'Colores', icon: 'ri-palette-line' },
+    { id: 5, title: 'Rellenos', icon: 'ri-contrast-drop-line' },
+    { id: 6, title: 'Decoraciones', icon: 'ri-star-line' },
+    { id: 7, title: 'Detalles', icon: 'ri-edit-line' }
+  ];
+
+  const steps = customizerMode === 'basic' ? basicSteps : advancedSteps;
+  const maxSteps = customizerMode === 'basic' ? 5 : 7;
+
+  const currentProduct = cakeProducts[cakeId as keyof typeof cakeProducts];
+
+  // Funciones para manejar las capas
+  const addLayer = () => {
+    const layerNumber = selectedOptions.layers.length + 1;
+    const timestamp = Date.now();
+    
+    // CORREGIDO: Usar tamaño 6" por defecto para que empiece desde $20
+    const defaultSize = '6';
+    const newLayer: CakeLayer = {
+      id: `layer-${timestamp}`,
+      name: `Nivel ${layerNumber}`,
+      size: defaultSize,
+      price: sizeOptions.find(s => s.id === defaultSize)?.price || 20
+    };
+    setSelectedOptions(prev => ({
+      ...prev,
+      layers: [...prev.layers, newLayer]
+    }));
+  };
+
+  const removeLayer = (layerId: string) => {
+    setSelectedOptions(prev => ({
+      ...prev,
+      layers: prev.layers.filter(layer => layer.id !== layerId)
+    }));
+  };
+
+  const updateLayer = (layerId: string, field: keyof CakeLayer, value: any) => {
+    setSelectedOptions(prev => ({
+      ...prev,
+      layers: prev.layers.map(layer =>
+        layer.id === layerId
+          ? { ...layer, [field]: value, ...(field === 'size' ? { price: sizeOptions.find(s => s.id === value)?.price || 0 } : {}) }
+          : layer
+      )
+    }));
+  };
+
+  // Función para validar si un tamaño es válido para un nivel específico
+  const isValidSizeForLayer = (layerIndex: number, sizeId: string): boolean => {
+    const layers = selectedOptions.layers;
+    const sizeNum = parseInt(sizeId);
+
+    const otherLayers = layers.filter((_, index) => index !== layerIndex);
+    const isUsed = otherLayers.some(layer => layer.size === sizeId);
+    if (isUsed) return false;
+
+    if (layerIndex === 0) return true;
+
+    for (let i = 0; i < layerIndex; i++) {
+      const lowerLayerSize = parseInt(layers[i].size);
+      if (sizeNum >= lowerLayerSize) {
+        return false;
+      }
+    }
+
+    for (let i = layerIndex + 1; i < layers.length; i++) {
+      const upperLayerSize = parseInt(layers[i].size);
+      if (sizeNum <= upperLayerSize) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  // Función para obtener tamaños disponibles para un nivel específico
+  const getAvailableSizesForLayer = (layerIndex: number) => {
+    return sizeOptions.filter(size => isValidSizeForLayer(layerIndex, size.id));
+  };
+
+  // Función para validar la estructura completa del pastel
+  const validateCakeStructure = (): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    const layers = selectedOptions.layers;
+
+    if (layers.length === 0) {
+      errors.push('Debe tener al menos un nivel');
+      return { isValid: false, errors };
+    }
+
+    const sizes = layers.map(layer => layer.size);
+    const uniqueSizes = new Set(sizes);
+    if (sizes.length !== uniqueSizes.size) {
+      errors.push('No puedes usar el mismo tamaño en múltiples niveles');
+    }
+
+    for (let i = 1; i < layers.length; i++) {
+      const lowerSize = parseInt(layers[i - 1].size);
+      const upperSize = parseInt(layers[i].size);
+
+      if (upperSize >= lowerSize) {
+        errors.push(`El nivel ${i + 1} debe ser más pequeño que el nivel ${i}`);
+      }
+    }
+
+    return { isValid: errors.length === 0, errors };
+  };
+
+  // Inicializar con una capa por defecto
   useEffect(() => {
-    const cakeData = cakeDatabase[cakeId];
-    if (cakeData) {
-      setCake(cakeData);
-      setSelectedShape(cakeData.shapes[0]);
-      setSelectedSize(cakeData.sizes[0]);
-      setSelectedFlavor(cakeData.flavors[0]);
-      setSelectedFilling(cakeData.fillings[0]);
+    if (selectedOptions.layers.length === 0) {
+      addLayer();
     }
-  }, [cakeId]);
+  }, []);
 
+  // Funciones para manejar opciones múltiples
+  const toggleOption = (category: keyof typeof selectedOptions, optionId: string) => {
+    setSelectedOptions(prev => {
+      const currentArray = prev[category] as string[];
+      const isSelected = currentArray.includes(optionId);
+
+      return {
+        ...prev,
+        [category]: isSelected
+          ? currentArray.filter(id => id !== optionId)
+          : [...currentArray, optionId]
+      };
+    });
+  };
+
+  // Calcular precio total
   const calculateTotal = () => {
-    if (!cake || !selectedSize || !selectedFlavor || !selectedFilling || !selectedShape) return 0;
-    
-    const basePrice = selectedSize.price;
-    const flavorPrice = selectedFlavor.price;
-    const fillingPrice = selectedFilling.price;
-    const shapePrice = selectedShape.price;
-    const colorPrice = selectedColors.length * 2;
-    
-    return (basePrice + flavorPrice + fillingPrice + shapePrice + colorPrice) * quantity;
-  };
+    let total = 0;
 
-  const toggleColor = (colorName: string) => {
-    setSelectedColors(prev => 
-      prev.includes(colorName) 
-        ? prev.filter(c => c !== colorName)
-        : [...prev, colorName]
-    );
-  };
+    total += selectedOptions.layers.reduce((sum, layer) => sum + layer.price, 0);
 
-  // Simplified preview - just shows basic cake shape with colors
-  const getCakePreview = () => {
-    if (!selectedSize || !selectedFlavor || !selectedShape) return null;
+    const shapePrice = shapeOptions.find(s => s.id === selectedOptions.shape)?.price || 0;
+    total += shapePrice;
 
-    const tiers = selectedSize.tiers || 1;
-    const baseColor = selectedFlavor.color;
-    const isSquare = selectedShape.id === 'square' || selectedShape.id === 'rectangle';
-    const isHeart = selectedShape.id === 'heart';
-    const decorColors = selectedColors.map(colorName => {
-      const color = availableColors.find(c => 
-        (language === 'es' ? c.name_es : c.name_en) === colorName
-      );
-      return color?.value || '#FF69B4';
+    selectedOptions.flavors.forEach(flavorId => {
+      const flavor = flavorOptions.find(f => f.id === flavorId);
+      if (flavor) total += flavor.price;
     });
 
+    selectedOptions.colors.forEach(colorId => {
+      const color = colorOptions.find(c => c.id === colorId);
+      if (color) total += color.price;
+    });
+
+    selectedOptions.fillings.forEach(fillingId => {
+      const filling = fillingOptions.find(f => f.id === fillingId);
+      if (filling) total += filling.price;
+    });
+
+    selectedOptions.decorations.forEach(decorationId => {
+      const decoration = decorationOptions.find(d => d.id === decorationId);
+      if (decoration) total += decoration.price;
+    });
+
+    return total * quantity;
+  };
+
+  // Vista previa visual del pastel
+  const CakePreview = () => {
+    const layers = selectedOptions.layers;
+    const isSquare = selectedOptions.shape === 'square' || selectedOptions.shape === 'rectangle';
+
     return (
-      <div className="flex flex-col items-center justify-end space-y-1">
-        {Array.from({ length: tiers }).map((_, index) => {
-          const tierIndex = tiers - 1 - index;
-          const widthClass = tiers === 1 ? 'w-20' : 
-                           tierIndex === 0 ? 'w-24' : 
-                           tierIndex === 1 ? 'w-20' : 'w-16';
-          const heightClass = 'h-8';
-          const shapeClass = isSquare ? '' : isHeart ? 'rounded-t-full' : 'rounded-md';
+      <div className="flex flex-col items-center justify-end space-y-2 bg-gradient-to-b from-blue-50 to-pink-50 rounded-xl p-6 h-40 relative">
+        {layers.map((layer, index) => {
+          const layerIndex = layers.length - 1 - index;
+          const sizeNum = parseInt(layer.size);
           
+          // Mejorar el cálculo de tamaños para mejor visualización
+          let widthClass, heightClass;
+          if (layers.length === 1) {
+            widthClass = 'w-20';
+            heightClass = 'h-8';
+          } else {
+            const baseWidth = Math.max(12, sizeNum + 4);
+            widthClass = layerIndex === 0 ? `w-24` : layerIndex === 1 ? `w-20` : `w-16`;
+            heightClass = 'h-7';
+          }
+          
+          const shapeClass = isSquare ? 'rounded-md' : 'rounded-lg';
+
+          const flavorId = selectedOptions.flavors[layerIndex] || selectedOptions.flavors[0] || 'vanilla';
+          const flavor = flavorOptions.find(f => f.id === flavorId);
+          const layerColor = flavor?.color || '#F5E6A3';
+
           return (
-            <div key={index} className="relative">
-              <div 
-                className={`${widthClass} ${heightClass} ${shapeClass} border-2 border-gray-300 ${isHeart ? 'transform rotate-45' : ''}`}
-                style={{ backgroundColor: baseColor }}
+            <div key={`cake-preview-${layer.id}-${index}-${Date.now()}`} className="relative">
+              <div
+                className={`${widthClass} ${heightClass} ${shapeClass} border-3 border-white shadow-md`}
+                style={{ 
+                  background: `linear-gradient(145deg, ${layerColor}, ${layerColor}dd)`,
+                  boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
+                }}
               />
-              {decorColors.length > 0 && (
-                <div className="absolute top-1 left-1/2 transform -translate-x-1/2 flex space-x-1">
-                  {decorColors.slice(0, 3).map((color, i) => (
-                    <div
-                      key={i}
-                      className="w-2 h-2 rounded-full border border-white"
-                      style={{ backgroundColor: color }}
-                    />
-                  ))}
+              
+              {/* Decoraciones más visibles */}
+              {selectedOptions.decorations.includes('natural-flowers') && layerIndex === layers.length - 1 && (
+                <div className="absolute -top-2 -right-1 w-4 h-4 bg-pink-400 rounded-full border-2 border-white flex items-center justify-center shadow-sm z-20">
+                  <i className="ri-flower-line text-white text-xs"></i>
                 </div>
               )}
+              
+              {selectedOptions.decorations.includes('drips') && (
+                <div className="absolute top-0 left-2 w-1 h-3 bg-amber-600 rounded-full opacity-80 shadow-sm z-20"></div>
+              )}
+              
+              {selectedOptions.decorations.includes('pearls') && (
+                <div className="absolute top-1 right-2 flex space-x-1 z-20">
+                  <div className="w-1.5 h-1.5 bg-white rounded-full border border-gray-300 shadow-sm"></div>
+                  <div className="w-1.5 h-1.5 bg-white rounded-full border border-gray-300 shadow-sm"></div>
+                </div>
+              )}
+              
+              {selectedOptions.decorations.includes('butterflies') && layerIndex === layers.length - 1 && (
+                <div className="absolute -top-2 -left-1 w-4 h-4 bg-purple-400 rounded-full border-2 border-white flex items-center justify-center shadow-sm z-20">
+                  <i className="ri-service-line text-white text-xs transform rotate-12"></i>
+                </div>
+              )}
+              
+              {selectedOptions.decorations.includes('bows') && (
+                <div className="absolute top-1 left-1/2 transform -translate-x-1/2 z-20">
+                  <i className="ri-gift-line text-red-500 text-sm drop-shadow-sm"></i>
+                </div>
+              )}
+
+              {/* Colores decorativos más visibles */}
+              {selectedOptions.colors.length > 0 && (
+                <div className="absolute top-1.5 left-1/2 transform -translate-x-1/2 flex space-x-1 z-20">
+                  {selectedOptions.colors.slice(0, 2).map((colorId, i) => {
+                    const color = colorOptions.find(c => c.id === colorId);
+                    return (
+                      <div
+                        key={`preview-color-${colorId}-${i}-${layer.id}`}
+                        className="w-2 h-2 rounded-full border-2 border-white shadow-sm"
+                        style={{ backgroundColor: color?.color }}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+              
+              {/* Etiqueta de tamaño MÁS PROMINENTE Y POR ENCIMA */}
+              <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-sm text-gray-800 bg-white px-3 py-1.5 rounded-full shadow-md font-bold border-2 border-gray-200 z-30">
+                {layer.size}"
+              </div>
             </div>
           );
         })}
+        
+        {/* Base del pastel mejorada */}
+        <div className="relative mt-4">
+          <div className="w-28 h-3 bg-gradient-to-r from-amber-200 via-amber-300 to-amber-200 rounded-full opacity-70 shadow-sm"></div>
+          {selectedOptions.fillings.length > 0 && (
+            <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 text-amber-700 z-20">
+              <i className="ri-contrast-drop-line text-sm drop-shadow-sm"></i>
+            </div>
+          )}
+        </div>
+        
+        {/* Información resumida más clara */}
+        <div className="text-center mt-3 space-y-1 z-30 relative">
+          <div className="text-sm text-gray-700 font-medium">
+            {selectedOptions.layers.length} nivel{selectedOptions.layers.length > 1 ? 'es' : ''} • {shapeOptions.find(s => s.id === selectedOptions.shape)?.name}
+          </div>
+          {selectedOptions.decorations.length > 0 && (
+            <div className="text-xs text-pink-600 font-medium">
+              +{selectedOptions.decorations.length} decoración{selectedOptions.decorations.length > 1 ? 'es' : ''}
+            </div>
+          )}
+        </div>
       </div>
     );
   };
 
-  // Función para manejar la subida de fotos con validación de seguridad
-  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const renderShapePreview = (shape: string, size: string) => {
+    const baseClasses = 'relative bg-gradient-to-br border-2 border-gray-200 shadow-sm';
 
-    // Validar formato de archivo - solo imágenes seguras
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-    const maxSize = 5 * 1024 * 1024; // 5MB máximo
-
-    if (!allowedTypes.includes(file.type)) {
-      alert('Por favor selecciona solo archivos de imagen (JPG, PNG, GIF, WEBP)');
-      return;
+    switch (shape) {
+      case 'square':
+        return `${baseClasses} rounded-sm w-12 h-12`;
+      case 'rectangle':
+        return `${baseClasses} rounded-sm w-16 h-10`;
+      default:
+        return `${baseClasses} rounded-full w-12 h-12`;
     }
-
-    if (file.size > maxSize) {
-      alert('La imagen es demasiado grande. Máximo 5MB permitido.');
-      return;
-    }
-
-    // Validar nombre de archivo para evitar caracteres maliciosos
-    const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '');
-    if (sanitizedName !== file.name) {
-      alert('Nombre de archivo no válido. Solo se permiten letras, números, puntos y guiones.');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = e.target?.result as string;
-      setUploadedPhoto(result);
-      setPhotoFile(file);
-      
-      // Guardar la imagen en localStorage con ID único
-      const photoId = `photo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      localStorage.setItem(`bakery-photo-${photoId}`, result);
-      localStorage.setItem(`bakery-photo-info-${photoId}`, JSON.stringify({
-        name: sanitizedName,
-        size: file.size,
-        type: file.type,
-        uploadDate: new Date().toISOString()
-      }));
-    };
-    reader.readAsDataURL(file);
   };
 
-  const removePhoto = () => {
-    setUploadedPhoto(null);
-    setPhotoFile(null);
+  const renderCakePreview = () => {
+    if (selectedOptions.layers.length === 0) return null;
+
+    return (
+      <div className="bg-white rounded-xl p-6 border border-gray-200 mb-6 shadow-sm">
+        <h3 className="font-semibold text-gray-800 mb-4 text-center text-lg">Vista Previa del Pastel</h3>
+        
+        {/* Vista previa mejorada y más grande */}
+        <div className="flex justify-center mb-6">
+          <CakePreview />
+        </div>
+
+        {/* Información detallada con mejor espaciado */}
+        <div className="space-y-4">
+          {/* Información básica en tarjetas */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-gray-50 rounded-lg p-3 text-center">
+              <div className="text-xs text-gray-600 mb-1">Forma</div>
+              <div className="font-medium text-gray-800 capitalize">
+                {shapeOptions.find(s => s.id === selectedOptions.shape)?.name}
+              </div>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-3 text-center">
+              <div className="text-xs text-gray-600 mb-1">Niveles</div>
+              <div className="font-medium text-gray-800">
+                {selectedOptions.layers.length}
+              </div>
+            </div>
+          </div>
+
+          {/* Capas individuales mejoradas */}
+          <div className="space-y-2">
+            <h4 className="font-medium text-gray-700 text-sm">Detalles por Capa:</h4>
+            {selectedOptions.layers.map((layer, index) => (
+              <div key={`layer-detail-${layer.id}-${index}`} className="bg-gradient-to-r from-blue-50 to-pink-50 rounded-lg p-3">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-6 rounded border-2 border-white shadow-sm" 
+                         style={{ 
+                           background: flavorOptions.find(f => f.id === selectedOptions.flavors[0])?.color || '#F3F4F6'
+                         }}></div>
+                    <div>
+                      <span className="font-medium text-gray-800 text-sm">Capa {index + 1}</span>
+                      <div className="text-xs text-gray-600">
+                        {layer.size}" • {flavorOptions.find(f => f.id === selectedOptions.flavors[0])?.name || 'Sin sabor'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-semibold text-pink-600">${layer.price}</div>
+                    <div className="text-xs text-gray-500">{sizeOptions.find(s => s.id === layer.size)?.serves}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Extras seleccionados */}
+          {(selectedOptions.decorations.length > 0 || selectedOptions.colors.length > 0 || selectedOptions.fillings.length > 0) && (
+            <div className="space-y-2">
+              <h4 className="font-medium text-gray-700 text-sm">Extras Seleccionados:</h4>
+              
+              {selectedOptions.decorations.length > 0 && (
+                <div className="bg-pink-50 rounded-lg p-3">
+                  <div className="text-xs text-pink-700 font-medium mb-2">✨ Decoraciones:</div>
+                  <div className="flex flex-wrap gap-1">
+                    {selectedOptions.decorations.map((decorationId, index) => {
+                      const decoration = decorationOptions.find(d => d.id === decorationId);
+                      return decoration ? (
+                        <span key={`decoration-tag-${decorationId}-${index}`} 
+                              className="bg-pink-100 text-pink-700 px-2 py-1 rounded-full text-xs">
+                          {decoration.name} (+${decoration.price})
+                        </span>
+                      ) : null;
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {selectedOptions.colors.length > 0 && (
+                <div className="bg-blue-50 rounded-lg p-3">
+                  <div className="text-xs text-blue-700 font-medium mb-2">🎨 Colores:</div>
+                  <div className="flex space-x-2">
+                    {selectedOptions.colors.map((colorId, index) => {
+                      const color = colorOptions.find(c => c.id === colorId);
+                      return color ? (
+                        <div key={`color-preview-${colorId}-${index}`} className="flex items-center space-x-1">
+                          <div className="w-4 h-4 rounded-full border-2 border-white shadow-sm"
+                               style={{ backgroundColor: color.color }}></div>
+                          <span className="text-xs text-blue-700">{color.name}</span>
+                        </div>
+                      ) : null;
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
   };
 
-  const addToCart = () => {
-    if (!cake || !selectedSize || !selectedFlavor || !selectedFilling || !selectedShape) return;
+  const addToCart = async () => {
+    setIsAdding(true);
 
-    // Validar que photo cakes tengan foto subida
-    if (cake.id.includes('photo') && !uploadedPhoto) {
-      alert('Por favor sube una foto para tu Photo Cake');
-      return;
-    }
+    const layerDescriptions = selectedOptions.layers
+      .map((layer, index) => `Nivel ${index + 1}: ${layer.size}" (${sizeOptions.find(s => s.id === layer.size)?.serves})`)
+      .join(', ');
+
+    const flavorNames = selectedOptions.flavors
+      .map(id => flavorOptions.find(f => f.id === id)?.name)
+      .filter(Boolean)
+      .join(', ');
+
+    const decorationNames = selectedOptions.decorations
+      .map(id => decorationOptions.find(d => d.id === id)?.name)
+      .filter(Boolean)
+      .join(', ');
 
     const cartItem = {
-      id: `${cake.id}-${Date.now()}`,
-      name: language === 'es' ? cake.name_es : cake.name_en,
-      shape: language === 'es' ? selectedShape.name_es : selectedShape.name_en,
-      size: language === 'es' ? selectedSize.name_es : selectedSize.name_en,
-      flavor: language === 'es' ? selectedFlavor.name_es : selectedFlavor.name_en,
-      filling: language === 'es' ? selectedFilling.name_es : selectedFilling.name_en,
-      colors: selectedColors,
-      inscription: inscription,
-      specialRequests: specialRequests,
-      price: calculateTotal(),
+      id: `cake-${Date.now()}`,
+      name: `${currentProduct?.name} Personalizado`,
+      price: `$${calculateTotal().toFixed(2)}`,
       quantity: quantity,
-      image: cake.image,
+      image: currentProduct?.image || '',
       type: 'cake',
-      photoData: uploadedPhoto,
-      photoInfo: photoFile ? {
-        name: photoFile.name,
-        size: photoFile.size,
-        type: photoFile.type
-      } : null
+      customization: {
+        mode: customizerMode,
+        shape: shapeOptions.find(s => s.id === selectedOptions.shape)?.name,
+        layers: layerDescriptions,
+        flavors: flavorNames,
+        colors: selectedOptions.colors
+          .map(id => colorOptions.find(c => c.id === id)?.name)
+          .filter(Boolean)
+          .join(', '),
+        fillings: customizerMode === 'advanced' ? selectedOptions.fillings
+          .map(id => fillingOptions.find(f => f.id === id)?.name)
+          .filter(Boolean)
+          .join(', ') : '',
+        decorations: customizerMode === 'advanced' ? decorationNames : '',
+        inscription: selectedOptions.inscription,
+        specialRequests: selectedOptions.specialRequests
+      }
     };
 
-    const existingCart = JSON.parse(localStorage.getItem('bakery-cart') || '[]');
-    existingCart.push(cartItem);
-    localStorage.setItem('bakery-cart', JSON.stringify(existingCart));
-    
-    alert('¡Pastel agregado al carrito!');
+    const existingCart = localStorage.getItem('bakery-cart');
+    let cart = existingCart ? JSON.parse(existingCart) : [];
+    cart.push(cartItem);
+    localStorage.setItem('bakery-cart', JSON.stringify(cart));
+
+    setTimeout(() => {
+      setIsAdding(false);
+      router.push('/cart');
+    }, 1000);
   };
 
   const nextStep = () => {
-    if (currentStep < 5) {
+    if (currentStep < maxSteps) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -371,14 +746,22 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
     }
   };
 
-  if (!cake) {
-    return <div className="min-h-screen bg-gradient-to-b from-pink-50 to-purple-50 flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-8 h-8 border-4 border-pink-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-gray-600">Cargando...</p>
+  if (!currentProduct) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-pink-50 to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-pink-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando personalizador...</p>
+        </div>
       </div>
-    </div>;
+    );
   }
+
+  const [activeTab, setActiveTab] = useState('form');
+  const [selectedLayerIndex, setSelectedLayerIndex] = useState(0);
+  const [customMessage, setCustomMessage] = useState('');
+
+  const totalPrice = calculateTotal();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 to-purple-50">
@@ -390,502 +773,529 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
             Volver a Pasteles
           </Link>
 
-          {/* Preview Card - Always Visible */}
+          <div className="bg-white rounded-xl shadow-lg p-4 mb-6">
+            <h3 className="text-lg font-bold text-amber-800 mb-3 text-center">Elige tu Experiencia</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => {
+                  setCustomizerMode('basic');
+                  setCurrentStep(1);
+                  setSelectedOptions(prev => ({ ...prev, layers: [], fillings: [], decorations: [] }));
+                }}
+                className={`p-4 rounded-xl border-2 transition-all ${
+                  customizerMode === 'basic'
+                    ? 'border-green-500 bg-green-50 shadow-lg'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="text-center">
+                  <div className={`w-12 h-12 mx-auto mb-2 rounded-full flex items-center justify-center ${
+                    customizerMode === 'basic' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    <i className="ri-magic-line text-xl"></i>
+                  </div>
+                  <h4 className="font-semibold text-gray-800 mb-1">Básico</h4>
+                  <p className="text-xs text-gray-600">Rápido y simple</p>
+                  <p className="text-xs text-green-600 font-medium mt-1">5 pasos</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  setCustomizerMode('advanced');
+                  setCurrentStep(1);
+                }}
+                className={`p-4 rounded-xl border-2 transition-all ${
+                  customizerMode === 'advanced'
+                    ? 'border-purple-500 bg-purple-50 shadow-lg'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="text-center">
+                  <div className={`w-12 h-12 mx-auto mb-2 rounded-full flex items-center justify-center ${
+                    customizerMode === 'advanced' ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    <i className="ri-settings-3-line text-xl"></i>
+                  </div>
+                  <h4 className="font-semibold text-gray-800 mb-1">Avanzado</h4>
+                  <p className="text-xs text-gray-600">Control total</p>
+                  <p className="text-xs text-purple-600 font-medium mt-1">7 pasos</p>
+                </div>
+              </button>
+            </div>
+          </div>
+
           <div className="bg-white rounded-xl shadow-lg p-4 mb-6 sticky top-20 z-10">
-            <div className="flex items-center">
-              <div className="w-24 h-24 flex items-center justify-center bg-gray-50 rounded-lg mr-4">
-                {getCakePreview()}
+            <div className="flex items-center space-x-4">
+              {/* Vista previa del pastel más grande y centrada */}
+              <div className="w-40 flex-shrink-0">
+                <CakePreview />
               </div>
+              
               <div className="flex-1">
-                <h2 className="font-bold text-amber-800 text-lg mb-1">
-                  {language === 'es' ? cake.name_es : cake.name_en}
-                </h2>
-                <div className="text-sm text-gray-600 space-y-1">
-                  {selectedShape && (
-                    <div>🎂 {language === 'es' ? selectedShape.name_es : selectedShape.name_en}</div>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="font-bold text-amber-800 text-lg">{currentProduct.name}</h2>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    customizerMode === 'basic' ? 'bg-green-100 text-green-600' : 'bg-purple-100 text-purple-600'
+                  }`}>
+                    {customizerMode === 'basic' ? 'Básico' : 'Avanzado'}
+                  </span>
+                </div>
+                
+                {/* Información mejorada con iconos */}
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center text-sm text-gray-600">
+                    <i className="ri-checkbox-blank-circle-line text-pink-500 mr-2"></i>
+                    <span>{shapeOptions.find(s => s.id === selectedOptions.shape)?.name}</span>
+                  </div>
+                  
+                  <div className="flex items-center text-sm text-gray-600">
+                    <i className="ri-stack-line text-blue-500 mr-2"></i>
+                    <span>{selectedOptions.layers.length} nivel{selectedOptions.layers.length > 1 ? 'es' : ''}</span>
+                  </div>
+                  
+                  {selectedOptions.flavors.length > 0 && (
+                    <div className="flex items-center text-sm text-gray-600">
+                      <i className="ri-cake-3-line text-purple-500 mr-2"></i>
+                      <span>{flavorOptions.find(f => f.id === selectedOptions.flavors[0])?.name}</span>
+                    </div>
                   )}
-                  {selectedSize && (
-                    <div>📏 {language === 'es' ? selectedSize.name_es : selectedSize.name_en}</div>
-                  )}
-                  {selectedFlavor && (
-                    <div>🍰 {language === 'es' ? selectedFlavor.name_es : selectedFlavor.name_en}</div>
-                  )}
-                  {selectedColors.length > 0 && (
-                    <div className="flex items-center">
-                      🎨 
-                      <div className="flex ml-1 space-x-1">
-                        {selectedColors.slice(0, 3).map((colorName, index) => {
-                          const color = availableColors.find(c => 
-                            (language === 'es' ? c.name_es : c.name_en) === colorName
-                          );
-                          return (
-                            <div
-                              key={index}
-                              className="w-4 h-4 rounded-full border border-gray-300"
-                              style={{ backgroundColor: color?.value }}
-                            ></div>
-                          );
-                        })}
-                        {selectedColors.length > 3 && (
-                          <span className="text-xs text-gray-500">+{selectedColors.length - 3}</span>
-                        )}
-                      </div>
+                  
+                  {customizerMode === 'advanced' && selectedOptions.decorations.length > 0 && (
+                    <div className="flex items-center text-sm text-gray-600">
+                      <i className="ri-star-line text-yellow-500 mr-2"></i>
+                      <span>{selectedOptions.decorations.length} decoración{selectedOptions.decorations.length > 1 ? 'es' : ''}</span>
                     </div>
                   )}
                 </div>
-              </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold text-pink-600">${calculateTotal().toFixed(2)}</div>
-                <div className="text-xs text-gray-500">Total</div>
+                
+                {/* Precio total destacado */}
+                <div className="text-right bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg p-3">
+                  <div className="text-2xl font-bold text-pink-600">
+                    ${totalPrice.toFixed(2)}
+                  </div>
+                  <div className="text-xs text-gray-500">Total por 1 pastel</div>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Progress Steps */}
           <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
             <div className="flex justify-between items-center mb-4">
-              {steps.map((step) => (
-                <div 
+              {steps.map(step => (
+                <div
                   key={step.id}
                   className={`flex flex-col items-center cursor-pointer transition-all ${
-                    step.id === currentStep 
-                      ? 'text-pink-500' 
-                      : step.id < currentStep 
-                        ? 'text-green-500' 
+                    step.id === currentStep
+                      ? 'text-pink-500'
+                      : step.id < currentStep
+                        ? 'text-green-500'
                         : 'text-gray-400'
                   }`}
                   onClick={() => setCurrentStep(step.id)}
                 >
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-1 transition-all ${
-                    step.id === currentStep
-                      ? 'bg-pink-500 text-white'
-                      : step.id < currentStep
-                        ? 'bg-green-500 text-white'
-                        : 'bg-gray-200 text-gray-400'
-                  }`}>
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center mb-1 transition-all ${
+                      step.id === currentStep
+                        ? 'bg-pink-500 text-white'
+                        : step.id < currentStep
+                          ? 'bg-green-500 text-white'
+                          : 'bg-gray-200 text-gray-400'
+                    }`}
+                  >
                     {step.id < currentStep ? (
-                      <i className="ri-check-line text-sm"></i>
+                      <i className="ri-check-line text-xs"></i>
                     ) : (
-                      <i className={`${step.icon} text-sm`}></i>
+                      <i className={`${step.icon} text-xs`}></i>
                     )}
                   </div>
-                  <span className="text-xs font-medium text-center">
-                    {language === 'es' ? step.title_es : step.title_en}
-                  </span>
+                  <span className="text-xs font-medium text-center">{step.title}</span>
                 </div>
               ))}
             </div>
             <div className="bg-gray-200 rounded-full h-2">
-              <div 
+              <div
                 className="bg-gradient-to-r from-pink-400 to-teal-400 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${(currentStep / 5) * 100}%` }}
+                style={{ 
+                  width: `${(currentStep / maxSteps) * 100}%` 
+                }}
               ></div>
             </div>
           </div>
 
-          {/* Step Content */}
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            {/* Step 1: Shape */}
-            {currentStep === 1 && (
-              <div className="p-6">
-                <h3 className="text-xl font-bold text-amber-800 mb-4 flex items-center">
-                  <i className="ri-shape-line mr-3 text-pink-500 text-2xl"></i>
-                  Elige la Forma
-                </h3>
-                <p className="text-gray-600 mb-6">Selecciona la forma de tu pastel</p>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  {cake?.shapes.map((shape, index) => (
-                    <label 
-                      key={index} 
-                      className={`p-4 border-2 rounded-xl cursor-pointer transition-all text-center ${
-                        selectedShape === shape ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="shape"
-                        checked={selectedShape === shape}
-                        onChange={() => setSelectedShape(shape)}
-                        className="opacity-0 absolute"
-                      />
-                      <div className={`w-12 h-12 flex items-center justify-center mx-auto mb-3 rounded-lg ${
-                        selectedShape === shape ? 'bg-pink-100 text-pink-600' : 'bg-gray-100 text-gray-500'
-                      }`}>
-                        <i className={`${shape.icon} text-2xl`}></i>
-                      </div>
-                      <div className="font-semibold text-gray-800 mb-1">
-                        {language === 'es' ? shape.name_es : shape.name_en}
-                      </div>
-                      <div className="text-sm font-bold text-pink-600">
-                        {shape.price > 0 ? `+$${shape.price.toFixed(2)}` : 'Incluido'}
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
+            {customizerMode === 'basic' && (
+              <>
+                {currentStep === 1 && (
+                  <div className="p-6">
+                    <h3 className="text-xl font-bold text-amber-800 mb-4 flex items-center">
+                      <i className="ri-shape-line mr-3 text-pink-500 text-2xl"></i>
+                      Selecciona la Forma
+                    </h3>
+                    <p className="text-gray-600 mb-6">Elige la forma que mejor se adapte a tu ocasión especial</p>
 
-            {/* Step 2: Size & Tiers */}
-            {currentStep === 2 && (
-              <div className="p-6">
-                <h3 className="text-xl font-bold text-amber-800 mb-4 flex items-center">
-                  <i className="ri-stack-line mr-3 text-pink-500 text-2xl"></i>
-                  Elige el Tamaño {cake?.id.includes('photo') ? '' : 'y Niveles'}
-                </h3>
-                <p className="text-gray-600 mb-6">
-                  {cake?.id.includes('photo') 
-                    ? 'Selecciona el tamaño ideal para tu foto'
-                    : 'Selecciona cuántos niveles quieres y el tamaño'
-                  }
-                </p>
-                
-                <div className="grid grid-cols-1 gap-3">
-                  {cake?.sizes.map((size, index) => (
-                    <label 
-                      key={index} 
-                      className={`flex items-center justify-between p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                        selectedSize === size ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <div className="flex items-center">
-                        <input
-                          type="radio"
-                          name="size"
-                          checked={selectedSize === size}
-                          onChange={() => setSelectedSize(size)}
-                          className="opacity-0 absolute"
-                        />
-                        <div className={`w-6 h-6 rounded-full border-2 mr-4 flex items-center justify-center ${
-                          selectedSize === size ? 'border-pink-500 bg-pink-500' : 'border-gray-300'
-                        }`}>
-                          {selectedSize === size && (
-                            <div className="w-3 h-3 bg-white rounded-full"></div>
-                          )}
-                        </div>
-                        <div className="flex items-center space-x-3">
-                          {/* Mini visual preview */}
-                          <div className="flex flex-col items-center space-y-0.5">
-                            {cake?.id.includes('photo') ? (
-                              <div className="w-8 h-6 bg-gradient-to-br from-pink-200 to-purple-200 rounded border-2 border-pink-300 flex items-center justify-center">
-                                <i className="ri-image-line text-xs text-pink-600"></i>
-                              </div>
-                            ) : (
-                              Array.from({ length: size.tiers || 1 }).map((_, i) => {
-                                const tierIndex = (size.tiers || 1) - 1 - i;
-                                const width = (size.tiers || 1) === 1 ? 'w-6' : 
-                                            tierIndex === 0 ? 'w-8' : 
-                                            tierIndex === 1 ? 'w-6' : 'w-4';
-                                return (
-                                  <div key={i} className={`${width} h-2 bg-pink-200 rounded-sm`} />
-                                );
-                              })
-                            )}
-                          </div>
-                          <div>
-                            <div className="font-semibold text-gray-800">
-                              {language === 'es' ? size.name_es : size.name_en}
-                            </div>
-                            <div className="text-sm text-gray-600">
-                              {language === 'es' ? size.serves_es : size.serves_en}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-bold text-pink-600 text-lg">${size.price.toFixed(2)}</div>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Step 3: Flavor */}
-            {currentStep === 3 && (
-              <div className="p-6">
-                <h3 className="text-xl font-bold text-amber-800 mb-4 flex items-center">
-                  <i className="ri-cake-3-line mr-3 text-pink-500 text-2xl"></i>
-                  Elige el Sabor
-                </h3>
-                <p className="text-gray-600 mb-6">El sabor define el color base de tu pastel</p>
-                
-                <div className="grid grid-cols-2 gap-3">
-                  {cake?.flavors.map((flavor, index) => (
-                    <label 
-                      key={index} 
-                      className={`p-4 border-2 rounded-xl cursor-pointer transition-all text-center ${
-                        selectedFlavor === flavor ? 'border-pink-500 bg-pink-50' : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="flavor"
-                        checked={selectedFlavor === flavor}
-                        onChange={() => setSelectedFlavor(flavor)}
-                        className="opacity-0 absolute"
-                      />
-                      <div 
-                        className="w-12 h-12 rounded-full mx-auto mb-3 border-2 border-white shadow-md"
-                        style={{ backgroundColor: flavor.color }}
-                      />
-                      <div className="font-semibold text-gray-800 mb-1">
-                        {language === 'es' ? flavor.name_es : flavor.name_en}
-                      </div>
-                      <div className="text-sm font-bold text-pink-600">
-                        {flavor.price > 0 ? `+$${flavor.price.toFixed(2)}` : 'Incluido'}
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Step 4: Photo Upload for Photo Cakes or Colors for Regular Cakes */}
-            {currentStep === 4 && cake?.id.includes('photo') && (
-              <div className="p-6">
-                <h3 className="text-xl font-bold text-amber-800 mb-4 flex items-center">
-                  <i className="ri-image-line mr-3 text-pink-500 text-2xl"></i>
-                  Sube tu Foto
-                </h3>
-                <p className="text-gray-600 mb-6">Sube la imagen que quieres en tu pastel</p>
-                
-                <div className="space-y-4">
-                  {!uploadedPhoto ? (
-                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-pink-400 transition-colors">
-                      <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <i className="ri-upload-cloud-2-line text-2xl text-pink-500"></i>
-                      </div>
-                      <h4 className="text-lg font-semibold text-gray-800 mb-2">
-                        Selecciona tu foto
-                      </h4>
-                      <p className="text-sm text-gray-600 mb-4">
-                        Formatos permitidos: JPG, PNG, GIF, WEBP<br/>
-                        Tamaño máximo: 5MB
-                      </p>
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                        onChange={handlePhotoUpload}
-                        className="hidden"
-                        id="photo-upload"
-                      />
-                      <label
-                        htmlFor="photo-upload"
-                        className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-pink-400 to-teal-400 text-white rounded-xl font-semibold cursor-pointer hover:shadow-lg transition-all"
-                      >
-                        <i className="ri-image-add-line mr-2"></i>
-                        Elegir Archivo
-                      </label>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="relative bg-gray-50 rounded-xl p-4">
-                        <img
-                          src={uploadedPhoto}
-                          alt="Foto seleccionada"
-                          className="w-full h-48 object-cover rounded-lg"
-                        />
-                        <button
-                          onClick={removePhoto}
-                          className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
-                        >
-                          <i className="ri-close-line text-sm"></i>
-                        </button>
-                      </div>
-                      
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                        <div className="flex items-center">
-                          <i className="ri-check-line text-green-600 mr-2"></i>
-                          <span className="text-green-800 font-medium">¡Foto cargada exitosamente!</span>
-                        </div>
-                        <p className="text-sm text-green-700 mt-1">
-                          {photoFile?.name} ({Math.round((photoFile?.size || 0) / 1024)} KB)
-                        </p>
-                      </div>
-
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <h5 className="font-semibold text-blue-800 mb-2">
-                          <i className="ri-information-line mr-2"></i>
-                          Recomendaciones para mejores resultados:
-                        </h5>
-                        <ul className="text-sm text-blue-700 space-y-1">
-                          <li>• Usa imágenes de alta resolución (mínimo 300 DPI)</li>
-                          <li>• Evita fotos muy oscuras o con poco contraste</li>
-                          <li>• Las fotos cuadradas o rectangulares funcionan mejor</li>
-                          <li>• Asegúrate de que la imagen esté bien enfocada</li>
-                        </ul>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Step 4: Colors for Regular Cakes */}
-            {currentStep === 4 && !cake?.id.includes('photo') && (
-              <div className="p-6">
-                <h3 className="text-xl font-bold text-amber-800 mb-4 flex items-center">
-                  <i className="ri-palette-line mr-3 text-pink-500 text-2xl"></i>
-                  Colores de Decoración
-                </h3>
-                <p className="text-gray-600 mb-6">Elige los colores para decorar tu pastel (+$2 cada color)</p>
-                
-                <div className="grid grid-cols-3 gap-4">
-                  {availableColors.map((color, index) => {
-                    const colorName = language === 'es' ? color.name_es : color.name_en;
-                    const isSelected = selectedColors.includes(colorName);
-                    return (
-                      <button
-                        key={index}
-                        onClick={() => toggleColor(colorName)}
-                        className={`relative p-3 rounded-xl border-2 transition-all ${
-                          isSelected 
-                            ? 'border-pink-500 shadow-lg bg-pink-50' 
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        <div 
-                          className="w-10 h-10 rounded-full mx-auto mb-2 border-2 border-white shadow-md"
-                          style={{ backgroundColor: color.value }}
-                        />
-                        <div className="text-sm font-medium text-gray-800">{colorName}</div>
-                        {isSelected && (
-                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-pink-500 rounded-full flex items-center justify-center">
-                            <i className="ri-check-line text-white text-xs"></i>
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Step 5: Details */}
-            {currentStep === 5 && (
-              <div className="p-6">
-                <h3 className="text-xl font-bold text-amber-800 mb-6 flex items-center">
-                  <i className="ri-edit-line mr-3 text-pink-500 text-2xl"></i>
-                  Detalles Finales
-                </h3>
-                
-                <div className="space-y-6">
-                  {/* Filling Selection */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">Relleno</label>
-                    <div className="grid grid-cols-1 gap-2">
-                      {cake?.fillings.slice(0, 4).map((filling, index) => (
-                        <label 
-                          key={index}
-                          className={`flex items-center justify-between p-3 border-2 rounded-lg cursor-pointer transition-all ${
-                            selectedFilling === filling ? 'border-pink-500 bg-pink-50' : 'border-gray-200'
+                    <div className="grid grid-cols-2 gap-4">
+                      {shapeOptions.map(shape => (
+                        <label
+                          key={shape.id}
+                          className={`p-4 border-2 rounded-xl cursor-pointer transition-all hover:shadow-md ${
+                            selectedOptions.shape === shape.id
+                              ? 'border-pink-500 bg-pink-50 shadow-lg scale-105'
+                              : 'border-gray-200 hover:border-gray-300'
                           }`}
                         >
-                          <div className="flex items-center">
-                            <input
-                              type="radio"
-                              name="filling"
-                              checked={selectedFilling === filling}
-                              onChange={() => setSelectedFilling(filling)}
-                              className="opacity-0 absolute"
-                            />
-                            <div className={`w-4 h-4 rounded-full border mr-3 ${
-                              selectedFilling === filling ? 'border-pink-500 bg-pink-500' : 'border-gray-300'
+                          <input
+                            type="radio"
+                            name="shape"
+                            checked={selectedOptions.shape === shape.id}
+                            onChange={() => setSelectedOptions(prev => ({ ...prev, shape: shape.id }))}
+                            className="opacity-0 absolute"
+                          />
+                          <div className="text-center">
+                            <div className={`w-16 h-16 mx-auto mb-3 rounded-full flex items-center justify-center ${
+                              selectedOptions.shape === shape.id
+                                ? 'bg-pink-100 text-pink-600'
+                                : 'bg-gray-100 text-gray-600'
                             }`}>
-                              {selectedFilling === filling && <div className="w-2 h-2 bg-white rounded-full m-1"></div>}
+                              <i className={`${shape.icon} text-2xl`}></i>
                             </div>
-                            <span className="text-sm font-medium">
-                              {language === 'es' ? filling.name_es : filling.name_en}
-                            </span>
+                            <h4 className="font-semibold text-gray-800 mb-1">{shape.name}</h4>
+                            <p className="text-sm font-bold text-pink-600">
+                              {shape.price > 0 ? `+$${shape.price}` : 'Incluido'}
+                            </p>
                           </div>
-                          <span className="text-sm font-bold text-pink-600">
-                            {filling.price > 0 ? `+$${filling.price.toFixed(2)}` : 'Gratis'}
-                          </span>
+                        </label>
+                      ))}
+                    </div>
+
+                    <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                      <div className="flex items-start">
+                        <i className="ri-lightbulb-line text-blue-600 text-lg mr-3 mt-0.5"></i>
+                        <div>
+                          <h4 className="font-semibold text-blue-800 mb-1">Consejo</h4>
+                          <p className="text-blue-700 text-sm">
+                            Las formas redondas son perfectas para cumpleelños, los corazones para aniversarios, 
+                            y las rectangulares para eventos grandes.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {currentStep === 2 && (
+                  <div className="p-6">
+                    <h3 className="text-xl font-bold text-amber-800 mb-4 flex items-center">
+                      <i className="ri-stack-line mr-3 text-orange-500 text-2xl"></i>
+                      Selecciona el Tamaño
+                    </h3>
+                    <p className="text-gray-600 mb-6">Elige el tamaño perfecto para tu celebración</p>
+
+                    <div className="space-y-3">
+                      {basicTierOptions.map(option => (
+                        <label
+                          key={option.id}
+                          className={`flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all hover:shadow-md ${
+                            selectedOptions.layers.length > 0 && 
+                            selectedOptions.layers[0].size === option.layers[0].size &&
+                            selectedOptions.layers.length === option.layers.length
+                              ? 'border-orange-500 bg-orange-50 shadow-lg'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="basicTier"
+                            checked={
+                              selectedOptions.layers.length > 0 && 
+                              selectedOptions.layers[0].size === option.layers[0].size &&
+                              selectedOptions.layers.length === option.layers.length
+                            }
+                            onChange={() => setSelectedOptions(prev => ({ ...prev, layers: option.layers }))}
+                            className="opacity-0 absolute"
+                          />
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 ${
+                            selectedOptions.layers.length > 0 && 
+                            selectedOptions.layers[0].size === option.layers[0].size &&
+                            selectedOptions.layers.length === option.layers.length
+                              ? 'bg-orange-100 text-orange-600'
+                              : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            <i className={`${option.icon} text-xl`}></i>
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-gray-800 mb-1">{option.name}</h4>
+                            <p className="text-sm text-gray-600">{option.description}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-orange-600 text-lg">${option.price}</p>
+                            <p className="text-xs text-gray-500">base</p>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+
+                    <div className="mt-6 p-4 bg-orange-50 rounded-xl border border-orange-200">
+                      <div className="flex items-start">
+                        <i className="ri-lightbulb-line text-orange-600 text-lg mr-3 mt-0.5"></i>
+                        <div>
+                          <h4 className="font-semibold text-orange-800 mb-1">Consejo</h4>
+                          <p className="text-orange-700 text-sm">
+                            Los pasteles de múltiples niveles son perfectos para celebraciones grandes. 
+                            Cada nivel puede tener sabores diferentes.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {currentStep === 3 && (
+                  <div className="p-6">
+                    <h3 className="text-xl font-bold text-amber-800 mb-4 flex items-center">
+                      <i className="ri-cake-3-line mr-3 text-purple-500 text-2xl"></i>
+                      Sabor Principal
+                    </h3>
+                    <p className="text-gray-600 mb-6">Elige el sabor principal para tu pastel</p>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      {flavorOptions.slice(0, 6).map(flavor => (
+                        <label
+                          key={flavor.id}
+                          className={`p-4 border-2 rounded-xl cursor-pointer transition-all hover:shadow-md ${
+                            selectedOptions.flavors.includes(flavor.id)
+                              ? 'border-purple-500 bg-purple-50 shadow-lg'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="basicFlavor"
+                            checked={selectedOptions.flavors.includes(flavor.id)}
+                            onChange={() => setSelectedOptions(prev => ({ ...prev, flavors: [flavor.id] }))}
+                            className="opacity-0 absolute"
+                          />
+                          <div className="text-center">
+                            <div
+                              className="w-12 h-12 mx-auto mb-3 rounded-full border-4 border-white shadow-md"
+                              style={{ backgroundColor: flavor.color }}
+                            ></div>
+                            <h4 className="font-semibold text-gray-800 mb-1">{flavor.name}</h4>
+                            <p className="text-sm font-bold text-purple-600">
+                              {flavor.price > 0 ? `+$${flavor.price}` : 'Incluido'}
+                            </p>
+                          </div>
                         </label>
                       ))}
                     </div>
                   </div>
+                )}
 
-                  {/* Inscription */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Mensaje en el pastel (opcional)
-                    </label>
-                    <input
-                      type="text"
-                      value={inscription}
-                      onChange={(e) => setInscription(e.target.value)}
-                      placeholder={cake?.id.includes('photo') ? "Ej: ¡Feliz Cumpleaños!" : "Ej: ¡Feliz Cumpleaños María!"}
-                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-pink-500"
-                      maxLength={30}
-                    />
-                    <div className="text-xs text-gray-500 mt-1 text-right">{inscription.length}/30</div>
-                  </div>
+                {currentStep === 4 && (
+                  <div className="p-6">
+                    <h3 className="text-xl font-bold text-amber-800 mb-4 flex items-center">
+                      <i className="ri-palette-line mr-3 text-blue-500 text-2xl"></i>
+                      Colores de Decoración
+                    </h3>
+                    <p className="text-gray-600 mb-6">Selecciona hasta 2 colores principales (opcional)</p>
 
-                  {/* Special Instructions for Photo Cakes */}
-                  {cake?.id.includes('photo') && (
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Instrucciones especiales para la foto (opcional)
-                      </label>
-                      <textarea
-                        value={specialRequests}
-                        onChange={(e) => setSpecialRequests(e.target.value)}
-                        placeholder="Ej: Recortar solo la cara, agregar borde dorado, etc."
-                        className="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-pink-500 h-20 resize-none"
-                        maxLength={200}
-                      />
-                      <div className="text-xs text-gray-500 mt-1 text-right">{specialRequests.length}/200</div>
+                    <div className="grid grid-cols-3 gap-4">
+                      {colorOptions.slice(0, 6).map(color => (
+                        <label
+                          key={color.id}
+                          className={`p-4 border-2 rounded-xl cursor-pointer transition-all hover:shadow-md ${
+                            selectedOptions.colors.includes(color.id)
+                              ? 'border-blue-500 bg-blue-50 shadow-lg'
+                              : 'border-gray-200 hover:border-gray-300'
+                          } ${
+                            selectedOptions.colors.length >= 2 && !selectedOptions.colors.includes(color.id)
+                              ? 'opacity-50 cursor-not-allowed'
+                              : ''
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedOptions.colors.includes(color.id)}
+                            onChange={() => {
+                              if (selectedOptions.colors.includes(color.id)) {
+                                setSelectedOptions(prev => ({
+                                  ...prev,
+                                  colors: prev.colors.filter(id => id !== color.id)
+                                }));
+                              } else if (selectedOptions.colors.length < 2) {
+                                setSelectedOptions(prev => ({
+                                  ...prev,
+                                  colors: [...prev.colors, color.id]
+                                }));
+                              }
+                            }}
+                            disabled={selectedOptions.colors.length >= 2 && !selectedOptions.colors.includes(color.id)}
+                            className="opacity-0 absolute"
+                          />
+                          <div className="text-center">
+                            <div
+                              className="w-10 h-10 mx-auto mb-1 rounded-full border-4 border-white shadow-md"
+                              style={{ backgroundColor: color.color }}
+                            ></div>
+                            <h4 className="font-medium text-gray-800 text-sm mb-1">{color.name}</h4>
+                            <p className="text-xs font-bold text-blue-600">
+                              {color.price > 0 ? `+$${color.price}` : 'Incluido'}
+                            </p>
+                          </div>
+                        </label>
+                      ))}
                     </div>
-                  )}
 
-                  {/* Quantity */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">Cantidad</label>
-                    <div className="flex items-center justify-center space-x-4 bg-gray-50 rounded-lg p-3">
-                      <button
-                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                        className="w-10 h-10 flex items-center justify-center bg-gray-300 rounded-full hover:bg-gray-400 transition-colors"
-                      >
-                        <i className="ri-subtract-line"></i>
-                      </button>
-                      <span className="text-2xl font-bold text-gray-800 w-12 text-center">{quantity}</span>
-                      <button
-                        onClick={() => setQuantity(quantity + 1)}
-                        className="w-10 h-10 flex items-center justify-center bg-pink-500 text-white rounded-full hover:bg-pink-600 transition-colors"
-                      >
-                        <i className="ri-add-line"></i>
-                      </button>
+                    <div className="mt-4 text-center text-sm text-gray-500">
+                      {selectedOptions.colors.length}/2 colores seleccionados
                     </div>
                   </div>
-                </div>
-              </div>
+                )}
+
+                {currentStep === 5 && (
+                  <div className="p-6">
+                    <h3 className="text-xl font-bold text-amber-800 mb-4 flex items-center">
+                      <i className="ri-edit-line mr-3 text-green-500 text-2xl"></i>
+                      Detalles finales 
+                    </h3>
+                    <p className="text-gray-600 mb-6">Añade los toques personales a tu pastel</p>
+
+                    <div className="space-y-6">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">
+                          Mensaje o Inscripción (Opcional)
+                        </label>
+                        <input
+                          type="text"
+                          value={selectedOptions.inscription}
+                          onChange={e => setSelectedOptions(prev => ({ ...prev, inscription: e.target.value }))}
+                          placeholder="Ij: ¡Feliz Cumpleaños María!"
+                          className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-green-500 transition-colors"
+                          maxLength={50}
+                        />
+                        <div className="text-xs text-gray-500 mt-1 text-right">
+                          {selectedOptions.inscription.length}/50 caracteres
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">
+                          Solicitudes Especiales (Opcional)
+                        </label>
+                        <textarea
+                          value={selectedOptions.specialRequests}
+                          onChange={e => setSelectedOptions(prev => ({ ...prev, specialRequests: e.target.value }))}
+                          placeholder="Cualquier instrucción especial, alergias, o detalles adicionales..."
+                          className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-green-500 transition-colors h-24 resize-none"
+                          maxLength={300}
+                        />
+                        <div className="text-xs text-gray-500 mt-1 text-right">
+                          {selectedOptions.specialRequests.length}/300 caracteres
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">
+                          Cantidad
+                        </label>
+                        <div className="flex items-center justify-center space-x-4 bg-gray-50 rounded-xl p-4">
+                          <button
+                            type="button"
+                            onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                            className="w-12 h-12 flex items-center justify-center bg-gray-300 rounded-full hover:bg-gray-400 transition-colors"
+                          >
+                            <i className="ri-subtract-line text-xl"></i>
+                          </button>
+                          <span className="text-3xl font-bold text-gray-800 w-16 text-center">{quantity}</span>
+                          <button
+                            type="button"
+                            onClick={() => setQuantity(quantity + 1)}
+                            className="w-12 h-12 flex items-center justify-center bg-green-500 text-white rounded-full hover:bg-green-600 transition-colors"
+                          >
+                            <i className="ri-add-line text-xl"></i>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="bg-gradient-to-r from-green-50 to-teal-50 rounded-xl p-6 border border-green-200">
+                        <h4 className="font-bold text-green-800 mb-4 text-lg">Resumen de tu Pedido</h4>
+                        <div className="space-y-3 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-700">Forma:</span>
+                            <span className="font-medium text-gray-800 capitalize">
+                              {shapeOptions.find(s => s.id === selectedOptions.shape)?.name}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-700">Tamaño:</span>
+                            <span className="font-medium text-gray-800">
+                              {selectedOptions.layers.length} nivel{selectedOptions.layers.length > 1 ? 'es' : ''}
+                            </span>
+                          </div>
+                          {selectedOptions.flavors.length > 0 && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-700">Sabor:</span>
+                              <span className="font-medium text-gray-800">
+                                {flavorOptions.find(f => f.id === selectedOptions.flavors[0])?.name}
+                              </span>
+                            </div>
+                          )}
+                          {selectedOptions.colors.length > 0 && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-700">Colores:</span>
+                              <span className="font-medium text-gray-800">
+                                {selectedOptions.colors.length} color{selectedOptions.colors.length > 1 ? 'es' : ''}
+                              </span>
+                            </div>
+                          )}
+                          <div className="border-t border-green-200 pt-3 mt-3">
+                            <div className="flex justify-between text-lg">
+                              <span className="font-bold text-gray-800">Total:</span>
+                              <span className="font-bold text-green-600 text-xl">
+                                ${totalPrice.toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="text-xs text-gray-600 text-right mt-1">
+                              Precio por {quantity} pastel{quantity > 1 ? 'es' : ''}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
 
-            {/* Navigation Buttons */}
+            {customizerMode === 'advanced' && (
+              <>
+                <div className="p-6 text-center text-gray-600">
+                  El modo avanzado está en desarrollo. Vuelve pronto para más opciones.
+                </div>
+              </>
+            )}
+
             <div className="border-t bg-gray-50 p-4">
               <div className="flex justify-between items-center">
                 <button
-                  onClick={prevStep}
-                  disabled={currentStep === 1}
-                  className={`px-6 py-3 rounded-xl font-semibold transition-all ${
-                    currentStep === 1
-                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                      : 'bg-white border-2 border-gray-300 text-gray-700 hover:border-gray-400'
-                  }`}
+                  onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
+                  className="px-6 py-3 bg-white border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:border-gray-400 transition-all"
                 >
                   <i className="ri-arrow-left-line mr-2"></i>
                   Anterior
                 </button>
 
-                {currentStep < 5 ? (
+                {currentStep < maxSteps ? (
                   <button
-                    onClick={nextStep}
-                    disabled={cake?.id.includes('photo') && currentStep === 4 && !uploadedPhoto}
+                    onClick={() => setCurrentStep(currentStep + 1)}
+                    disabled={
+                      (customizerMode === 'basic' && currentStep === 2 && selectedOptions.layers.length === 0) ||
+                      (customizerMode === 'advanced' && currentStep === 2 && !validateCakeStructure().isValid)
+                    }
                     className={`px-6 py-3 rounded-xl font-semibold transition-all ${
-                      cake?.id.includes('photo') && currentStep === 4 && !uploadedPhoto
-                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      (customizerMode === 'basic' && currentStep === 2 && selectedOptions.layers.length === 0) ||
+                      (customizerMode === 'advanced' && currentStep === 2 && !validateCakeStructure().isValid)
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         : 'bg-gradient-to-r from-pink-400 to-teal-400 text-white hover:shadow-lg'
                     }`}
                   >
@@ -895,13 +1305,316 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                 ) : (
                   <button
                     onClick={addToCart}
-                    className="px-8 py-3 bg-gradient-to-r from-pink-400 to-teal-400 text-white rounded-xl font-bold hover:shadow-lg transition-all"
+                    disabled={isAdding || (customizerMode === 'basic' && selectedOptions.layers.length === 0)}
+                    className="px-8 py-3 bg-gradient-to-r from-pink-400 to-teal-400 text-white rounded-xl font-bold hover:shadow-lg transition-all disabled:opacity-50"
                   >
-                    <i className="ri-shopping-cart-line mr-2"></i>
-                    Agregar al Carrito
+                    {isAdding ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2 inline-block"></div>
+                        Agregando...
+                      </>
+                    ) : (
+                      <>
+                        <i className="ri-shopping-cart-line mr-2"></i>
+                        Agregar al Carrito
+                      </>
+                    )}
                   </button>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* Vista Previa del Pastel */}
+          <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">Vista Previa</h3>
+            <div className="flex flex-col items-center space-y-4">
+              {/* Imagen del pastel */}
+              <div className="relative w-32 h-32 bg-gradient-to-br from-pink-100 to-purple-100 rounded-full flex items-center justify-center shadow-md">
+                <div className="text-4xl">🎂</div>
+              </div>
+              
+              {/* Información del pastel con mejor espaciado */}
+              <div className="text-center space-y-2">
+                <h4 className="font-semibold text-gray-800 text-base">{currentProduct.name}</h4>
+                
+                {/* Detalles principales con iconos */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
+                    <span className="w-4 h-4 flex items-center justify-center">
+                      <i className="ri-checkbox-blank-circle-line text-xs"></i>
+                    </span>
+                    <span>{shapeOptions.find(s => s.id === selectedOptions.shape)?.name || 'Redondo'}</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
+                    <span className="w-4 h-4 flex items-center justify-center">
+                      <i className="ri-stack-line text-xs"></i>
+                    </span>
+                    <span>{selectedOptions.layers.length} {selectedOptions.layers.length === 1 ? 'nivel' : 'niveles'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Capas individuales con mejor presentación */}
+            <div className="mt-6 space-y-3">
+              {selectedOptions.layers.map((layer, index) => (
+                <div key={`layer-${layer.id}-${index}`} className="bg-gray-50 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="font-medium text-gray-700 text-sm">
+                      Capa {index + 1}
+                    </span>
+                    {selectedOptions.layers.length > 1 && (
+                      <button
+                        onClick={() => removeLayer(layer.id)}
+                        className="w-6 h-6 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                      >
+                        <i className="ri-close-line text-sm"></i>
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Información de la capa en dos columnas */}
+                  <div className="grid grid-cols-2 gap-3 text-xs text-gray-600">
+                    <div>
+                      <span className="block font-medium text-gray-700">Tamaño</span>
+                      <span>{layer.size}"</span>
+                    </div>
+                    <div>
+                      <span className="block font-medium text-gray-700">Sabor</span>
+                      <span>{selectedOptions.flavors.length > 0 ? flavorOptions.find(f => f.id === selectedOptions.flavors[0])?.name || 'Vainilla' : 'Sin sabor'}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Precio total más prominente */}
+            <div className="mt-6 pt-4 border-t border-gray-200">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-pink-600">${totalPrice.toFixed(2)}</div>
+                <div className="text-xs text-gray-500 mt-1">x1 total</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Controles de personalización con mejor espaciado */}
+          <div className="space-y-6">
+            {/* Navegación de pestañas mejorada */}
+            <div className="bg-white rounded-2xl shadow-lg p-2">
+              <div className="grid grid-cols-5 gap-1">
+                {[
+                  { id: 'form', label: 'Forma', icon: 'ri-checkbox-blank-circle-line' },
+                  { id: 'size', label: 'Tamaño', icon: 'ri-expand-diagonal-line' },
+                  { id: 'flavor', label: 'Sabor', icon: 'ri-cake-3-line' },
+                  { id: 'colors', label: 'Colores', icon: 'ri-palette-line' },
+                  { id: 'details', label: 'Detalles', icon: 'ri-settings-3-line' }
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`px-3 py-3 rounded-xl text-xs font-medium transition-all duration-200 ${
+                      activeTab === tab.id
+                        ? 'bg-pink-500 text-white shadow-md'
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex flex-col items-center space-y-1">
+                      <i className={`${tab.icon} text-sm`}></i>
+                      <span>{tab.label}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Contenido de las pestañas con mejor espaciado */}
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              {/* Pestaña Forma */}
+              {activeTab === 'form' && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Forma del Pastel</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    {shapeOptions.map((shape) => (
+                      <button
+                        key={shape.id}
+                        onClick={() => setSelectedOptions(prev => ({ ...prev, shape: shape.id }))}
+                        className={`p-4 rounded-xl border-2 transition-all ${
+                          selectedOptions.shape === shape.id
+                            ? 'border-pink-500 bg-pink-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="text-center space-y-2">
+                          <div className="text-2xl">
+                            <i className={shape.icon}></i>
+                          </div>
+                          <div className="font-medium text-sm text-gray-700">{shape.name}</div>
+                          {shape.price > 0 && (
+                            <div className="text-xs text-pink-600 font-medium">+${shape.price}</div>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Pestaña Tamaño */}
+              {activeTab === 'size' && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Tamaño del Pastel</h3>
+                  <div className="space-y-3">
+                    {sizeOptions.map((size) => (
+                      <button
+                        key={size.id}
+                        onClick={() => {
+                          if (selectedOptions.layers.length > 0) {
+                            updateLayer(selectedOptions.layers[selectedLayerIndex].id, 'size', size.id);
+                          }
+                        }}
+                        className={`w-full p-4 rounded-xl border-2 transition-all ${
+                          selectedOptions.layers[selectedLayerIndex]?.size === size.id
+                            ? 'border-pink-500 bg-pink-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex justify-between items-center">
+                          <div className="text-left">
+                            <div className="font-medium text-gray-800">{size.name}</div>
+                            <div className="text-sm text-gray-600">{size.serves}</div>
+                          </div>
+                          <div className="text-pink-600 font-semibold">${size.price}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Pestaña Sabor */}
+              {activeTab === 'flavor' && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Sabor del Pastel</h3>
+                  <div className="space-y-3">
+                    {flavorOptions.map((flavor) => (
+                      <button
+                        key={flavor.id}
+                        onClick={() => setSelectedOptions(prev => ({ ...prev, flavors: [flavor.id] }))}
+                        className={`w-full p-4 rounded-xl border-2 transition-all ${
+                          selectedOptions.flavors.includes(flavor.id)
+                            ? 'border-pink-500 bg-pink-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex justify-between items-center">
+                          <div className="text-left flex items-center space-x-3">
+                            <div 
+                              className="w-8 h-8 rounded-full border-2 border-white shadow-sm"
+                              style={{ backgroundColor: flavor.color }}
+                            ></div>
+                            <div>
+                              <div className="font-medium text-gray-800">{flavor.name}</div>
+                              <div className="text-sm text-gray-600">Sabor tradicional</div>
+                            </div>
+                          </div>
+                          {flavor.price > 0 && (
+                            <div className="text-pink-600 font-semibold">+${flavor.price}</div>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Pestaña Colores */}
+              {activeTab === 'colors' && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Colores del Pastel</h3>
+                  <div className="grid grid-cols-4 gap-3">
+                    {colorOptions.map((color) => (
+                      <button
+                        key={color.id}
+                        onClick={() => toggleOption('colors', color.id)}
+                        className={`p-3 rounded-xl border-2 transition-all ${
+                          selectedOptions.colors.includes(color.id)
+                            ? 'border-pink-500 bg-pink-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="text-center space-y-2">
+                          <div 
+                            className="w-8 h-8 rounded-full mx-auto border-2 border-white shadow-sm"
+                            style={{ backgroundColor: color.color }}
+                          ></div>
+                          <div className="text-xs font-medium text-gray-700">{color.name}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Pestaña Detalles */}
+              {activeTab === 'details' && (
+                <div className="space-y-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Detalles Adicionales</h3>
+                  
+                  {/* Agregar Capa */}
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-gray-700">Capas</h4>
+                    <button
+                      onClick={addLayer}
+                      className="w-full p-4 border-2 border-dashed border-gray-300 rounded-xl hover:border-pink-300 hover:bg-pink-50 transition-all"
+                    >
+                      <div className="flex items-center justify-center space-x-2 text-gray-600">
+                        <i className="ri-add-line"></i>
+                        <span>Agregar Capa (+$15)</span>
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* Seleccionar Capa Activa */}
+                  {selectedOptions.layers.length > 1 && (
+                    <div className="space-y-3">
+                      <h4 className="font-medium text-gray-700">Editar Capa</h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        {selectedOptions.layers.map((layer, index) => (
+                          <button
+                            key={`layer-selector-${layer.id}-${index}`}
+                            onClick={() => setSelectedLayerIndex(index)}
+                            className={`p-3 rounded-xl border-2 transition-all ${
+                              selectedLayerIndex === index
+                                ? 'border-pink-500 bg-pink-50'
+                                : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                          >
+                            <span className="text-sm font-medium">Capa {index + 1}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Mensaje Personalizado */}
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-gray-700">Mensaje en el Pastel</h4>
+                    <textarea
+                      value={customMessage}
+                      onChange={(e) => setCustomMessage(e.target.value)}
+                      placeholder="Ej: Feliz Cumpleaños María"
+                      className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-pink-500 focus:outline-none resize-none"
+                      rows={3}
+                      maxLength={50}
+                    />
+                    <div className="text-xs text-gray-500 text-right">
+                      {customMessage.length}/50 caracteres
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -1,331 +1,222 @@
 
 'use client';
 
+import { useState } from 'react';
+import Link from 'next/link';
 import Header from '../../components/Header';
 import TabBar from '../../components/TabBar';
-import Link from 'next/link';
-import { useState } from 'react';
-import { useLanguage } from '../../lib/languageContext';
 
 export default function CakesPage() {
-  const { language, t } = useLanguage();
-  const [selectedCategory, setSelectedCategory] = useState(t('all'));
-
-  const categories = [
-    t('all'),
-    t('birthday'),
-    t('weddings'),
-    t('quinceaneras'),
-    t('special'),
-    t('photoCakes')
-  ];
-
-  const cakeCategories = [
+  // Pasteles disponibles usando las imágenes reales - PRECIOS CORREGIDOS SEGÚN TABLA
+  const cakes = [
     {
-      category: t('birthdayCakes'),
-      items: [
-        {
-          id: 'birthday-classic',
-          name_es: 'Pastel Clásico de Cumpleaños',
-          name_en: 'Classic Birthday Cake',
-          basePrice: 25.00,
-          description_es: 'Pastel tradicional dominicano perfecto para celebraciones',
-          description_en: 'Traditional Dominican cake perfect for celebrations',
-          image: 'https://readdy.ai/api/search-image?query=Classic%20Dominican%20birthday%20cake%20with%20colorful%20frosting%2C%20traditional%20decorations%2C%20festive%20design%2C%20professional%20bakery%20style%2C%20vibrant%20colors%2C%20celebration%20theme%2C%20clean%20background&width=300&height=200&seq=birthdayclassic1&orientation=landscape',
-          sizes: [
-            { name_es: '6 pulgadas', name_en: '6 inches', price: 25.00, serves_es: '4-6 personas', serves_en: '4-6 people' },
-            { name_es: '8 pulgadas', name_en: '8 inches', price: 35.00, serves_es: '8-10 personas', serves_en: '8-10 people' },
-            { name_es: '10 pulgadas', name_en: '10 inches', price: 45.00, serves_es: '12-15 personas', serves_en: '12-15 people' }
-          ],
-          flavors: [
-            { name_es: 'Vainilla', name_en: 'Vanilla', price: 0 },
-            { name_es: 'Chocolate', name_en: 'Chocolate', price: 0 },
-            { name_es: 'Fresa', name_en: 'Strawberry', price: 2.00 },
-            { name_es: 'Tres Leches', name_en: 'Tres Leches', price: 5.00 }
-          ]
-        },
-        {
-          id: 'birthday-deluxe',
-          name_es: 'Pastel Deluxe de Cumpleaños',
-          name_en: 'Deluxe Birthday Cake',
-          basePrice: 35.00,
-          description_es: 'Pastel premium con decoraciones elaboradas',
-          description_en: 'Premium cake with elaborate decorations',
-          image: 'https://readdy.ai/api/search-image?query=Deluxe%20Dominican%20birthday%20cake%20with%20elaborate%20decorations%2C%20premium%20frosting%20roses%2C%20elegant%20design%2C%20professional%20bakery%20quality%2C%20rich%20colors%2C%20luxury%20celebration%20cake&width=300&height=200&seq=birthdaydeluxe1&orientation=landscape',
-          sizes: [
-            { name_es: '6 pulgadas', name_en: '6 inches', price: 35.00, serves_es: '4-6 personas', serves_en: '4-6 people' },
-            { name_es: '8 pulgadas', name_en: '8 inches', price: 50.00, serves_es: '8-10 personas', serves_en: '8-10 people' },
-            { name_es: '10 pulgadas', name_en: '10 inches', price: 65.00, serves_es: '12-15 personas', serves_en: '12-15 people' }
-          ],
-          flavors: [
-            { name_es: 'Vainilla', name_en: 'Vanilla', price: 0 },
-            { name_es: 'Chocolate', name_en: 'Chocolate', price: 0 },
-            { name_es: 'Red Velvet', name_en: 'Red Velvet', price: 8.00 },
-            { name_es: 'Tres Leches', name_en: 'Tres Leches', price: 5.00 }
-          ]
-        }
-      ]
+      id: 'birthday-classic',
+      name: 'Pastel Clásico de Cumpleaños',
+      basePrice: 20,
+      description: 'Pastel personalizable perfecto para celebrar cumpleaños con decoraciones coloridas',
+      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/58a3f870af7fe55c1b2733bc57137538.png',
+      category: 'birthday',
+      popular: true
     },
     {
-      category: t('weddingCakes'),
-      items: [
-        {
-          id: 'wedding-elegant',
-          name_es: 'Pastel Elegante de Boda',
-          name_en: 'Elegant Wedding Cake',
-          basePrice: 80.00,
-          description_es: 'Hermoso pastel de bodas con diseño sofisticado',
-          description_en: 'Beautiful wedding cake with sophisticated design',
-          image: 'https://readdy.ai/api/search-image?query=Elegant%20Dominican%20wedding%20cake%20with%20white%20frosting%2C%20sophisticated%20decorations%2C%20multi-tier%20design%2C%20professional%20wedding%20bakery%2C%20classic%20white%20and%20gold%20accents%2C%20romantic%20style&width=300&height=200&seq=weddingelegan1&orientation=landscape',
-          sizes: [
-            { name_es: '2 niveles', name_en: '2 tiers', price: 80.00, serves_es: '20-25 personas', serves_en: '20-25 people' },
-            { name_es: '3 niveles', name_en: '3 tiers', price: 120.00, serves_es: '40-50 personas', serves_en: '40-50 people' },
-            { name_es: '4 niveles', name_en: '4 tiers', price: 180.00, serves_es: '70-80 personas', serves_en: '70-80 people' }
-          ],
-          flavors: [
-            { name_es: 'Vainilla', name_en: 'Vanilla', price: 0 },
-            { name_es: 'Chocolate', name_en: 'Chocolate', price: 0 },
-            { name_es: 'Red Velvet', name_en: 'Red Velvet', price: 15.00 },
-            { name_es: 'Tres Leches', name_en: 'Tres Leches', price: 20.00 }
-          ]
-        }
-      ]
+      id: 'birthday-deluxe',
+      name: 'Pastel Deluxe de Cumpleaños',
+      basePrice: 30,
+      description: 'Versión premium con decoraciones especiales y acabados profesionales',
+      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/def4b1d4d19f7bb63fe8ed7acc40b9e6.png',
+      category: 'birthday',
+      popular: false
     },
     {
-      category: t('quinceanerasCakes'),
-      items: [
-        {
-          id: 'quince-princess',
-          name_es: 'Pastel Princesa de Quinceañera',
-          name_en: 'Quinceañera Princess Cake',
-          basePrice: 65.00,
-          description_es: 'Pastel especial para celebrar los 15 años',
-          description_en: 'Special cake to celebrate the 15th birthday',
-          image: 'https://readdy.ai/api/search-image?query=Dominican%20quincea%C3%B1era%20princess%20cake%20with%20pink%20decorations%2C%20elegant%20tiara%20design%2C%20multi-tier%20celebration%20cake%2C%20professional%20bakery%20style%2C%20festive%20quincea%C3%B1era%20theme%2C%20beautiful%20frosting%20details&width=300&height=200&seq=quinceprincess1&orientation=landscape',
-          sizes: [
-            { name_es: '8 pulgadas', name_en: '8 inches', price: 65.00, serves_es: '15-20 personas', serves_en: '15-20 people' },
-            { name_es: '10 pulgadas', name_en: '10 inches', price: 85.00, serves_es: '25-30 personas', serves_en: '25-30 people' },
-            { name_es: '2 niveles', name_en: '2 tiers', price: 120.00, serves_es: '40-50 personas', serves_en: '40-50 people' }
-          ],
-          flavors: [
-            { name_es: 'Vainilla', name_en: 'Vanilla', price: 0 },
-            { name_es: 'Fresa', name_en: 'Strawberry', price: 5.00 },
-            { name_es: 'Tres Leches', name_en: 'Tres Leches', price: 10.00 },
-            { name_es: 'Red Velvet', name_en: 'Red Velvet', price: 12.00 }
-          ]
-        }
-      ]
+      id: 'wedding-elegant',
+      name: 'Pastel Elegante de Boda',
+      basePrice: 55,
+      description: 'Diseño sofisticado para bodas con múltiples niveles y decoraciones elegantes',
+      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/b55c6989623b0711cfe5124c88d92ed0.png',
+      category: 'wedding',
+      popular: true
     },
     {
-      category: t('specialCakes'),
-      items: [
-        {
-          id: 'graduation',
-          name_es: 'Pastel de Graduación',
-          name_en: 'Graduation Cake',
-          basePrice: 40.00,
-          description_es: 'Celebra el logro académico con este pastel especial',
-          description_en: 'Celebrate academic achievement with this special cake',
-          image: 'https://readdy.ai/api/search-image?query=Dominican%20graduation%20cake%20with%20cap%20and%20diploma%20decorations%2C%20academic%20theme%2C%20professional%20bakery%20design%2C%20celebration%20cake%2C%20school%20colors%2C%20achievement%20theme%2C%20clean%20background&width=300&height=200&seq=graduation1&orientation=landscape',
-          sizes: [
-            { name_es: '8 pulgadas', name_en: '8 inches', price: 40.00, serves_es: '8-12 personas', serves_en: '8-12 people' },
-            { name_es: '10 pulgadas', name_en: '10 inches', price: 55.00, serves_es: '15-20 personas', serves_en: '15-20 people' }
-          ],
-          flavors: [
-            { name_es: 'Vainilla', name_en: 'Vanilla', price: 0 },
-            { name_es: 'Chocolate', name_en: 'Chocolate', price: 0 },
-            { name_es: 'Tres Leches', name_en: 'Tres Leches', price: 8.00 }
-          ]
-        }
-      ]
+      id: 'quince-princess',
+      name: 'Pastel Princesa de Quinceañera',
+      basePrice: 35,
+      description: 'Diseño especial para quinceañeras con toques principescos y colores vibrantes',
+      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/04879db0557315e718d30f6f01a65327.png',
+      category: 'quince',
+      popular: true
     },
     {
-      category: t('photoCakes'),
-      items: [
-        {
-          id: 'photo-cake-basic',
-          name_es: 'Photo Cake Básico',
-          name_en: 'Basic Photo Cake',
-          basePrice: 35.00,
-          description_es: 'Pastel personalizado con tu foto favorita impresa',
-          description_en: 'Personalized cake with your favorite photo printed',
-          image: 'https://readdy.ai/api/search-image?query=Photo%20cake%20with%20edible%20image%20print%2C%20Dominican%20bakery%20style%2C%20personalized%20cake%20design%2C%20professional%20photo%20printing%20on%20cake%2C%20custom%20celebration%20cake%2C%20high%20quality%20edible%20photo&width=300&height=200&seq=photocakebasic1&orientation=landscape',
-          sizes: [
-            { name_es: '8 pulgadas', name_en: '8 inches', price: 35.00, serves_es: '8-12 personas', serves_en: '8-12 people' },
-            { name_es: '10 pulgadas', name_en: '10 inches', price: 50.00, serves_es: '15-20 personas', serves_en: '15-20 people' }
-          ],
-          flavors: [
-            { name_es: 'Vainilla', name_en: 'Vanilla', price: 0 },
-            { name_es: 'Chocolate', name_en: 'Chocolate', price: 0 },
-            { name_es: 'Tres Leches', name_en: 'Tres Leches', price: 8.00 }
-          ]
-        },
-        {
-          id: 'photo-cake-premium',
-          name_es: 'Photo Cake Premium',
-          name_en: 'Premium Photo Cake',
-          basePrice: 50.00,
-          description_es: 'Photo cake con decoraciones adicionales alrededor de la imagen',
-          description_en: 'Photo cake with additional decorations around the image',
-          image: 'https://readdy.ai/api/search-image?query=Premium%20photo%20cake%20with%20edible%20image%20and%20decorative%20frosting%20borders%2C%20Dominican%20bakery%20quality%2C%20enhanced%20design%20with%20flowers%20and%20borders%20around%20photo%2C%20luxury%20personalized%20cake&width=300&height=200&seq=photocakepremium1&orientation=landscape',
-          sizes: [
-            { name_es: '8 pulgadas', name_en: '8 inches', price: 50.00, serves_es: '8-12 personas', serves_en: '8-12 people' },
-            { name_es: '10 pulgadas', name_en: '10 inches', price: 70.00, serves_es: '15-20 personas', serves_en: '15-20 people' }
-          ],
-          flavors: [
-            { name_es: 'Vainilla', name_en: 'Vanilla', price: 0 },
-            { name_es: 'Chocolate', name_en: 'Chocolate', price: 0 },
-            { name_es: 'Tres Leches', name_en: 'Tres Leches', price: 10.00 }
-          ]
-        }
-      ]
+      id: 'graduation',
+      name: 'Pastel de Graduación',
+      basePrice: 20,
+      description: 'Celebra este logro especial con un pastel temático de graduación',
+      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/58a3f870af7fe55c1b2733bc57137538.png',
+      category: 'graduation',
+      popular: false
+    },
+    {
+      id: 'photo-cake-basic',
+      name: 'Photo Cake Básico',
+      basePrice: 25,
+      description: 'Añade tu foto favorita a un delicioso pastel personalizado',
+      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/def4b1d4d19f7bb63fe8ed7acc40b9e6.png',
+      category: 'photo',
+      popular: false
+    },
+    {
+      id: 'photo-cake-premium',
+      name: 'Photo Cake Premium',
+      basePrice: 35,
+      description: 'Versión premium con marco decorativo alrededor de tu foto personalizada',
+      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/b55c6989623b0711cfe5124c88d92ed0.png',
+      category: 'photo',
+      popular: false
     }
   ];
 
-  const getCategoryDisplayName = (category: string) => {
-    const categoryMap: { [key: string]: string } = {
-      [t('birthdayCakes')]: t('birthday'),
-      [t('weddingCakes')]: t('weddings'),
-      [t('quinceanerasCakes')]: t('quinceaneras'),
-      [t('specialCakes')]: t('special')
-    };
-    return categoryMap[category] || category;
-  };
+  const [selectedCategory, setSelectedCategory] = useState('all');
 
-  const filteredCakeItems = selectedCategory === t('all') 
-    ? cakeCategories 
-    : cakeCategories.filter(section => getCategoryDisplayName(section.category) === selectedCategory);
+  const categories = [
+    { id: 'all', name: 'Todos', icon: 'ri-cake-3-line' },
+    { id: 'birthday', name: 'Cumpleaños', icon: 'ri-gift-line' },
+    { id: 'wedding', name: 'Bodas', icon: 'ri-heart-line' },
+    { id: 'quince', name: 'Quinceañera', icon: 'ri-star-line' },
+    { id: 'graduation', name: 'Graduación', icon: 'ri-graduation-cap-line' },
+    { id: 'photo', name: 'Photo Cake', icon: 'ri-camera-line' }
+  ];
+
+  const filteredCakes = selectedCategory === 'all' 
+    ? cakes 
+    : cakes.filter(cake => cake.category === selectedCategory);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 to-purple-50">
       <Header />
       <div className="pt-16 pb-20">
         <div className="px-3 py-4">
-          <h1 className="text-2xl font-bold text-amber-800 text-center mb-1">
-            {t('customCakes')}
-          </h1>
-          <p className="text-gray-600 text-center mb-6 text-sm">
-            {t('customCakesDescription')}
-          </p>
+          <Link href="/" className="inline-flex items-center text-pink-500 mb-4">
+            <i className="ri-arrow-left-line mr-2"></i>
+            Volver al Inicio
+          </Link>
 
-          {/* Custom Quote Section - Moved to top for better visibility */}
-          <div className="mb-6 bg-gradient-to-r from-pink-400 to-teal-400 rounded-xl p-5 text-white text-center mx-2">
-            <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-4">
-              <i className="ri-cake-3-line text-2xl text-white"></i>
-            </div>
-            <h3 className="text-xl font-bold mb-2">{t('needSomethingUnique')}</h3>
-            <p className="text-sm opacity-90 mb-4">
-              {t('customQuoteDescription')}
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold text-amber-800 mb-2">
+              Pasteles Personalizados
+            </h1>
+            <p className="text-gray-600 text-sm">
+              Crea el pastel perfecto para tu ocasión especial
             </p>
-            <div className="flex flex-col gap-3 justify-center">
-              <Link href="/quote">
-                <button className="w-full bg-white text-pink-500 px-6 py-3 rounded-full font-bold flex items-center justify-center hover:shadow-lg transition-all">
-                  <i className="ri-file-list-3-line mr-2"></i>
-                  {t('requestQuote')}
-                </button>
-              </Link>
-              <div className="flex flex-col space-y-2">
-                <a 
-                  href="https://wa.me/12014968731?text=Hola%2C%20me%20interesa%20hacer%20un%20pedido%20de%20pastel%20personalizado"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full bg-green-500 text-white px-6 py-3 rounded-full font-medium flex items-center justify-center hover:bg-green-600 transition-all"
-                >
-                  <i className="ri-whatsapp-line mr-2"></i>
-                  WhatsApp: +1 (201) 496-8731
-                </a>
-                <a 
-                  href="tel:+18622337204"
-                  className="w-full bg-white/20 backdrop-blur-sm text-white px-6 py-3 rounded-full font-medium flex items-center justify-center border border-white/30 hover:bg-white/30 transition-all"
-                >
-                  <i className="ri-phone-line mr-2"></i>
-                  Llamar: (862) 233-7204
-                </a>
-              </div>
-            </div>
           </div>
 
-          {/* Category Filter */}
+          {/* Categories */}
           <div className="mb-6 bg-white rounded-xl p-3 shadow-sm">
             <div className="flex overflow-x-auto space-x-2 pb-2">
               {categories.map((category) => (
                 <button
-                  key={category}
-                  onClick={() => setSelectedCategory(category)}
-                  className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                    selectedCategory === category
+                  key={category.id}
+                  onClick={() => setSelectedCategory(category.id)}
+                  className={`flex-shrink-0 flex items-center px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    selectedCategory === category.id
                       ? 'bg-gradient-to-r from-pink-400 to-teal-400 text-white shadow-md'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
-                  {category}
+                  <i className={`${category.icon} mr-2`}></i>
+                  {category.name}
                 </button>
               ))}
             </div>
           </div>
 
-          {filteredCakeItems.map((section, index) => (
-            <div key={index} className="mb-6">
-              <h2 className="text-xl font-bold text-amber-800 mb-4 px-2">
-                {section.category}
-              </h2>
-              
-              <div className="space-y-3">
-                {section.items.map((cake) => (
-                  <div key={cake.id} className="bg-white rounded-lg shadow-md overflow-hidden mx-2">
-                    <div className="flex">
-                      <div className="w-24 h-24 flex-shrink-0">
-                        <img
-                          src={cake.image}
-                          alt={language === 'es' ? cake.name_es : cake.name_en}
-                          className="w-full h-full object-cover object-top"
-                        />
-                      </div>
-                      
-                      <div className="flex-1 p-3">
-                        <div className="flex justify-between items-start mb-1">
-                          <h3 className="font-semibold text-amber-800 text-base leading-tight">
-                            {language === 'es' ? cake.name_es : cake.name_en}
+          {/* Cakes Grid */}
+          <div className="space-y-4">
+            {filteredCakes.map((cake) => (
+              <div key={cake.id} className="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div className="flex">
+                  <div className="w-24 h-24 flex-shrink-0">
+                    <img
+                      src={cake.image}
+                      alt={cake.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  
+                  <div className="flex-1 p-4">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <div className="flex items-center">
+                          <h3 className="font-semibold text-gray-800 text-sm mb-1">
+                            {cake.name}
                           </h3>
-                          <span className="text-lg font-bold text-pink-600 ml-2">
-                            {t('from')} ${cake.basePrice}
-                          </span>
+                          {cake.popular && (
+                            <span className="ml-2 bg-pink-100 text-pink-600 text-xs px-2 py-0.5 rounded-full">
+                              Popular
+                            </span>
+                          )}
                         </div>
-                        
-                        <p className="text-gray-600 text-xs mb-3 leading-tight">
-                          {language === 'es' ? cake.description_es : cake.description_en}
+                        <p className="text-gray-600 text-xs mb-2 line-clamp-2">
+                          {cake.description}
                         </p>
-                        
                         <div className="flex items-center justify-between">
-                          <div className="text-xs text-gray-500">
-                            {cake.sizes.length} {t('sizes')} • {cake.flavors.length} {t('flavors')}
-                          </div>
-                          
+                          <span className="text-lg font-bold text-pink-600">
+                            Desde ${cake.basePrice}
+                          </span>
                           <Link href={`/cakes/${cake.id}`}>
-                            <button className="bg-gradient-to-r from-pink-400 to-teal-400 text-white px-4 py-1.5 rounded-full text-sm font-medium hover:shadow-md transition-all">
-                              <i className="ri-edit-line mr-1 text-xs"></i>
-                              {t('customize')}
+                            <button className="bg-gradient-to-r from-pink-400 to-teal-400 text-white px-4 py-2 rounded-lg text-xs font-medium hover:shadow-md transition-all">
+                              Personalizar
                             </button>
                           </Link>
                         </div>
                       </div>
                     </div>
                   </div>
-                ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Info Section */}
+          <div className="mt-8 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-6 border border-amber-200">
+            <h3 className="font-bold text-amber-800 mb-3 text-center">
+              ¿Cómo funciona?
+            </h3>
+            <div className="space-y-3 text-sm">
+              <div className="flex items-start">
+                <div className="w-6 h-6 bg-pink-100 rounded-full flex items-center justify-center mr-3 mt-0.5">
+                  <span className="text-pink-600 font-bold text-xs">1</span>
+                </div>
+                <p className="text-gray-700">
+                  <strong>Selecciona</strong> el tipo de pastel que más te guste
+                </p>
+              </div>
+              <div className="flex items-start">
+                <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mr-3 mt-0.5">
+                  <span className="text-blue-600 font-bold text-xs">2</span>
+                </div>
+                <p className="text-gray-700">
+                  <strong>Personaliza</strong> forma, sabores, colores y decoraciones
+                </p>
+              </div>
+              <div className="flex items-start">
+                <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center mr-3 mt-0.5">
+                  <span className="text-green-600 font-bold text-xs">3</span>
+                </div>
+                <p className="text-gray-700">
+                  <strong>Ordena</strong> y nosotros lo preparamos especialmente para ti
+                </p>
               </div>
             </div>
-          ))}
+          </div>
 
-          {/* Bottom CTA - Smaller version since main CTA is at top */}
-          <div className="mt-6 bg-white rounded-xl p-4 text-center mx-2 border border-pink-100">
-            <h3 className="text-lg font-semibold text-amber-800 mb-2">{t('stillNotSure')}</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              {t('contactUsForHelp')}
+          {/* CTA */}
+          <div className="mt-6 bg-gradient-to-r from-pink-400 to-teal-400 rounded-xl p-5 text-white text-center">
+            <h3 className="text-lg font-semibold mb-2">¿No encuentras lo que buscas?</h3>
+            <p className="text-sm opacity-90 mb-4">
+              Contáctanos para crear un diseño completamente personalizado
             </p>
-            <Link href="/order">
-              <button className="bg-gradient-to-r from-pink-400 to-teal-400 text-white px-6 py-2 rounded-full font-medium">
-                <i className="ri-customer-service-line mr-2"></i>
-                {t('getHelp')}
+            <Link href="/quote">
+              <button className="bg-white/20 backdrop-blur-sm text-white px-8 py-3 rounded-full font-medium !rounded-button">
+                Solicitar Cotización
               </button>
             </Link>
           </div>

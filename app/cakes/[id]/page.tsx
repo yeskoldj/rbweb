@@ -1,3 +1,4 @@
+
 import CakeCustomizer from './CakeCustomizer';
 
 export async function generateStaticParams() {

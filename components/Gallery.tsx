@@ -9,53 +9,39 @@ export default function Gallery() {
   const [showModal, setShowModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState('');
 
-  /* 
-  🖼️ CÓMO CAMBIAR IMÁGENES DE LA GALERÍA:
-  
-  PASO 1: Reemplaza las URLs en el array galleryImages
-  PASO 2: Cambia los textos en "alt" por descripciones de tus pasteles
-  PASO 3: Para mejores resultados, usa imágenes de 300x200px o similar proporción
-  
-  📸 CONSEJOS PARA MEJORES FOTOS:
-  - Usa fotos reales de tus pasteles
-  - Buena iluminación natural
-  - Fondo limpio (blanco o neutro)
-  - Ángulo frontal o ligeramente diagonal
-  - Sin sombras fuertes
-  
-  FORMATOS SOPORTADOS: .jpg, .jpeg, .png, .webp
-  RECOMENDACIÓN: Comprime las imágenes para carga rápida
-  */
+  // Galería usando las imágenes reales de los pasteles
   const galleryImages = [
     {
-      // 🔄 CAMBIAR: Pon aquí la URL de tu imagen de pastel de cumpleaños
       src: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/58a3f870af7fe55c1b2733bc57137538.png',
-      alt: 'Pastel de cumpleaños con fresas' // 📝 CAMBIAR: Descripción de tu pastel
+      alt: 'Pastel de cumpleaños con fresas'
     },
     {
-      // 🔄 CAMBIAR: Pon aquí la URL de tu segunda imagen
       src: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/def4b1d4d19f7bb63fe8ed7acc40b9e6.png',
-      alt: 'Pastel de cumpleaños para Elaine' // 📝 CAMBIAR: Descripción de tu pastel
+      alt: 'Pastel de cumpleaños para Elaine'
     },
     {
-      // 🔄 CAMBIAR: Pon aquí la URL de tu tercera imagen
       src: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/b55c6989623b0711cfe5124c88d92ed0.png',
-      alt: 'Pastel de quinceañera' // 📝 CAMBIAR: Descripción de tu pastel
+      alt: 'Pastel de quinceañera'
     },
     {
-      // 🔄 CAMBIAR: Pon aquí la URL de tu cuarta imagen
       src: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/04879db0557315e718d30f6f01a65327.png',
-      alt: 'Pastel de cumpleaños decorado' // 📝 CAMBIAR: Descripción de tu pastel
+      alt: 'Pastel de cumpleaños decorado'
     },
     {
-      // 🔄 CAMBIAR: Pon aquí la URL de tu quinta imagen (pastel de boda)
-      src: 'https://readdy.ai/api/search-image?query=Dominican%20wedding%20cake%20elegant%20design%2C%20white%20frosting%20with%20decorative%20flowers%2C%20multi-tier%20celebration%20cake%2C%20professional%20bakery%20photography%2C%20clean%20background&width=300&height=200&seq=gallerywedding1&orientation=landscape',
-      alt: 'Pastel de boda elegante' // 📝 CAMBIAR: Descripción de tu pastel
+      src: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/6e38ec235b30b7a74f673bc044a87814.jfif',
+      alt: 'Tres Leches en Vaso'
     },
     {
-      // 🔄 CAMBIAR: Pon aquí la URL de tu sexta imagen (pastel de graduación)
-      src: 'https://readdy.ai/api/search-image?query=Dominican%20graduation%20cake%20with%20cap%20decoration%2C%20academic%20celebration%20theme%2C%20professional%20bakery%20design%2C%20colorful%20frosting%2C%20achievement%20celebration&width=300&height=200&seq=gallerygrad1&orientation=landscape',
-      alt: 'Pastel de graduación' // 📝 CAMBIAR: Descripción de tu pastel
+      src: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/ae1f7420251af709ef833638a428a131.jfif',
+      alt: 'Cheesecake dominicano'
+    },
+    {
+      src: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/3426923c2c21bd56dac155cac89400e3.jfif',
+      alt: 'Tres Leches de Oreo'
+    },
+    {
+      src: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/33b32b1e5581c150ed0666763a12e667.jfif',
+      alt: 'Flan casero dominicano'
     }
   ];
 
@@ -71,11 +57,6 @@ export default function Gallery() {
 
   return (
     <section className="px-4 py-8">
-      {/* 
-      📝 CAMBIAR TÍTULO: 
-      Reemplaza "Galería de Nuestras Creaciones" por el título que prefieras
-      O edita las traducciones en lib/languages.ts
-      */}
       <h3 className="text-2xl font-bold text-amber-800 mb-6 text-center">
         Galería de Nuestras Creaciones
       </h3>
@@ -131,12 +112,6 @@ export default function Gallery() {
               </div>
               
               <div className="mt-4 text-center">
-                {/* 
-                🔗 CÓMO CAMBIAR ENLACE DE INSTAGRAM:
-                1. Reemplaza "https://www.instagram.com/rangersbakery/" con tu cuenta de Instagram
-                2. Formato: https://www.instagram.com/TU_USUARIO/
-                3. Asegúrate de que el enlace funcione antes de publicar
-                */}
                 <a 
                   href="https://www.instagram.com/rangersbakery/" 
                   target="_blank" 

@@ -7,80 +7,141 @@ import { useLanguage } from '../lib/languageContext';
 export default function MenuPreview() {
   const { t } = useLanguage();
 
-  /* 
-  🍰 CÓMO CAMBIAR PRODUCTOS DESTACADOS:
-  
-  PASO 1: Modifica los objetos en el array featuredItems
-  PASO 2: Cambia name, price, description por tus productos
-  PASO 3: Reemplaza las URLs de las imágenes con tus fotos
-  PASO 4: Ajusta los precios en formato "$XX.XX"
-  
-  📸 PARA MEJORES IMÁGENES:
-  - Usa fotos reales de tus productos
-  - Resolución recomendada: 300x200px
-  - Fondo limpio y bien iluminado
-  - Formato: .jpg o .webp para mejor rendimiento
-  
-  RECOMENDACIÓN: Usa 3-6 productos más populares
-  */
+  // Productos destacados usando SOLO las imágenes reales del menú
   const featuredItems = [
     {
       id: 1,
-      // 📝 CAMBIAR: Nombre de tu producto destacado #1
-      name: 'Tres Leches Clásico',
-      // 💰 CAMBIAR: Precio de tu producto (formato: "$XX.XX")
-      price: '$25.00',
-      // 📝 CAMBIAR: Descripción de tu producto (máximo 80 caracteres)
-      description: 'Bizcocho empapado en tres tipos de leche con canela',
-      // 🖼️ CAMBIAR: URL de la imagen de tu producto
-      image: 'https://readdy.ai/api/search-image?query=Traditional%20Dominican%20tres%20leches%20cake%20slice%2C%20soaked%20sponge%20cake%20with%20three%20milks%2C%20cinnamon%20dusting%2C%20creamy%20white%20dessert%2C%20professional%20bakery%20photography%2C%20clean%20background&width=300&height=200&seq=treslech1&orientation=landscape',
-      category: 'specialty'
+      name: 'Tres Leches en Vaso',
+      price: '$5.00',
+      description: 'Tradicional tres leches dominicano servido en vaso',
+      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/6e38ec235b30b7a74f673bc044a87814.jfif',
+      category: 'dessert',
+      type: 'dessert'
     },
     {
       id: 2,
-      // 📝 CAMBIAR: Nombre de tu producto destacado #2
-      name: 'Flan de Coco',
-      // 💰 CAMBIAR: Precio de tu segundo producto
-      price: '$18.00',
-      // 📝 CAMBIAR: Descripción de tu segundo producto
-      description: 'Flan cremoso con sabor a coco natural y caramelo',
-      // 🖼️ CAMBIAR: URL de la imagen de tu segundo producto
-      image: 'https://readdy.ai/api/search-image?query=Dominican%20coconut%20flan%20dessert%2C%20creamy%20caramel%20custard%20with%20coconut%20flavor%2C%20traditional%20Caribbean%20dessert%2C%20professional%20food%20photography%2C%20clean%20background&width=300&height=200&seq=flancoco1&orientation=landscape',
-      category: 'desserts'
+      name: 'Flan',
+      price: '$4.00',
+      description: 'Cremoso flan casero dominicano con caramelo',
+      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/33b32b1e5581c150ed0666763a12e667.jfif',
+      category: 'dessert',
+      type: 'dessert'
     },
     {
       id: 3,
-      // 📝 CAMBIAR: Nombre de tu producto destacado #3
+      name: 'Cheesecake',
+      price: '$5.00',
+      description: 'Cremoso cheesecake estilo dominicano',
+      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/ae1f7420251af709ef833638a428a131.jfif',
+      category: 'dessert',
+      type: 'dessert'
+    },
+    {
+      id: 4,
       name: 'Cake de Cumpleaños',
-      // 💰 CAMBIAR: Precio de tu tercer producto
-      price: '$35.00',
-      // 📝 CAMBIAR: Descripción de tu tercer producto
+      price: 'Desde $20.00',
       description: 'Cake personalizado con decoración especial',
-      // 🖼️ CAMBIAR: URL de la imagen de tu tercer producto
-      image: 'https://readdy.ai/api/search-image?query=Dominican%20birthday%20cake%20with%20colorful%20frosting%2C%20custom%20decorated%20celebration%20cake%2C%20vibrant%20design%20with%20candles%2C%20professional%20bakery%20photography%2C%20clean%20background&width=300&height=200&seq=birthdaycake1&orientation=landscape',
-      category: 'cakes'
+      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/58a3f870af7fe55c1b2733bc57137538.png',
+      category: 'cake',
+      type: 'cake',
+      cakeId: 'birthday-classic'
+    },
+    {
+      id: 5,
+      name: 'Mini Pasteles',
+      price: '$2.50',
+      description: 'Pequeños pasteles dominicanos con frutas variadas',
+      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/7735a4789459e5d2fb59e816d88b8891.jfif',
+      category: 'dessert',
+      type: 'dessert'
+    },
+    {
+      id: 6,
+      name: 'Tres Leches de Oreo',
+      price: '$5.00',
+      description: 'Nuestra versión especial dominicana con galletas Oreo',
+      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/3426923c2c21bd56dac155cac89400e3.jfif',
+      category: 'dessert',
+      type: 'dessert'
     }
   ];
 
+  const handleAddToCart = (item: any) => {
+    // Verificar autenticación primero
+    const userData = localStorage.getItem('bakery-user');
+    if (!userData) {
+      alert('Necesitas crear una cuenta para agregar productos al carrito');
+      return;
+    }
+
+    // Si es un pastel, redirigir al personalizador
+    if (item.type === 'cake') {
+      window.location.href = `/cakes/${item.cakeId || 'birthday-classic'}`;
+      return;
+    }
+
+    // Para otros productos, agregar al carrito normalmente
+    const cartItem = {
+      id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name: item.name,
+      price: item.price,
+      quantity: 1,
+      image: item.image,
+      type: item.type
+    };
+    
+    try {
+      const existingCart = localStorage.getItem('bakery-cart');
+      let cart = existingCart ? JSON.parse(existingCart) : [];
+      
+      const existingItemIndex = cart.findIndex((cartItem: any) => cartItem.name === item.name && cartItem.type === item.type);
+      
+      if (existingItemIndex > -1) {
+        cart[existingItemIndex].quantity += 1;
+      } else {
+        cart.push(cartItem);
+      }
+      
+      localStorage.setItem('bakery-cart', JSON.stringify(cart));
+      
+      // Mostrar confirmación
+      const confirmationElement = document.createElement('div');
+      confirmationElement.innerHTML = `
+        <div style="position: fixed; top: 80px; right: 20px; background: #10B981; color: white; padding: 12px 20px; border-radius: 8px; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+          ✅ ${item.name} agregado al carrito
+        </div>
+      `;
+      document.body.appendChild(confirmationElement);
+      
+      setTimeout(() => {
+        document.body.removeChild(confirmationElement);
+      }, 3000);
+      
+    } catch (error) {
+      console.error('Error agregando al carrito:', error);
+      alert('Error al agregar al carrito. Intenta de nuevo.');
+    }
+  };
+
   return (
     <section className="px-4 py-8">
-      {/* 
-      📝 CAMBIAR TÍTULO DE SECCIÓN:
-      El título se toma automáticamente de las traducciones
-      Para cambiarlo, edita lib/languages.ts línea "featuredProducts"
-      */}
       <h3 className="text-2xl font-bold text-amber-800 mb-6 text-center">
         {t('featuredProducts')}
       </h3>
       
-      <div className="space-y-4 mb-6">
+      <div className="space-y-4 mb-6" data-product-shop>
         {featuredItems.map((item) => (
-          <div key={item.id} className="bg-white rounded-xl shadow-sm p-4 flex space-x-4">
+          <div key={item.id} className="bg-white rounded-xl shadow-sm p-4 flex space-x-4" data-product-shop>
             <div className="w-20 h-20 flex-shrink-0">
               <img
                 src={item.image}
                 alt={item.name}
                 className="w-full h-full object-cover rounded-lg"
+                loading="lazy"
+                onError={(e) => {
+                  console.error(`Error cargando imagen para ${item.name}:`, item.image);
+                  e.currentTarget.src = 'https://via.placeholder.com/80x80/f3f4f6/9ca3af?text=Imagen+No+Disponible';
+                }}
               />
             </div>
             <div className="flex-1">
@@ -90,32 +151,9 @@ export default function MenuPreview() {
                 <span className="text-lg font-bold text-pink-600">{item.price}</span>
                 <button 
                   className="bg-gradient-to-r from-pink-400 to-teal-400 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:shadow-md transition-all"
-                  onClick={() => {
-                    // Añadir al carrito localmente
-                    const cartItem = {
-                      id: item.id,
-                      name: item.name,
-                      price: item.price,
-                      quantity: 1,
-                      image: item.image
-                    };
-                    
-                    const existingCart = localStorage.getItem('bakery-cart');
-                    let cart = existingCart ? JSON.parse(existingCart) : [];
-                    
-                    const existingItemIndex = cart.findIndex((cartItem: any) => cartItem.id === item.id);
-                    
-                    if (existingItemIndex > -1) {
-                      cart[existingItemIndex].quantity += 1;
-                    } else {
-                      cart.push(cartItem);
-                    }
-                    
-                    localStorage.setItem('bakery-cart', JSON.stringify(cart));
-                    alert(`${item.name} agregado al carrito`);
-                  }}
+                  onClick={() => handleAddToCart(item)}
                 >
-                  {t('addToCart')}
+                  {item.type === 'cake' ? 'Personalizar' : t('addToCart')}
                 </button>
               </div>
             </div>

@@ -41,12 +41,121 @@ export default function QuotePage() {
     { id: 'other', name_es: 'Otro', name_en: 'Other', icon: 'ri-more-line' }
   ];
 
-  const ageGroups = [
-    { id: 'baby', name_es: 'Bebé (0-2 años)', name_en: 'Baby (0-2 years)', icon: 'ri-bear-smile-line' },
-    { id: 'small-kid', name_es: 'Niño Pequeño (3-8 años)', name_en: 'Small Kid (3-8 years)', icon: 'ri-emotion-happy-line' },
-    { id: 'teen', name_es: 'Adolescente (9-17 años)', name_en: 'Teen (9-17 years)', icon: 'ri-user-smile-line' },
-    { id: 'adult', name_es: 'Adulto (18+ años)', name_en: 'Adult (18+ years)', icon: 'ri-user-line' }
-  ];
+  // Preguntas de edad específicas por ocasión
+  const getAgeGroupsByOccasion = (occasion: string) => {
+    switch (occasion) {
+      case 'birthday':
+        return [
+          { id: 'baby', name_es: 'Bebé (0-2 años)', name_en: 'Baby (0-2 years)', icon: 'ri-bear-smile-line' },
+          { id: 'small-kid', name_es: 'Niño Pequeño (3-8 años)', name_en: 'Small Kid (3-8 years)', icon: 'ri-emotion-happy-line' },
+          { id: 'teen', name_es: 'Adolescente (9-17 años)', name_en: 'Teen (9-17 years)', icon: 'ri-user-smile-line' },
+          { id: 'adult', name_es: 'Adulto (18+ años)', name_en: 'Adult (18+ years)', icon: 'ri-user-line' }
+        ];
+      case 'wedding':
+        return [
+          { id: 'intimate', name_es: 'Boda Íntima (20-50 personas)', name_en: 'Intimate Wedding (20-50 people)', icon: 'ri-heart-line' },
+          { id: 'medium', name_es: 'Boda Mediana (51-100 personas)', name_en: 'Medium Wedding (51-100 people)', icon: 'ri-heart-2-line' },
+          { id: 'large', name_es: 'Boda Grande (100+ personas)', name_en: 'Large Wedding (100+ people)', icon: 'ri-heart-3-line' }
+        ];
+      case 'baby-shower':
+        return [
+          { id: 'boy', name_es: 'Para Niño', name_en: 'For Boy', icon: 'ri-user-smile-line' },
+          { id: 'girl', name_es: 'Para Niña', name_en: 'For Girl', icon: 'ri-user-heart-line' },
+          { id: 'neutral', name_es: 'Neutral/Sorpresa', name_en: 'Neutral/Surprise', icon: 'ri-question-line' }
+        ];
+      case 'quinceañera':
+        return [
+          { id: 'traditional', name_es: 'Estilo Tradicional', name_en: 'Traditional Style', icon: 'ri-crown-line' },
+          { id: 'modern', name_es: 'Estilo Moderno', name_en: 'Modern Style', icon: 'ri-star-line' },
+          { id: 'themed', name_es: 'Con Tema Específico', name_en: 'Themed', icon: 'ri-palette-line' }
+        ];
+      case 'graduation':
+        return [
+          { id: 'school', name_es: 'Graduación Escolar', name_en: 'School Graduation', icon: 'ri-school-line' },
+          { id: 'university', name_es: 'Graduación Universitaria', name_en: 'University Graduation', icon: 'ri-graduation-cap-line' },
+          { id: 'masters', name_es: 'Maestría/Posgrado', name_en: 'Masters/Graduate', icon: 'ri-medal-line' }
+        ];
+      case 'anniversary':
+        return [
+          { id: '1-5', name_es: '1-5 años juntos', name_en: '1-5 years together', icon: 'ri-heart-line' },
+          { id: '6-15', name_es: '6-15 años juntos', name_en: '6-15 years together', icon: 'ri-heart-2-line' },
+          { id: '16+', name_es: 'Más de 15 años juntos', name_en: 'More than 15 years together', icon: 'ri-heart-3-line' }
+        ];
+      case 'baptism':
+        return [
+          { id: 'baby-baptism', name_es: 'Bautizo de Bebé', name_en: 'Baby Baptism', icon: 'ri-bear-smile-line' },
+          { id: 'child-baptism', name_es: 'Bautizo de Niño/a', name_en: 'Child Baptism', icon: 'ri-emotion-happy-line' },
+          { id: 'adult-baptism', name_es: 'Bautizo de Adulto', name_en: 'Adult Baptism', icon: 'ri-user-line' }
+        ];
+      default:
+        return [
+          { id: 'small', name_es: 'Evento Pequeño (1-25 personas)', name_en: 'Small Event (1-25 people)', icon: 'ri-user-line' },
+          { id: 'medium', name_es: 'Evento Mediano (26-75 personas)', name_en: 'Medium Event (26-75 people)', icon: 'ri-group-line' },
+          { id: 'large', name_es: 'Evento Grande (75+ personas)', name_en: 'Large Event (75+ people)', icon: 'ri-team-line' }
+        ];
+    }
+  };
+
+  // Temas específicos por ocasión
+  const getThemesByOccasion = (occasion: string) => {
+    switch (occasion) {
+      case 'birthday':
+        return [
+          { id: 'princess', name_es: 'Princesas', name_en: 'Princess', icon: 'ri-crown-line' },
+          { id: 'superhero', name_es: 'Superhéroes', name_en: 'Superhero', icon: 'ri-flashlight-line' },
+          { id: 'animals', name_es: 'Animales', name_en: 'Animals', icon: 'ri-bear-smile-line' },
+          { id: 'cars', name_es: 'Carros', name_en: 'Cars', icon: 'ri-car-line' },
+          { id: 'flowers', name_es: 'Flores', name_en: 'Flowers', icon: 'ri-flower-line' },
+          { id: 'sports', name_es: 'Deportes', name_en: 'Sports', icon: 'ri-football-line' },
+          { id: 'elegant', name_es: 'Elegante/Adulto', name_en: 'Elegant/Adult', icon: 'ri-vip-crown-line' },
+          { id: 'custom', name_es: 'Personalizado', name_en: 'Custom', icon: 'ri-palette-line' }
+        ];
+      case 'wedding':
+        return [
+          { id: 'classic', name_es: 'Clásico Blanco', name_en: 'Classic White', icon: 'ri-heart-line' },
+          { id: 'romantic', name_es: 'Romántico con Flores', name_en: 'Romantic with Flowers', icon: 'ri-flower-line' },
+          { id: 'rustic', name_es: 'Rústico', name_en: 'Rustic', icon: 'ri-leaf-line' },
+          { id: 'beach', name_es: 'Playa', name_en: 'Beach', icon: 'ri-sun-line' },
+          { id: 'vintage', name_es: 'Vintage', name_en: 'Vintage', icon: 'ri-ancient-gate-line' },
+          { id: 'modern', name_es: 'Moderno', name_en: 'Modern', icon: 'ri-star-line' }
+        ];
+      case 'baby-shower':
+        return [
+          { id: 'animals', name_es: 'Animalitos', name_en: 'Little Animals', icon: 'ri-bear-smile-line' },
+          { id: 'clouds', name_es: 'Nubes y Estrellas', name_en: 'Clouds and Stars', icon: 'ri-cloud-line' },
+          { id: 'toys', name_es: 'Juguetes', name_en: 'Toys', icon: 'ri-gamepad-line' },
+          { id: 'stork', name_es: 'Cigüeña', name_en: 'Stork', icon: 'ri-flight-takeoff-line' },
+          { id: 'bottles', name_es: 'Biberones y Pañales', name_en: 'Bottles and Diapers', icon: 'ri-heart-pulse-line' },
+          { id: 'rainbow', name_es: 'Arcoíris', name_en: 'Rainbow', icon: 'ri-rainbow-line' }
+        ];
+      case 'quinceañera':
+        return [
+          { id: 'princess', name_es: 'Princesa Tradicional', name_en: 'Traditional Princess', icon: 'ri-crown-line' },
+          { id: 'butterflies', name_es: 'Mariposas', name_en: 'Butterflies', icon: 'ri-bug-line' },
+          { id: 'flowers', name_es: 'Flores Elegantes', name_en: 'Elegant Flowers', icon: 'ri-flower-line' },
+          { id: 'masquerade', name_es: 'Baile de Máscaras', name_en: 'Masquerade', icon: 'ri-mask-line' },
+          { id: 'paris', name_es: 'París/Torre Eiffel', name_en: 'Paris/Eiffel Tower', icon: 'ri-building-line' },
+          { id: 'vintage', name_es: 'Vintage Glamour', name_en: 'Vintage Glamour', icon: 'ri-vip-crown-line' }
+        ];
+      case 'graduation':
+        return [
+          { id: 'academic', name_es: 'Académico Tradicional', name_en: 'Traditional Academic', icon: 'ri-graduation-cap-line' },
+          { id: 'books', name_es: 'Libros y Conocimiento', name_en: 'Books and Knowledge', icon: 'ri-book-line' },
+          { id: 'future', name_es: 'Futuro y Metas', name_en: 'Future and Goals', icon: 'ri-rocket-line' },
+          { id: 'career', name_es: 'Carrera Específica', name_en: 'Specific Career', icon: 'ri-briefcase-line' },
+          { id: 'celebration', name_es: 'Celebración Festiva', name_en: 'Festive Celebration', icon: 'ri-trophy-line' }
+        ];
+      default:
+        return [
+          { id: 'elegant', name_es: 'Elegante', name_en: 'Elegant', icon: 'ri-vip-crown-line' },
+          { id: 'fun', name_es: 'Divertido', name_en: 'Fun', icon: 'ri-emotion-happy-line' },
+          { id: 'floral', name_es: 'Floral', name_en: 'Floral', icon: 'ri-flower-line' },
+          { id: 'minimalist', name_es: 'Minimalista', name_en: 'Minimalist', icon: 'ri-subtract-line' },
+          { id: 'colorful', name_es: 'Colorido', name_en: 'Colorful', icon: 'ri-palette-line' },
+          { id: 'custom', name_es: 'Personalizado', name_en: 'Custom', icon: 'ri-more-line' }
+        ];
+    }
+  };
 
   const servingSizes = [
     { id: '1-10', name_es: '1-10 personas', name_en: '1-10 people', price_es: '$25-$45', price_en: '$25-$45' },
@@ -279,8 +388,8 @@ export default function QuotePage() {
   };
 
   const steps = language === 'es' 
-    ? ['Tipo', 'Ocasión', 'Edad', 'Tema', 'Porciones', 'Presupuesto', 'Fecha', 'Contacto']
-    : ['Type', 'Occasion', 'Age', 'Theme', 'Servings', 'Budget', 'Date', 'Contact'];
+    ? ['Tipo', 'Ocasión', 'Detalles', 'Tema', 'Porciones', 'Presupuesto', 'Fecha', 'Contacto']
+    : ['Type', 'Occasion', 'Details', 'Theme', 'Servings', 'Budget', 'Date', 'Contact'];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 to-purple-50">
@@ -502,17 +611,49 @@ export default function QuotePage() {
               </div>
             )}
 
-            {/* Step 2: Age Group */}
+            {/* Step 2: Age/Details Group - Contextualized based on occasion */}
             {currentStep === 2 && (
               <div>
                 <h2 className="text-xl font-semibold text-amber-800 mb-4 text-center">
-                  {!quoteData.hasReferencePhoto && quoteData.occasion === 'birthday' 
-                    ? (language === 'es' ? '¿De quién es el cumpleaños?' : 'Whose birthday is it?')
-                    : (language === 'es' ? '¿Para qué edad es la celebración?' : 'What age is the celebration for?')
+                  {language === 'es' 
+                    ? quoteData.hasReferencePhoto 
+                      ? '¿Para qué tipo de celebración es?'
+                      : quoteData.occasion === 'birthday' 
+                        ? '¿De quién es el cumpleaños?'
+                        : quoteData.occasion === 'wedding'
+                          ? '¿Qué tipo de boda es?'
+                          : quoteData.occasion === 'baby-shower'
+                            ? '¿Es para niño, niña o sorpresa?'
+                            : quoteData.occasion === 'quinceañera'
+                              ? '¿Qué estilo prefieres?'
+                              : quoteData.occasion === 'graduation'
+                                ? '¿Qué tipo de graduación?'
+                                : quoteData.occasion === 'anniversary'
+                                  ? '¿Cuántos años están celebrando?'
+                                  : quoteData.occasion === 'baptism'
+                                    ? '¿Qué tipo de bautizo?'
+                                    : '¿Qué tamaño de evento es?'
+                    : quoteData.hasReferencePhoto 
+                      ? 'What type of celebration is it for?'
+                      : quoteData.occasion === 'birthday' 
+                        ? 'Whose birthday is it?'
+                        : quoteData.occasion === 'wedding'
+                          ? 'What type of wedding is it?'
+                          : quoteData.occasion === 'baby-shower'
+                            ? 'Is it for a boy, girl or surprise?'
+                            : quoteData.occasion === 'quinceañera'
+                              ? 'What style do you prefer?'
+                              : quoteData.occasion === 'graduation'
+                                ? 'What type of graduation?'
+                                : quoteData.occasion === 'anniversary'
+                                  ? 'How many years are you celebrating?'
+                                  : quoteData.occasion === 'baptism'
+                                    ? 'What type of baptism?'
+                                    : 'What size event is it?'
                   }
                 </h2>
                 <div className="space-y-3">
-                  {ageGroups.map(age => (
+                  {getAgeGroupsByOccasion(quoteData.hasReferencePhoto ? 'other' : quoteData.occasion).map(age => (
                     <button
                       key={age.id}
                       onClick={() => updateQuoteData('ageGroup', age.id)}
@@ -538,28 +679,77 @@ export default function QuotePage() {
               </div>
             )}
 
-            {/* Step 3: Theme */}
+            {/* Step 3: Theme - Contextualized based on occasion */}
             {currentStep === 3 && (
               <div>
                 <h2 className="text-xl font-semibold text-amber-800 mb-4 text-center">
-                  {language === 'es' ? 'Tema o Estilo Preferido' : 'Theme or Preferred Style'}
-                </h2>
-                <textarea
-                  value={quoteData.theme}
-                  onChange={e => updateQuoteData('theme', e.target.value)}
-                  placeholder={language === 'es' 
-                    ? quoteData.hasReferencePhoto 
-                      ? "Describe cualquier tema adicional o estilo específico que tengas en mente, además de la foto de referencia..."
-                      : "Describe el tema, colores, decoraciones o ideas que tienes en mente..."
+                  {language === 'es' 
+                    ? quoteData.hasReferencePhoto
+                      ? 'Tema o Estilo Adicional'
+                      : 'Tema o Estilo Preferido'
                     : quoteData.hasReferencePhoto
-                      ? "Describe any additional theme or specific style you have in mind, in addition to the reference photo..."
-                      : "Describe the theme, colors, decorations or ideas you have in mind..."
+                      ? 'Additional Theme or Style'
+                      : 'Theme or Preferred Style'
                   }
-                  className="w-full p-4 border border-gray-300 rounded-xl focus:outline-none focus:border-pink-500 text-sm h-32 resize-none"
-                  maxLength={300}
-                />
-                <div className="text-xs text-gray-500 mt-2">
-                  {quoteData.theme.length}/300 {language === 'es' ? 'caracteres' : 'characters'}
+                </h2>
+                
+                {/* Themed Options for specific occasions */}
+                {!quoteData.hasReferencePhoto && (quoteData.occasion === 'birthday' || quoteData.occasion === 'wedding' || quoteData.occasion === 'baby-shower' || quoteData.occasion === 'quinceañera' || quoteData.occasion === 'graduation') && (
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    {getThemesByOccasion(quoteData.occasion).map(theme => (
+                      <button
+                        key={theme.id}
+                        onClick={() => updateQuoteData('theme', theme.id)}
+                        className={`p-3 rounded-xl border-2 transition-all ${
+                          quoteData.theme === theme.id
+                            ? 'border-pink-500 bg-pink-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="w-10 h-10 mx-auto mb-2 flex items-center justify-center">
+                          <i className={`${theme.icon} text-xl ${
+                            quoteData.theme === theme.id ? 'text-pink-500' : 'text-gray-400'
+                          }`}></i>
+                        </div>
+                        <div className={`text-xs font-medium text-center ${
+                          quoteData.theme === theme.id ? 'text-pink-700' : 'text-gray-700'
+                        }`}>
+                          {language === 'es' ? theme.name_es : theme.name_en}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Free text area for additional details */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    {language === 'es' 
+                      ? quoteData.hasReferencePhoto 
+                        ? 'Describe cualquier tema adicional o estilo específico que tengas en mente, además de la foto de referencia'
+                        : (quoteData.theme && quoteData.theme !== 'custom') 
+                          ? 'Detalles adicionales sobre el tema seleccionado (colores específicos, elementos que quieres incluir, etc.)'
+                          : 'Describe el tema, colores, decoraciones o ideas que tienes en mente'
+                      : quoteData.hasReferencePhoto
+                        ? 'Describe any additional theme or specific style you have in mind, in addition to the reference photo'
+                        : (quoteData.theme && quoteData.theme !== 'custom')
+                          ? 'Additional details about the selected theme (specific colors, elements you want to include, etc.)'
+                          : 'Describe the theme, colors, decorations or ideas you have in mind'
+                    }
+                  </label>
+                  <textarea
+                    value={typeof quoteData.theme === 'string' && !getThemesByOccasion(quoteData.occasion || 'other').find(t => t.id === quoteData.theme) ? quoteData.theme : ''}
+                    onChange={e => updateQuoteData('theme', e.target.value)}
+                    placeholder={language === 'es' 
+                      ? "Ej: Colores rosado y dorado, decoración con mariposas, estilo elegante y romántico..."
+                      : "Ex: Pink and gold colors, butterfly decorations, elegant and romantic style..."
+                    }
+                    className="w-full p-4 border border-gray-300 rounded-xl focus:outline-none focus:border-pink-500 text-sm h-32 resize-none"
+                    maxLength={300}
+                  />
+                  <div className="text-xs text-gray-500 mt-2">
+                    {(typeof quoteData.theme === 'string' && !getThemesByOccasion(quoteData.occasion || 'other').find(t => t.id === quoteData.theme) ? quoteData.theme : '').length}/300 {language === 'es' ? 'caracteres' : 'characters'}
+                  </div>
                 </div>
               </div>
             )}
@@ -728,7 +918,7 @@ export default function QuotePage() {
 
             {currentStep < 7 ? (
               <button
-                onClick={handleSubmitQuote}
+                onClick={handleNext}
                 disabled={
                   (currentStep === 1 && quoteData.hasReferencePhoto && (!uploadedPhoto || !quoteData.photoDescription)) ||
                   (currentStep === 1 && !quoteData.hasReferencePhoto && !quoteData.occasion) ||

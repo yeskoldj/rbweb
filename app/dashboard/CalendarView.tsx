@@ -4,17 +4,14 @@
 import { useState } from 'react';
 import { Order } from '../../lib/supabase';
 
-
 interface CalendarViewProps {
   orders: Order[];
-  onStatusUpdate: (orderId: string, newStatus: Order['status']) => void | Promise<void>;
-  
+  onStatusUpdate: (orderId: string, newStatus: string) => void;
 }
-
 
 export default function CalendarView({ orders, onStatusUpdate }: CalendarViewProps) {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const setStatus = (id: string, s: Order['status']) => onStatusUpdate(id, s);
+
   const getOrdersForDate = (date: string) => {
     return orders.filter(order => order.order_date === date);
   };
@@ -51,38 +48,29 @@ export default function CalendarView({ orders, onStatusUpdate }: CalendarViewPro
     }
   };
 
-  const colors: Record<Order['status'], string> = {
-    pending: 'bg-yellow-400',
-    baking: 'bg-orange-400',
-    decorating: 'bg-purple-400',
-    ready: 'bg-green-400',
-    completed: 'bg-blue-400',
-    cancelled: 'bg-red-400',
+  const getStatusColor = (status: string) => {
+    const colors = {
+      pending: 'bg-yellow-400',
+      baking: 'bg-orange-400',
+      decorating: 'bg-purple-400',
+      ready: 'bg-green-400',
+      completed: 'bg-blue-400',
+      cancelled: 'bg-red-400'
+    };
+    return colors[status as keyof typeof colors] || 'bg-gray-400';
   };
-const getStatusColor = (status: Order['status']) => {
-  const colors: Record<Order['status'], string> = {
-    pending: 'bg-yellow-400',
-    baking: 'bg-orange-400',
-    decorating: 'bg-purple-400',
-    ready: 'bg-green-400',
-    completed: 'bg-blue-400',
-    cancelled: 'bg-red-400',
-  };
-  return colors[status];
-};
 
-const getStatusText = (status: Order['status']) => {
-  const statusTexts: Record<Order['status'], string> = {
-    pending: 'Pendiente',
-    baking: 'Horneando',
-    decorating: 'Decorando',
-    ready: 'Listo',
-    completed: 'Completado',
-    cancelled: 'Cancelado',
+  const getStatusText = (status: string) => {
+    const statusTexts = {
+      pending: 'Pendiente',
+      baking: 'Horneando',
+      decorating: 'Decorando',
+      ready: 'Listo',
+      completed: 'Completado',
+      cancelled: 'Cancelado'
+    };
+    return statusTexts[status as keyof typeof statusTexts] || status;
   };
-  return statusTexts[status];
-};
-
 
   const selectedDateOrders = getOrdersForDate(selectedDate);
 
@@ -131,20 +119,20 @@ const getStatusText = (status: Order['status']) => {
                   
                   {dayOrders.length > 0 && (
                     <div className="flex flex-wrap gap-1">
-                      {(['pending', 'baking', 'decorating', 'ready'] as Order['status'][]).map((status) => {
+                      {['pending', 'baking', 'decorating', 'ready'].map((status) => {
                         const count = dayOrders.filter(o => o.status === status).length;
                         if (count === 0) return null;
+                        
                         return (
                           <div
                             key={status}
-                            className={`w-7 h-7 rounded-full ${getStatusColor(status)} ...`}
+                            className={`w-7 h-7 rounded-full ${getStatusColor(status)} text-white text-xs flex items-center justify-center font-bold shadow-sm`}
                             title={`${count} ${getStatusText(status).toLowerCase()}`}
                           >
                             {count}
                           </div>
                         );
                       })}
-
                     </div>
                   )}
                 </div>
@@ -263,7 +251,6 @@ const getStatusText = (status: Order['status']) => {
                       {order.status === 'decorating' && (
                         <button
                           onClick={() => onStatusUpdate(order.id, 'ready')}
-
                           className="flex-1 bg-gradient-to-r from-green-400 to-emerald-400 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-green-500 hover:to-emerald-500 transition-all transform hover:scale-105"
                         >
                           <i className="ri-check-line mr-2"></i>

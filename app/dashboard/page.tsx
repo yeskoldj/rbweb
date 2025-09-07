@@ -10,66 +10,13 @@ import OrderCard from './OrderCard';
 import CalendarView from './CalendarView';
 import UserManagement from './UserManagement';
 
-
-
-
-
-
-
-
-// --- Colores para ESTADOS de ORDERS (no para quotes) ---
-const orderStatusColors: Record<string, string> = {
-
-  pending: 'bg-yellow-100 text-yellow-800',
-  confirmed: 'bg-blue-100 text-blue-800',
-  in_progress: 'bg-indigo-100 text-indigo-800',
-  completed: 'bg-green-100 text-green-800',
-  cancelled: 'bg-red-100 text-red-800',
-};
-
-
-type QuoteStatus = 'pending' | 'responded' | 'accepted' | 'rejected';
-
-type Quote = {
-  id: string;
-  status: QuoteStatus;
-  created_at: string;
-  estimated_price?: number | string;
-  notes?: string;
-  customer_name?: string;
-  customer_phone?: string;
-  customer_email?: string;
-  occasion?: string;
-  servings?: number;
-  [k: string]: any; // resto de campos que te lleguen de Supabase
-};
-// --- Colores para ESTADOS de QUOTES ---
-const quoteStatusColors: Record<QuoteStatus, string> = {
-  pending:   'bg-gray-100 text-gray-800',
-  responded: 'bg-blue-100 text-blue-800',
-  accepted:  'bg-green-100 text-green-800',
-  rejected:  'bg-red-100 text-red-800',
-};
-
-// (opcional) helper para mostrar texto legible
-function getStatusText(s: QuoteStatus) {
-  switch (s) {
-    case 'pending':   return 'Pending';
-    case 'responded': return 'Responded';
-    case 'accepted':  return 'Accepted';
-    case 'rejected':  return 'Rejected';
-  }
-}
-
-
-
-
 export default function DashboardPage() {
   // -------------------------------------------------------------------------
   // State declarations (original + new ones needed for quote handling)
   // -------------------------------------------------------------------------
   const [orders, setOrders] = useState<Order[]>([]);
-  const [quotes, setQuotes] = useState<Quote[]>([]);  const [activeTab, setActiveTab] = useState('orders');
+  const [quotes, setQuotes] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState('orders');
   const [showTodayView, setShowTodayView] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -186,7 +133,7 @@ export default function DashboardPage() {
     if (savedOrders.length === 0) {
       const testOrder: Order = {
         id: `ORDER-${Date.now()}`,
-        user_id: undefined,
+        user_id: null,
         customer_name: 'Maria Gonzalez',
         customer_phone: '(555) 123-4567',
         customer_email: 'maria.gonzalez@email.com',
@@ -289,11 +236,10 @@ export default function DashboardPage() {
 
   const updateQuoteStatus = async (
     quoteId: string,
-    newStatus: QuoteStatus,
+    newStatus: string,
     estimatedPrice?: number,
     notes?: string
   ) => {
-
     try {
       const updateData: any = {
         status: newStatus,
@@ -532,13 +478,14 @@ export default function DashboardPage() {
   // -------------------------------------------------------------------------
   // UI helpers
   // -------------------------------------------------------------------------
-  const statusColors: Record<QuoteStatus, string> = {
+  const statusColors = {
     pending: 'bg-yellow-100 text-yellow-800',
-    responded: 'bg-blue-100 text-blue-800',
-    accepted: 'bg-green-100 text-green-800',
-    rejected: 'bg-red-100 text-red-800',
+    baking: 'bg-orange-100 text-orange-800',
+    decorating: 'bg-purple-100 text-purple-800',
+    ready: 'bg-green-100 text-green-800',
+    completed: 'bg-blue-100 text-blue-800',
+    cancelled: 'bg-red-100 text-red-800',
   };
-
 
   const getUserDisplayName = () => {
     if (currentUser?.full_name) {
@@ -866,7 +813,8 @@ export default function DashboardPage() {
                               <div className="text-right">
                                 <p className="text-2xl font-bold text-pink-600">${order.total.toFixed(2)}</p>
                                 <span
-                                  className={`px-3 py-1 rounded-full text-xs font-bold ${orderStatusColors[order.status] ?? 'bg-gray-100 text-gray-800'} shadow-sm`}                                >
+                                  className={`px-3 py-1 rounded-full text-xs font-bold ${statusColors[order.status]} shadow-sm`}
+                                >
                                   <i
                                     className={`${
                                       order.status === 'pending'
@@ -1292,22 +1240,21 @@ function QuoteCard({ quote, onStatusUpdate }: { quote: any; onStatusUpdate: Func
   const [estimatedPrice, setEstimatedPrice] = useState(quote.estimated_price || '');
   const [notes, setNotes] = useState(quote.notes || '');
 
-  const statusColors: Record<QuoteStatus, string> = {
+  const statusColors = {
     pending: 'bg-yellow-100 text-yellow-800',
     responded: 'bg-blue-100 text-blue-800',
     accepted: 'bg-green-100 text-green-800',
     rejected: 'bg-red-100 text-red-800',
   };
-  
 
-  const getStatusText = (status: QuoteStatus) => {
-    const statusMap: Record<QuoteStatus, string> = {
+  const getStatusText = (status: string) => {
+    const statusMap: { [key: string]: string } = {
       pending: 'Pendiente',
       responded: 'Respondida',
       accepted: 'Aceptada',
       rejected: 'Rechazada',
     };
-    return statusMap[status];
+    return statusMap[status] || status;
   };
 
   const handleRespond = () => {
@@ -1337,9 +1284,7 @@ function QuoteCard({ quote, onStatusUpdate }: { quote: any; onStatusUpdate: Func
           </div>
         </div>
         <div className="text-right">
-          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-              quoteStatusColors[quote.status as QuoteStatus] ?? 'bg-gray-100 text-gray-800'
-              } shadow-sm`}>
+          <span className={`px-3 py-1 rounded-full text-xs font-bold ${statusColors[quote.status]} shadow-sm`}>
             {getStatusText(quote.status)}
           </span>
           <p className="text-xs text-gray-500 mt-1">{new Date(quote.created_at).toLocaleDateString('es-ES')}</p>
