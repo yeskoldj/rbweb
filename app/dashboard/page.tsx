@@ -10,7 +10,8 @@ import OrderCard from './OrderCard';
 import CalendarView from './CalendarView';
 import UserManagement from './UserManagement';
 // --- Colores para ESTADOS de ORDERS (no para quotes) ---
-const orderStatusColors: Partial<Record<Order['status'], string>> = {
+const orderStatusColors: Record<string, string> = {
+
   pending: 'bg-yellow-100 text-yellow-800',
   confirmed: 'bg-blue-100 text-blue-800',
   in_progress: 'bg-indigo-100 text-indigo-800',
