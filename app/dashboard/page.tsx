@@ -9,6 +9,30 @@ import TabBar from '../../components/TabBar';
 import OrderCard from './OrderCard';
 import CalendarView from './CalendarView';
 import UserManagement from './UserManagement';
+
+
+
+// --- Tipos para QUOTES ---
+type QuoteStatus = 'requested' | 'quoted' | 'accepted' | 'rejected' | 'expired';
+
+type Quote = {
+  id: string;
+  status: QuoteStatus;
+  // agrega aquí los campos que ya usas (p.ej. total, customer_name, etc.)
+  [k: string]: any;
+};
+
+// Mapa de colores SOLO para quotes
+const quoteStatusColors: Record<QuoteStatus, string> = {
+  requested: 'bg-gray-100 text-gray-800',
+  quoted: 'bg-blue-100 text-blue-800',
+  accepted: 'bg-green-100 text-green-800',
+  rejected: 'bg-red-100 text-red-800',
+  expired: 'bg-yellow-100 text-yellow-800',
+};
+
+
+
 // --- Colores para ESTADOS de ORDERS (no para quotes) ---
 const orderStatusColors: Record<string, string> = {
 
@@ -1312,7 +1336,7 @@ function QuoteCard({ quote, onStatusUpdate }: { quote: any; onStatusUpdate: Func
           </div>
         </div>
         <div className="text-right">
-          <span className={`px-3 py-1 rounded-full text-xs font-bold ${statusColors[quote.status]} shadow-sm`}>
+          <span className={`px-3 py-1 rounded-full text-xs font-bold ${quoteStatusColors[quote.status]} shadow-sm`}>
             {getStatusText(quote.status)}
           </span>
           <p className="text-xs text-gray-500 mt-1">{new Date(quote.created_at).toLocaleDateString('es-ES')}</p>
