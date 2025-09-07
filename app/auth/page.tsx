@@ -184,8 +184,7 @@ export default function AuthPage() {
           const userRole = isOwner ? 'owner' : 'customer';
           
           // Crear perfil en la tabla users
-          const isOwner = ownerEmails.includes(normalizedEmail);
-          const userRole = isOwner ? 'owner' : 'customer';
+          
 
           const { error: profileError } = await supabase
             .from('profiles')
