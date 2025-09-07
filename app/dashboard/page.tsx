@@ -12,24 +12,8 @@ import UserManagement from './UserManagement';
 
 
 
-// --- Tipos para QUOTES ---
-type QuoteStatus = 'requested' | 'quoted' | 'accepted' | 'rejected' | 'expired';
 
-type Quote = {
-  id: string;
-  status: QuoteStatus;
-  // agrega aquí los campos que ya usas (p.ej. total, customer_name, etc.)
-  [k: string]: any;
-};
 
-// Mapa de colores SOLO para quotes
-const quoteStatusColors: Record<QuoteStatus, string> = {
-  requested: 'bg-gray-100 text-gray-800',
-  quoted: 'bg-blue-100 text-blue-800',
-  accepted: 'bg-green-100 text-green-800',
-  rejected: 'bg-red-100 text-red-800',
-  expired: 'bg-yellow-100 text-yellow-800',
-};
 
 
 
@@ -59,6 +43,23 @@ type Quote = {
   servings?: number;
   [k: string]: any; // resto de campos que te lleguen de Supabase
 };
+// --- Colores para ESTADOS de QUOTES ---
+const quoteStatusColors: Record<QuoteStatus, string> = {
+  pending:   'bg-gray-100 text-gray-800',
+  responded: 'bg-blue-100 text-blue-800',
+  accepted:  'bg-green-100 text-green-800',
+  rejected:  'bg-red-100 text-red-800',
+};
+
+// (opcional) helper para mostrar texto legible
+function getStatusText(s: QuoteStatus) {
+  switch (s) {
+    case 'pending':   return 'Pending';
+    case 'responded': return 'Responded';
+    case 'accepted':  return 'Accepted';
+    case 'rejected':  return 'Rejected';
+  }
+}
 
 
 
