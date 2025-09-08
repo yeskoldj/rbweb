@@ -3,10 +3,11 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 // === CONFIG ===========
 const ENV = Deno.env.get("SQUARE_ENV") || "sandbox";
+// Point to the correct Square endpoint based on environment
 const SQUARE_BASE_URL =
   ENV === "sandbox"
-    ? "https://connect.squareup.com"
-    : "https://connect.squareupsandbox.com";
+    ? "https://connect.squareupsandbox.com"
+    : "https://connect.squareup.com";
 
 const ACCESS_TOKEN   = Deno.env.get("SQUARE_ACCESS_TOKEN") || "";
 const APPLICATION_ID = Deno.env.get("SQUARE_APPLICATION_ID") || "";
