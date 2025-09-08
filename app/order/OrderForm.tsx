@@ -51,7 +51,7 @@ useEffect(() => {
 
 
   const [showP2PInstructions, setShowP2PInstructions] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'card' | 'apple_pay' | 'google_pay' | 'zelle' | 'cashapp' | 'venmo'>('card');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'card' | 'apple_pay' | 'google_pay' | 'zelle'>('card');
   const [p2pInstructions, setP2PInstructions] = useState<any>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -327,110 +327,93 @@ const initSquareCard = useCallback(async () => {
 
     try {
       console.log('🔥 Iniciando proceso de pago:', selectedPaymentMethod);
-      
+
+      if (selectedPaymentMethod === 'zelle') {
+        setP2PInstructions({
+          method: 'zelle',
+          amount: parseFloat(calculateTotal()),
+          phone: p2pPaymentConfig.zelle.phone,
+          name: p2pPaymentConfig.zelle.name,
+          instructions: p2pPaymentConfig.zelle.instructions,
+        });
+        setShowP2PInstructions(true);
+        setShowPayment(false);
+        setShowCardForm(false);
+        setIsSubmitting(false);
+        return;
+      }
+
       let paymentResult;
 
-      if (selectedPaymentMethod === 'zelle' || selectedPaymentMethod === 'cashapp' || selectedPaymentMethod === 'venmo') {
-        // Crear orden P2P
-        paymentResult = await createP2POrder({
-          amount: parseFloat(calculateTotal()),
-          items: cartItems.map(item => ({
-            name: item.name,
-            price: getItemPrice(item),
-            quantity: item.quantity
-          })),
-          customerInfo: {
-            name: formData.name.trim(),
-            phone: formData.phone.trim(),
-            email: formData.email?.trim() || currentUser?.email || ''
-          },
-          paymentMethod: selectedPaymentMethod,
-          userId: currentUser?.id,
-          pickupTime: formData.pickupTime || undefined,
-          specialRequests: formData.specialRequests?.trim() || undefined
-        });
+      // Tokenizar con Square según el método seleccionado
+      let sourceId: string | undefined;
 
-        if (paymentResult.success) {
-          setP2PInstructions(paymentResult.paymentInstructions);
-          setShowP2PInstructions(true);
-          setShowPayment(false);
-          setShowCardForm(false);
-          
-          // Limpiar carrito
-          localStorage.removeItem('bakery-cart');
+      if (selectedPaymentMethod === 'card') {
+        if (!card) {
+          throw new Error('Square Card no está inicializado. Por favor recarga la página.');
         }
-        
+        const res = await card.tokenize();
+        if (!res || res.status !== 'OK') {
+          throw new Error(res?.errors?.[0]?.detail || 'Error al procesar la tarjeta');
+        }
+        sourceId = res.token;
+      } else if (selectedPaymentMethod === 'apple_pay') {
+        if (!applePay) {
+          throw new Error('Apple Pay no está disponible en este dispositivo');
+        }
+        const res = await applePay.tokenize();
+        if (!res || res.status !== 'OK') {
+          throw new Error('Error al procesar Apple Pay');
+        }
+        sourceId = res.token;
+      } else if (selectedPaymentMethod === 'google_pay') {
+        if (!googlePay) {
+          throw new Error('Google Pay no está disponible en este dispositivo');
+        }
+        const res = await googlePay.tokenize();
+        if (!res || res.status !== 'OK') {
+          throw new Error('Error al procesar Google Pay');
+        }
+        sourceId = res.token;
       } else {
-        // Tokenizar con Square según el método seleccionado
-        let sourceId: string | undefined;
+        throw new Error('Método de pago no válido');
+      }
 
-        if (selectedPaymentMethod === 'card') {
-          if (!card) {
-            throw new Error('Square Card no está inicializado. Por favor recarga la página.');
-          }
-          const res = await card.tokenize();
-          if (!res || res.status !== 'OK') {
-            throw new Error(res?.errors?.[0]?.detail || 'Error al procesar la tarjeta');
-          }
-          sourceId = res.token;
-        } else if (selectedPaymentMethod === 'apple_pay') {
-          if (!applePay) {
-            throw new Error('Apple Pay no está disponible en este dispositivo');
-          }
-          const res = await applePay.tokenize();
-          if (!res || res.status !== 'OK') {
-            throw new Error('Error al procesar Apple Pay');
-          }
-          sourceId = res.token;
-        } else if (selectedPaymentMethod === 'google_pay') {
-          if (!googlePay) {
-            throw new Error('Google Pay no está disponible en este dispositivo');
-          }
-          const res = await googlePay.tokenize();
-          if (!res || res.status !== 'OK') {
-            throw new Error('Error al procesar Google Pay');
-          }
-          sourceId = res.token;
-        } else {
-          throw new Error('Método de pago no válido');
-        }
+      // Crear pago con Square usando el token
+      paymentResult = await createSquarePayment({
+        amount: parseFloat(calculateTotal()),
+        items: cartItems.map(item => ({
+          name: item.name,
+          price: getItemPrice(item),
+          quantity: item.quantity
+        })),
+        customerInfo: {
+          name: formData.name.trim(),
+          phone: formData.phone.trim(),
+          email: formData.email?.trim() || currentUser?.email || ''
+        },
+        paymentMethod: selectedPaymentMethod as 'card' | 'apple_pay' | 'google_pay',
+        sourceId,
+        currency: 'USD',
+        userId: currentUser?.id,
+        pickupTime: formData.pickupTime || undefined,
+        specialRequests: formData.specialRequests?.trim() || undefined
+      });
 
-        // Crear pago con Square usando el token
-        paymentResult = await createSquarePayment({
-          amount: parseFloat(calculateTotal()),
-          items: cartItems.map(item => ({
-            name: item.name,
-            price: getItemPrice(item),
-            quantity: item.quantity
-          })),
-          customerInfo: {
-            name: formData.name.trim(),
-            phone: formData.phone.trim(),
-            email: formData.email?.trim() || currentUser?.email || ''
-          },
-          paymentMethod: selectedPaymentMethod as 'card' | 'apple_pay' | 'google_pay',
-          sourceId,
-          currency: 'USD',
-          userId: currentUser?.id,
-          pickupTime: formData.pickupTime || undefined,
-          specialRequests: formData.specialRequests?.trim() || undefined
-        });
+      if (paymentResult.success) {
+        // Limpiar carrito
+        localStorage.removeItem('bakery-cart');
 
-        if (paymentResult.success) {
-          // Limpiar carrito
-          localStorage.removeItem('bakery-cart');
-          
-          // Mostrar éxito
-          setShowSuccess(true);
-          setShowPayment(false);
-          setShowCardForm(false);
+        // Mostrar éxito
+        setShowSuccess(true);
+        setShowPayment(false);
+        setShowCardForm(false);
 
-          // Redirigir al dashboard
-          setTimeout(() => {
-            setShowSuccess(false);
-            router.push('/dashboard');
-          }, 3000);
-        }
+        // Redirigir al dashboard
+        setTimeout(() => {
+          setShowSuccess(false);
+          router.push('/dashboard');
+        }, 3000);
       }
 
       // Validación: Solo continuar si el procesamiento fue exitoso
@@ -441,6 +424,50 @@ const initSquareCard = useCallback(async () => {
     } catch (error: any) {
       console.error('❌ Error en el proceso de pago:', error);
       showNotification('error', 'Error en el Pago', error?.message || 'Por favor intenta de nuevo');
+    }
+
+    setIsSubmitting(false);
+  };
+
+  const confirmP2POrder = async () => {
+    setIsSubmitting(true);
+
+    try {
+      const result = await createP2POrder({
+        amount: parseFloat(calculateTotal()),
+        items: cartItems.map(item => ({
+          name: item.name,
+          price: getItemPrice(item),
+          quantity: item.quantity
+        })),
+        customerInfo: {
+          name: formData.name.trim(),
+          phone: formData.phone.trim(),
+          email: formData.email?.trim() || currentUser?.email || ''
+        },
+        paymentMethod: 'zelle',
+        userId: currentUser?.id,
+        pickupTime: formData.pickupTime || undefined,
+        specialRequests: formData.specialRequests?.trim() || undefined
+      });
+
+      if (result.success) {
+        // Limpiar carrito
+        localStorage.removeItem('bakery-cart');
+
+        setShowSuccess(true);
+        setShowP2PInstructions(false);
+
+        setTimeout(() => {
+          setShowSuccess(false);
+          router.push('/dashboard');
+        }, 3000);
+      } else {
+        throw new Error(result.error || 'Error creando la orden');
+      }
+    } catch (err: any) {
+      console.error('❌ Error confirmando pago P2P:', err);
+      showNotification('error', 'Error en el Pedido', err?.message || 'Por favor intenta de nuevo');
     }
 
     setIsSubmitting(false);
@@ -496,67 +523,54 @@ const initSquareCard = useCallback(async () => {
     </div>
   );
 
-  // Componente de instrucciones P2P mejorado (solo muestra el username)
+  // Componente de instrucciones P2P para Zelle
   const P2PInstructionsModal = () => {
     if (!showP2PInstructions || !p2pInstructions) return null;
-
-    const getP2PUsername = () => {
-      // Para Zelle usa el email, para otros usa el handle
-      if (p2pInstructions.method === 'zelle') {
-        return p2pInstructions.email;
-      }
-      return p2pInstructions.handle;
-    };
-
-    const getP2PIcon = () => {
-      if (p2pInstructions.method === 'zelle') return 'ri-bank-line';
-      if (p2pInstructions.method === 'cashapp') return 'ri-money-dollar-circle-line';
-      return 'ri-smartphone-line';
-    };
-
-    const getP2PLabel = () => {
-      if (p2pInstructions.method === 'zelle') return 'Email/Teléfono';
-      if (p2pInstructions.method === 'cashapp') return 'Cashtag';
-      return 'Username';
-    };
 
     return (
       <div className="bg-white rounded-xl shadow-lg p-8">
         <div className="text-center mb-6">
           <div className="w-16 h-16 flex items-center justify-center bg-gradient-to-br from-green-100 to-emerald-100 rounded-full mx-auto mb-4">
-            <i className="ri-smartphone-line text-green-600 text-2xl"></i>
+            <i className="ri-bank-line text-green-600 text-2xl"></i>
           </div>
-          <h3 className="text-xl font-bold text-gray-800 mb-2">¡Orden Creada Exitosamente!</h3>
-          <p className="text-gray-600 text-sm mb-4">Número de orden: <span className="font-mono text-green-600">{p2pInstructions.orderId}</span></p>
+          <h3 className="text-xl font-bold text-gray-800 mb-2">Información de Pago Zelle</h3>
+          <p className="text-gray-600 text-sm mb-4">Monto a pagar: <span className="font-mono text-green-600">${p2pInstructions.amount.toFixed(2)}</span></p>
         </div>
 
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200 mb-6">
-          <div className="flex items-center mb-4">
-            <div className="w-12 h-12 flex items-center justify-center bg-blue-100 rounded-full mr-4">
-              <i className={`text-blue-600 text-xl ${getP2PIcon()}`}></i>
-            </div>
-            <div>
-              <h4 className="text-lg font-bold text-blue-800 capitalize">
-                Pagar con {p2pInstructions.method === 'cashapp' ? 'Cash App' : p2pInstructions.method}
-              </h4>
-              <p className="text-2xl font-bold text-blue-900">${p2pInstructions.amount.toFixed(2)}</p>
-            </div>
-          </div>
-
           <div className="space-y-3 mb-4">
-            {/* Solo mostrar el username/handle/email principal */}
+            <div className="flex items-center justify-between bg-white rounded-lg p-4 border-2 border-blue-200">
+              <div className="flex items-center">
+                <i className="ri-phone-line text-blue-600 mr-3 text-xl"></i>
+                <div>
+                  <p className="text-xs text-gray-600">Teléfono</p>
+                  <span className="font-bold text-lg text-gray-800">{p2pInstructions.phone}</span>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(p2pInstructions.phone);
+                  showNotification('success', 'Copiado', 'Teléfono copiado al portapapeles');
+                }}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium text-sm flex items-center"
+              >
+                <i className="ri-file-copy-line mr-2"></i>
+                Copiar
+              </button>
+            </div>
+
             <div className="flex items-center justify-between bg-white rounded-lg p-4 border-2 border-blue-200">
               <div className="flex items-center">
                 <i className="ri-user-line text-blue-600 mr-3 text-xl"></i>
                 <div>
-                  <p className="text-xs text-gray-600">{getP2PLabel()}</p>
-                  <span className="font-bold text-lg text-gray-800">{getP2PUsername()}</span>
+                  <p className="text-xs text-gray-600">Nombre</p>
+                  <span className="font-bold text-lg text-gray-800">{p2pInstructions.name}</span>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => {
-                  navigator.clipboard.writeText(getP2PUsername());
-                  showNotification('success', 'Copiado', `${getP2PLabel()} copiado al portapapeles`);
+                  navigator.clipboard.writeText(p2pInstructions.name);
+                  showNotification('success', 'Copiado', 'Nombre copiado al portapapeles');
                 }}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium text-sm flex items-center"
               >
@@ -579,20 +593,25 @@ const initSquareCard = useCallback(async () => {
 
         <div className="space-y-3">
           <button
-            onClick={() => {
-              setShowP2PInstructions(false);
-              router.push('/dashboard');
-            }}
-            className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 rounded-lg font-bold text-lg shadow-lg hover:shadow-xl transition-all"
+            onClick={confirmP2POrder}
+            disabled={isSubmitting}
+            className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 rounded-lg font-bold text-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
           >
-            <div className="flex items-center justify-center">
-              <i className="ri-check-line text-xl mr-2"></i>
-              Entendido - Ver Mis Órdenes
-            </div>
+            {isSubmitting ? (
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                Enviando...
+              </div>
+            ) : (
+              <div className="flex items-center justify-center">
+                <i className="ri-check-line text-xl mr-2"></i>
+                Confirmar con Propietario
+              </div>
+            )}
           </button>
 
           <p className="text-center text-xs text-gray-500">
-            Tu orden estará lista una vez confirmemos tu pago
+            Tu orden se enviará al propietario para verificación del pago
           </p>
         </div>
       </div>
@@ -887,51 +906,6 @@ const initSquareCard = useCallback(async () => {
                   </div>
                 </button>
 
-                {/* Cash App */}
-                <button
-                  onClick={() => setSelectedPaymentMethod('cashapp')}
-                  className={`w-full p-4 rounded-xl border-2 transition-all mb-3 ${
-                    selectedPaymentMethod === 'cashapp' 
-                      ? 'border-green-500 bg-green-50' 
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center">
-                    <div className="w-12 h-12 flex items-center justify-center bg-green-100 rounded-full mr-4">
-                      <i className="ri-money-dollar-circle-line text-green-600 text-xl"></i>
-                    </div>
-                    <div className="text-left">
-                      <h5 className="font-medium text-gray-800">Cash App</h5>
-                      <p className="text-sm text-gray-600">Pago móvil rápido</p>
-                    </div>
-                    {selectedPaymentMethod === 'cashapp' && (
-                      <i className="ri-check-line text-green-600 text-xl ml-auto"></i>
-                    )}
-                  </div>
-                </button>
-
-                {/* Venmo */}
-                <button
-                  onClick={() => setSelectedPaymentMethod('venmo')}
-                  className={`w-full p-4 rounded-xl border-2 transition-all ${
-                    selectedPaymentMethod === 'venmo' 
-                      ? 'border-blue-500 bg-blue-50' 
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center">
-                    <div className="w-12 h-12 flex items-center justify-center bg-blue-100 rounded-full mr-4">
-                      <i className="ri-smartphone-line text-blue-600 text-xl"></i>
-                    </div>
-                    <div className="text-left">
-                      <h5 className="font-medium text-gray-800">Venmo</h5>
-                      <p className="text-sm text-gray-600">Pago social móvil</p>
-                    </div>
-                    {selectedPaymentMethod === 'venmo' && (
-                      <i className="ri-check-line text-blue-600 text-xl ml-auto"></i>
-                    )}
-                  </div>
-                </button>
               </div>
             </div>
           </div>
@@ -956,11 +930,10 @@ const initSquareCard = useCallback(async () => {
               ) : (
                 <div className="flex items-center justify-center">
                   <i className="ri-arrow-right-line text-xl mr-2"></i>
-                  {selectedPaymentMethod === 'card' ? 'Ingresar Datos de Tarjeta' : 
+                  {selectedPaymentMethod === 'card' ? 'Ingresar Datos de Tarjeta' :
                    selectedPaymentMethod === 'apple_pay' ? 'Pagar con Apple Pay' :
                    selectedPaymentMethod === 'google_pay' ? 'Pagar con Google Pay' :
-                   `Continuar con ${selectedPaymentMethod === 'cashapp' ? 'Cash App' : 
-                     selectedPaymentMethod.charAt(0).toUpperCase() + selectedPaymentMethod.slice(1)}`}
+                   'Continuar con Zelle'}
                 </div>
               )}
             </button>
