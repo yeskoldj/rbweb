@@ -107,7 +107,7 @@ export default function OrderForm() {
 
     await createSquarePayment({
       sourceId: result.token,          // token real
-      amount: Math.round(total * 100), // centavos
+      amount: total, // centavos
       currency: 'USD',
       paymentMethod: 'card',
       orderData: orderPayload,
@@ -121,7 +121,7 @@ export default function OrderForm() {
 
     await createSquarePayment({
       sourceId: result.token,
-      amount: Math.round(total * 100),
+      amount: total,
       currency: 'USD',
       paymentMethod: 'apple_pay',
       orderData: orderPayload,
@@ -135,7 +135,7 @@ export default function OrderForm() {
 
     await createSquarePayment({
       sourceId: result.token,
-      amount: Math.round(total * 100),
+      amount: total,
       currency: 'USD',
       paymentMethod: 'google_pay',
       orderData: orderPayload,
