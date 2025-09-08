@@ -112,9 +112,16 @@ serve(async (req) => {
 
       // === Guardar orden en DB ===
       const paymentId: string | undefined = paymentResult.id;
+
+      // Validate userId before constructing order record
+      const userId = orderData?.userId;
+      if (userId && !isValidUUID(userId)) {
+        throw new Error('Invalid userId; must be a UUID');
+      }
+
       const orderRecord: Record<string, any> = {
         // NO establezcas 'id' si tu columna es uuid
-        user_id: orderData.userId || null,
+        user_id: userId || null,
         customer_name: orderData.customerInfo?.name?.trim() || null,
         customer_phone: orderData.customerInfo?.phone?.trim() || null,
         customer_email: orderData.customerInfo?.email?.trim() || null,

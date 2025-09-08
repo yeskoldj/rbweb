@@ -13,6 +13,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Helper to verify if a string is a valid UUID
+const isValidUUID = (value: string | undefined | null): boolean => {
+  if (!value) return false;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(value);
+}
+
 serve(async (req) => {
   // CORS preflight
   if (req.method === 'OPTIONS') {
@@ -39,9 +46,15 @@ serve(async (req) => {
       // Referencia legible para P2P (NO se usa como id de la tabla)
       const p2pRef = `P2P-${Date.now()}-${crypto.randomUUID()}`
 
+      // Validate userId before constructing order record
+      const userId = orderData?.userId
+      if (userId && !isValidUUID(userId)) {
+        throw new Error('Invalid userId; must be a UUID')
+      }
+
       // Preparar registro SIN 'id' (lo genera Postgres por ser UUID)
       const orderRecord: any = {
-        user_id: orderData.userId || null,
+        user_id: userId || null,
         customer_name: orderData.customerInfo?.name?.trim() ?? null,
         customer_phone: orderData.customerInfo?.phone?.trim() ?? null,
         customer_email: orderData.customerInfo?.email?.trim() ?? null,
