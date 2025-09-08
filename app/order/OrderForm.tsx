@@ -38,6 +38,18 @@ export default function OrderForm() {
   const [applePay, setApplePay] = useState<any>(null);
   const [googlePay, setGooglePay] = useState<any>(null);
 
+  const [cardMountState, setCardMountState] =
+  useState<'loading' | 'ready' | 'error'>('loading');
+
+useEffect(() => {
+  // Si el SDK nunca carga (ej. Brave/AdBlock), cortamos en 5s
+  const t = setTimeout(() => {
+    if (!(window as any).Square) setCardMountState('error');
+  }, 5000);
+  return () => clearTimeout(t);
+}, []);
+
+
   const [showP2PInstructions, setShowP2PInstructions] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'card' | 'apple_pay' | 'google_pay' | 'zelle' | 'cashapp' | 'venmo'>('card');
   const [p2pInstructions, setP2PInstructions] = useState<any>(null);
@@ -57,47 +69,48 @@ export default function OrderForm() {
   const locationId = process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID!;
 
   // Inicializar Square después de mostrar el formulario de tarjeta
-  const initSquareCard = useCallback(async () => {
-    try {
-      // @ts-ignore
-      const Square = (window as any).Square;
-      if (!Square) {
-        console.error('Square SDK not loaded');
-        return false;
-      }
+const initSquareCard = useCallback(async () => {
+  try {
+    setCardMountState('loading');
 
-      // Si ya tenemos payments, solo necesitamos inicializar card
-      let p = payments;
-      if (!p) {
-        p = await Square.payments(appId, locationId);
-        setPayments(p);
-      }
+    const Square = (window as any).Square;
+    if (!Square) throw new Error('SDK no disponible (bloqueado o no cargó)');
 
-      // Verificar que el contenedor existe
-      const container = document.getElementById('card-container');
-      if (!container) {
-        console.error('Card container not found');
-        return false;
-      }
-
-      // Si ya hay una tarjeta, destruirla primero
-      if (card) {
-        await card.destroy();
-        setCard(null);
-      }
-
-      // Crear y adjuntar el card element
-      const c = await p.card();
-      await c.attach('#card-container');
-      setCard(c);
-
-      console.log('✅ Square Card initialized');
-      return true;
-    } catch (e) {
-      console.error('Square Card init failed:', e);
-      return false;
+    if (!appId || !locationId) {
+      throw new Error('Falta APP_ID o LOCATION_ID');
     }
-  }, [payments, card, appId, locationId]);
+
+    // Evitar doble init
+    if ((window as any).__sq_card) {
+      setCardMountState('ready');
+      return;
+    }
+
+    // Square.payments es síncrono
+    const p = Square.payments(appId, locationId);
+    setPayments(p);
+
+    const c = await p.card();
+    await c.attach('#card-container');      // <-- requiere el div en el JSX
+    setCard(c);
+    (window as any).__sq_card = c;
+
+    // (Opcional) Apple/Google Pay
+    const ap = p.applePay ? await p.applePay() : null;
+    if (ap && (await ap.canMakePayment())) setApplePay(ap);
+
+    const gp = p.googlePay ? await p.googlePay() : null;
+    if (gp && (await gp.canMakePayment())) setGooglePay(gp);
+
+    setCardMountState('ready');
+    console.log('✅ Square SDK initialized');
+  } catch (e: any) {
+    console.error('Square init failed:', e);
+    setCardMountState('error');
+    showNotification('error', 'Square no cargó', e?.message || 'Permite web.squarecdn.com o revisa IDs/domains');
+  }
+}, [appId, locationId]);
+
 
   // Inicializar Square para otros métodos de pago
   const initSquarePayments = useCallback(async () => {
@@ -603,6 +616,16 @@ export default function OrderForm() {
     return (
       <>
         <NotificationSystem />
+        <Script
+            src="https://web.squarecdn.com/v1/square.js"
+            strategy="afterInteractive"
+            onLoad={initSquareCard}
+            onError={() => {
+              setCardMountState('error');
+              showNotification('error', 'No se pudo cargar el SDK de Square', 'Permite web.squarecdn.com / intenta sin Brave Shields');
+            }}
+          />
+
         <div className="bg-white rounded-xl shadow-lg p-8">
           <div className="text-center mb-6">
             <div className="w-16 h-16 flex items-center justify-center bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full mx-auto mb-4">
@@ -621,30 +644,31 @@ export default function OrderForm() {
           </div>
 
           {/* CONTENEDOR PARA SQUARE CARD ELEMENT */}
-          <div className="space-y-4 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Detalles de la Tarjeta
-              </label>
-              {/* Este es el contenedor donde Square adjuntará el iframe seguro */}
-              <div 
-                id="card-container"
-                className="min-h-[90px] border border-gray-300 rounded-lg p-4 bg-white"
-              >
-                {/* Square insertará su iframe aquí */}
-                {!card && (
-                  <div className="flex items-center justify-center h-[58px]">
-                    <div className="animate-pulse text-gray-400">
-                      <i className="ri-loader-4-line animate-spin text-2xl"></i>
-                      <span className="ml-2">Cargando formulario seguro...</span>
-                    </div>
-                  </div>
-                )}
+        <div className="bg-white rounded-xl p-4 mb-6">
+          <h4 className="font-semibold text-gray-800 mb-3">Detalles de la Tarjeta</h4>
+
+          <div id="card-container" className="border rounded-lg p-4 min-h-[90px] flex items-center justify-center">
+            {cardMountState === 'loading' && (
+              <span className="text-gray-500 text-sm">Cargando formulario seguro…</span>
+            )}
+            {cardMountState === 'error' && (
+              <div className="text-center text-sm">
+                <div className="text-red-600 font-medium mb-2">No se pudo cargar el formulario.</div>
+                <div className="text-gray-600 mb-3">
+                  Si usas Brave/AdBlock, permite <code>web.squarecdn.com</code> o desactiva “Shields” para este sitio.
+                </div>
+                <button type="button" onClick={initSquare} className="px-3 py-2 rounded-lg bg-amber-600 text-white">
+                  Reintentar
+                </button>
               </div>
-              <p className="text-xs text-gray-500 mt-2">
-                Los datos de tu tarjeta son procesados de forma segura por Square
-              </p>
-            </div>
+            )}
+          </div>
+
+          <p className="text-xs text-gray-500 mt-2">
+            Los datos de tu tarjeta son procesados de forma segura por Square
+          </p>
+        </div>
+
 
             <div className="bg-gray-50 rounded-xl p-4">
               <h4 className="font-semibold text-gray-800 mb-3">Resumen del Pago</h4>
