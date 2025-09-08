@@ -1,7 +1,6 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
-import Script from 'next/script';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import TabBar from '@/components/TabBar';
@@ -10,7 +9,7 @@ import OrderForm from './OrderForm';
 export default function OrderPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [squareReady, setSquareReady] = useState(false);
+  
 
   useEffect(() => {
     // Simple auth check from localStorage (same key used across the app)
@@ -85,10 +84,7 @@ export default function OrderPage() {
             Complete the form and we’ll prepare your delicious products.
           </p>
 
-          <Suspense fallback={<div className="text-center">Loading…</div>}>
-            {/* Pass `squareReady` so OrderForm can enable card / Apple Pay / Google Pay only when SDK is ready */}
-            <OrderForm squareReady={squareReady} />
-          </Suspense>
+
         </div>
       </div>
 
