@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '../../../components/Header';
@@ -98,6 +98,7 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
   // Formas disponibles
   const shapeOptions: CakeOption[] = [
     { id: 'round', name: 'Redondo', price: 0, icon: 'ri-circle-line' },
+    { id: 'heart', name: 'Corazón', price: 0, icon: 'ri-heart-line' },
     { id: 'square', name: 'Cuadrado', price: 5, icon: 'ri-stop-line' },
     { id: 'rectangle', name: 'Rectangular', price: 8, icon: 'ri-rectangle-line' }
   ];
@@ -370,6 +371,10 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
     const errors: string[] = [];
     const layers = selectedOptions.layers;
 
+    if (!shapeOptions.some(s => s.id === selectedOptions.shape)) {
+      errors.push('Forma seleccionada no es válida');
+    }
+
     if (layers.length === 0) {
       errors.push('Debe tener al menos un nivel');
       return { isValid: false, errors };
@@ -450,7 +455,7 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
   // Vista previa visual del pastel
   const CakePreview = () => {
     const layers = selectedOptions.layers;
-    const isSquare = selectedOptions.shape === 'square' || selectedOptions.shape === 'rectangle';
+    const shape = selectedOptions.shape;
 
     return (
       <div className="flex flex-col items-center justify-end space-y-2 bg-gradient-to-b from-blue-50 to-pink-50 rounded-xl p-6 h-40 relative">
@@ -469,7 +474,21 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
             heightClass = 'h-7';
           }
           
-          const shapeClass = isSquare ? 'rounded-md' : 'rounded-lg';
+          let shapeClass = '';
+          const shapeStyles: CSSProperties = {};
+
+          switch (shape) {
+            case 'square':
+            case 'rectangle':
+              shapeClass = 'rounded-md';
+              break;
+            case 'heart':
+              shapeStyles.clipPath =
+                'path("M50% 15% C35% 0 0 0 0 30% C0 55% 25% 70% 50% 100% C75% 70% 100% 55% 100% 30% C100% 0 65% 0 50% 15% Z")';
+              break;
+            default:
+              shapeClass = 'rounded-lg';
+          }
 
           const flavorId = selectedOptions.flavors[layerIndex] || selectedOptions.flavors[0] || 'vanilla';
           const flavor = flavorOptions.find(f => f.id === flavorId);
@@ -479,9 +498,10 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
             <div key={`cake-preview-${layer.id}-${index}-${Date.now()}`} className="relative">
               <div
                 className={`${widthClass} ${heightClass} ${shapeClass} border-3 border-white shadow-md`}
-                style={{ 
+                style={{
                   background: `linear-gradient(145deg, ${layerColor}, ${layerColor}dd)`,
-                  boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
+                  boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+                  ...shapeStyles
                 }}
               />
               
@@ -572,6 +592,8 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
         return `${baseClasses} rounded-sm w-12 h-12`;
       case 'rectangle':
         return `${baseClasses} rounded-sm w-16 h-10`;
+      case 'heart':
+        return `${baseClasses} w-12 h-12`;
       default:
         return `${baseClasses} rounded-full w-12 h-12`;
     }
