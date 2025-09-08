@@ -10,6 +10,8 @@ import OrderCard from './OrderCard';
 import CalendarView from './CalendarView';
 import UserManagement from './UserManagement';
 
+type LocalOrder = Order & { isLocal?: boolean };
+
 type QuoteStatus = 'pending' | 'responded' | 'accepted' | 'rejected';
 
 const quoteStatusColors: Record<QuoteStatus, string> = {
@@ -23,7 +25,7 @@ export default function DashboardPage() {
   // -------------------------------------------------------------------------
   // State declarations (original + new ones needed for quote handling)
   // -------------------------------------------------------------------------
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<LocalOrder[]>([]);
   const [quotes, setQuotes] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('orders');
   const [showTodayView, setShowTodayView] = useState(false);
@@ -155,10 +157,13 @@ export default function DashboardPage() {
   };
 
   const loadOrdersFromLocal = () => {
-    const savedOrders = JSON.parse(localStorage.getItem('bakery-orders') || '[]');
+    const savedOrders: LocalOrder[] = JSON.parse(
+      localStorage.getItem('bakery-orders') || '[]'
+    );
+    let ordersWithFlag = savedOrders.map((order) => ({ ...order, isLocal: true }));
 
-    if (savedOrders.length === 0) {
-      const testOrder: Order = {
+    if (ordersWithFlag.length === 0) {
+      const testOrder: LocalOrder = {
         id: `ORDER-${Date.now()}`,
         user_id: undefined,
         customer_name: 'Maria Gonzalez',
@@ -189,22 +194,35 @@ export default function DashboardPage() {
         order_date: new Date().toISOString().split('T')[0],
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        isLocal: true,
       };
 
-      savedOrders.push(testOrder);
-      localStorage.setItem('bakery-orders', JSON.stringify(savedOrders));
+      ordersWithFlag.push(testOrder);
     }
 
-    setOrders(savedOrders);
+    localStorage.setItem('bakery-orders', JSON.stringify(ordersWithFlag));
+    setOrders(ordersWithFlag);
   };
 
-  const updateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
+  const updateOrderStatus = async (
+    orderId: string,
+    newStatus: Order['status']
+  ) => {
     // If trying to cancel and user is employee, require owner confirmation
     if (newStatus === 'cancelled' && currentUser?.role === 'employee') {
       setEmployeeCancelRequest(orderId);
       return;
     }
 
+    const order = orders.find((o) => o.id === orderId);
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      orderId
+    );
+
+    if (order?.isLocal || !isUUID) {
+      updateOrderStatusLocal(orderId, newStatus);
+      return;
+    }
 
     try {
       const { error } = await supabase
