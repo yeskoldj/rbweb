@@ -52,6 +52,11 @@ serve(async (req) => {
         throw new Error('Invalid userId; must be a UUID')
       }
 
+      // Calcular montos (orderData.amount representa el subtotal)
+      const subtotal = Number(orderData.amount.toFixed(2))
+      const tax = Number((subtotal * 0.03).toFixed(2))
+      const total = Number((subtotal + tax).toFixed(2))
+
       // Preparar registro SIN 'id' (lo genera Postgres por ser UUID)
       const orderRecord: any = {
         user_id: userId || null,
@@ -59,9 +64,9 @@ serve(async (req) => {
         customer_phone: orderData.customerInfo?.phone?.trim() ?? null,
         customer_email: orderData.customerInfo?.email?.trim() ?? null,
         items: orderData.items ?? [],
-        subtotal: Number((orderData.amount - orderData.amount * 0.03).toFixed(2)),
-        tax: Number((orderData.amount * 0.03).toFixed(2)),
-        total: Number(orderData.amount.toFixed(2)),
+        subtotal,
+        tax,
+        total,
         pickup_time: orderData.pickupTime || null,
         special_requests: orderData.specialRequests
           ? `${orderData.specialRequests}\n[Pagado con Zelle | Ref: ${p2pRef}]`
@@ -69,7 +74,6 @@ serve(async (req) => {
         status: 'pending',                  // esperando confirmación de pago
         order_date: new Date().toISOString(),
         payment_type: orderData.paymentMethod,
-        payment_reference: p2pRef,
         // Marcar como pagado vía Zelle sin requerir comprobación adicional
         payment_status: 'completed',
         created_at: new Date().toISOString(),
@@ -94,7 +98,7 @@ serve(async (req) => {
         orderId: inserted.id,        // UUID real
         reference: p2pRef,           // tu referencia P2P legible
         status: 'pending_payment',
-        amount: orderData.amount,
+        amount: total,
         paymentMethod: orderData.paymentMethod,
         message: 'Orden creada. Sigue las instrucciones para pagar por P2P.'
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
