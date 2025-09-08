@@ -51,13 +51,13 @@ serve(async (req) => {
         total: Number(orderData.amount.toFixed(2)),
         pickup_time: orderData.pickupTime || null,
         special_requests: orderData.specialRequests
-          ? `${orderData.specialRequests}\n[Payment: ${orderData.paymentMethod} | Ref: ${p2pRef}]`
-          : `[Payment: ${orderData.paymentMethod} | Ref: ${p2pRef}]`,
+          ? `${orderData.specialRequests}\n[Pagado con Zelle | Ref: ${p2pRef}]`
+          : `[Pagado con Zelle | Ref: ${p2pRef}]`,
         status: 'pending',                  // esperando confirmación de pago
         order_date: new Date().toISOString(),
         payment_method: orderData.paymentMethod,
         // Marcar como pagado vía Zelle sin requerir comprobación adicional
-        payment_status: 'paid',
+        payment_status: 'completed',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
