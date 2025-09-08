@@ -74,12 +74,7 @@ export default function OrderPage() {
     <div className="min-h-screen bg-gradient-to-b from-pink-50 to-purple-50">
       <Header />
 
-      {/* Load Square Web Payments SDK only on this page */}
-      <Script
-        src="https://web.squarecdn.com/v1/square.js"
-        strategy="afterInteractive"
-        onLoad={() => setSquareReady(true)}
-      />
+
 
       <div className="pt-20 pb-20">
         <div className="px-4 py-6">

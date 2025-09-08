@@ -6,7 +6,16 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { createSquarePayment, createP2POrder, p2pPaymentConfig } from '@/lib/squareConfig';
 import Script from 'next/script';
+const [sdkReady, setSdkReady] = useState(false);
+ <Script
+    src="https://web.squarecdn.com/v1/square.js"
+    strategy="afterInteractive"
+    onLoad={() => setSdkReady(true)}
+  />
 
+type OrderFormProps = {
+  squareReady?: boolean;
+};
 
 interface CartItem {
   id: string;
