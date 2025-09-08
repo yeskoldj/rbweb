@@ -1022,6 +1022,12 @@ if (selectedPaymentMethod === 'card') {
 
   return (
     <>
+<Script
+        src="https://web.squarecdn.com/v1/square.js"
+        strategy="afterInteractive"
+        onLoad={() => initSquare()}
+      />
+      <NotificationSystem />
       <NotificationSystem />
       <form id="bakery-order" onSubmit={handleSubmit} className="bg-white rounded-xl shadow-lg p-6">
         <div className="space-y-4">
