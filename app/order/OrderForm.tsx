@@ -113,7 +113,7 @@ const initSquareCard = useCallback(async () => {
   // Inicializar Square para otros métodos de pago
   const initSquareCardPayments = useCallback(async () => {
     try {
-      // @ts-expect-error Square SDK global
+      // Square SDK global
       const Square = (window as any).Square;
       if (!Square || payments) return;
 
@@ -160,7 +160,7 @@ const initSquareCard = useCallback(async () => {
   useEffect(() => {
     if (!payments) {
       const checkSquare = setInterval(() => {
-        // @ts-expect-error Square SDK global
+        // Square SDK global
         if ((window as any).Square) {
           initSquareCardPayments();
           clearInterval(checkSquare);
