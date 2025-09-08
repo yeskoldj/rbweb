@@ -461,7 +461,7 @@ const initSquareCard = useCallback(async () => {
 
     try {
       const result = await createP2POrder({
-        amount: parseFloat(calculateTotal()),
+        amount: calculateSubtotal(),
         items: cartItems.map(item => ({
           name: item.name,
           price: getItemPrice(item),
