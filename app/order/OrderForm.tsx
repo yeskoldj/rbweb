@@ -491,11 +491,11 @@ export default function OrderForm() {
             <h3 className="text-xl font-bold text-gray-800 mb-2">Información de Pago</h3>
             <p className="text-gray-600 text-sm mb-4">Ingresa los datos de tu tarjeta de forma segura</p>
             
-            {/* Indicador de seguridad Clover */}
+            {/* Indicador de seguridad Square */}
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-3 border border-green-200 mb-4">
               <div className="flex items-center justify-center space-x-2">
                 <i className="ri-shield-check-line text-green-600 text-lg"></i>
-                <span className="text-sm font-medium text-green-800">Procesado por Clover - Totalmente Seguro</span>
+                <span className="text-sm font-medium text-green-800">Procesado por Square - Totalmente Seguro</span>
               </div>
             </div>
           </div>
@@ -619,7 +619,7 @@ export default function OrderForm() {
             </div>
             <div className="flex items-center">
               <i className="ri-lock-line text-purple-500 mr-1"></i>
-              <span>Clover Seguro</span>
+              <span>Square Seguro</span>
             </div>
           </div>
         </div>
@@ -1034,9 +1034,9 @@ export default function OrderForm() {
               <i className="ri-secure-payment-line text-blue-600 text-sm"></i>
             </div>
             <div className="ml-3">
-              <h4 className="text-sm font-medium text-blue-800">Pago Seguro con Clover</h4>
+              <h4 className="text-sm font-medium text-blue-800">Pago Seguro con Square</h4>
               <p className="text-xs text-blue-700 mt-1">
-                Tu pedido será procesado de forma segura a través del sistema de pagos de Clover.
+                Tu pedido será procesado de forma segura a través del sistema de pagos de Square.
               </p>
             </div>
           </div>
