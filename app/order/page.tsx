@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import TabBar from '@/components/TabBar';
 import OrderForm from './OrderForm';
+import { getUser } from '@/lib/authStorage';
 
 export default function OrderPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -12,9 +13,8 @@ export default function OrderPage() {
   
 
   useEffect(() => {
-    // Simple auth check from localStorage (same key used across the app)
-    const userData = localStorage.getItem('bakery-user');
-    setIsAuthenticated(Boolean(userData));
+    const user = getUser();
+    setIsAuthenticated(Boolean(user));
     setLoading(false);
   }, []);
 

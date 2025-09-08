@@ -6,9 +6,17 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../lib/languageContext';
 import LanguageSelector from './LanguageSelector';
+import { getUser } from '../lib/authStorage';
 
 export default function Header() {
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  interface CurrentUser {
+    email: string;
+    full_name: string;
+    role: string;
+    isLocal?: boolean;
+  }
+
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const { t } = useLanguage();
 
   useEffect(() => {
@@ -40,20 +48,14 @@ export default function Header() {
   };
 
   const checkLocalUser = () => {
-    const userData = localStorage.getItem('bakery-user');
-    if (userData) {
-      try {
-        const parsedUser = JSON.parse(userData);
-        setCurrentUser({
-          email: parsedUser.email,
-          full_name: parsedUser.fullName || parsedUser.email.split('@')[0],
-          role: parsedUser.isOwner ? 'owner' : 'customer',
-          isLocal: true
-        });
-      } catch (error) {
-        console.log('Error parsing local user data');
-        setCurrentUser(null);
-      }
+    const user = getUser();
+    if (user) {
+      setCurrentUser({
+        email: user.email,
+        full_name: user.fullName || user.email.split('@')[0],
+        role: user.isOwner ? 'owner' : 'customer',
+        isLocal: true
+      });
     } else {
       setCurrentUser(null);
     }
