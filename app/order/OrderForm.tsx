@@ -69,7 +69,7 @@ useEffect(() => {
   const locationId = process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID!;
 
   // Inicializar Square después de mostrar el formulario de tarjeta
-const initSquareCard = useCallback(async () => {
+const initSquareCardCard = useCallback(async () => {
   try {
     setCardMountState('loading');
 
@@ -113,7 +113,7 @@ const initSquareCard = useCallback(async () => {
 
 
   // Inicializar Square para otros métodos de pago
-  const initSquarePayments = useCallback(async () => {
+  const initSquareCardPayments = useCallback(async () => {
     try {
       // @ts-ignore
       const Square = (window as any).Square;
@@ -163,7 +163,7 @@ const initSquareCard = useCallback(async () => {
       const checkSquare = setInterval(() => {
         // @ts-ignore
         if ((window as any).Square) {
-          initSquarePayments();
+          initSquareCardPayments();
           clearInterval(checkSquare);
         }
       }, 100);
@@ -173,17 +173,17 @@ const initSquareCard = useCallback(async () => {
       
       return () => clearInterval(checkSquare);
     }
-  }, [initSquarePayments, payments]);
+  }, [initSquareCardPayments, payments]);
 
   // Inicializar Square Card cuando se muestra el formulario
   useEffect(() => {
     if (showCardForm && !card) {
       // Dar tiempo al DOM para renderizar
       setTimeout(() => {
-        initSquareCard();
+        initSquareCardCard();
       }, 100);
     }
-  }, [showCardForm, card, initSquareCard]);
+  }, [showCardForm, card, initSquareCardCard]);
 
   // Función para mostrar notificaciones modernas
   const showNotification = (type: 'success' | 'error' | 'warning' | 'info', title: string, message: string) => {
@@ -619,7 +619,7 @@ const initSquareCard = useCallback(async () => {
         <Script
             src="https://web.squarecdn.com/v1/square.js"
             strategy="afterInteractive"
-            onLoad={initSquareCard}
+            onLoad={initSquareCardCard}
             onError={() => {
               setCardMountState('error');
               showNotification('error', 'No se pudo cargar el SDK de Square', 'Permite web.squarecdn.com / intenta sin Brave Shields');
@@ -657,7 +657,7 @@ const initSquareCard = useCallback(async () => {
                 <div className="text-gray-600 mb-3">
                   Si usas Brave/AdBlock, permite <code>web.squarecdn.com</code> o desactiva “Shields” para este sitio.
                 </div>
-                <button type="button" onClick={initSquare} className="px-3 py-2 rounded-lg bg-amber-600 text-white">
+                <button type="button" onClick={initSquareCard} className="px-3 py-2 rounded-lg bg-amber-600 text-white">
                   Reintentar
                 </button>
               </div>
@@ -1015,7 +1015,7 @@ const initSquareCard = useCallback(async () => {
       <Script
         src="https://web.squarecdn.com/v1/square.js"
         strategy="afterInteractive"
-        onLoad={() => initSquarePayments()}
+        onLoad={() => initSquareCardPayments()}
       />
       <NotificationSystem />
       <form id="bakery-order" onSubmit={handleSubmit} className="bg-white rounded-xl shadow-lg p-6">
