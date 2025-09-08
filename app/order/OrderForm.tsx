@@ -207,9 +207,18 @@ const initSquareCard = useCallback(async () => {
     if (savedCart) {
       setCartItems(JSON.parse(savedCart));
     }
-    
+
+    const savedForm = localStorage.getItem('bakery-order-form');
+    if (savedForm) {
+      setFormData(JSON.parse(savedForm));
+    }
+
     checkCurrentUser();
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('bakery-order-form', JSON.stringify(formData));
+  }, [formData]);
 
   const checkCurrentUser = async () => {
     try {
@@ -225,8 +234,9 @@ const initSquareCard = useCallback(async () => {
           setCurrentUser(profile);
           setFormData(prev => ({
             ...prev,
-            name: profile.full_name || '',
-            email: profile.email || ''
+            name: prev.name || profile.full_name || '',
+            phone: prev.phone || profile.phone || '',
+            email: prev.email || profile.email || ''
           }));
         }
       } else {
@@ -236,7 +246,9 @@ const initSquareCard = useCallback(async () => {
           setCurrentUser(userData);
           setFormData(prev => ({
             ...prev,
-            email: userData.email || ''
+            name: prev.name || userData.fullName || '',
+            phone: prev.phone || userData.phone || '',
+            email: prev.email || userData.email || ''
           }));
         }
       }
@@ -400,8 +412,9 @@ const initSquareCard = useCallback(async () => {
       });
 
       if (paymentResult.success) {
-        // Limpiar carrito
+        // Limpiar carrito y formulario
         localStorage.removeItem('bakery-cart');
+        localStorage.removeItem('bakery-order-form');
 
         // Mostrar éxito
         setShowSuccess(true);
@@ -451,8 +464,9 @@ const initSquareCard = useCallback(async () => {
       });
 
       if (result.success) {
-        // Limpiar carrito
+        // Limpiar carrito y formulario
         localStorage.removeItem('bakery-cart');
+        localStorage.removeItem('bakery-order-form');
 
         setShowSuccess(true);
         setShowP2PInstructions(false);
@@ -477,6 +491,37 @@ const initSquareCard = useCallback(async () => {
       ...formData,
       [e.target.name]: e.target.value
     });
+  };
+
+  const saveCustomerInfo = async () => {
+    try {
+      const updatedUser = {
+        ...(currentUser || {}),
+        fullName: formData.name,
+        phone: formData.phone,
+        email: formData.email
+      };
+
+      localStorage.setItem('bakery-user', JSON.stringify(updatedUser));
+
+      if (currentUser?.id) {
+        await supabase
+          .from('profiles')
+          .upsert({
+            id: currentUser.id,
+            full_name: formData.name,
+            phone: formData.phone,
+            email: formData.email,
+            updated_at: new Date().toISOString()
+          });
+      }
+
+      setCurrentUser(updatedUser);
+      showNotification('success', 'Datos guardados', 'Tu información ha sido guardada');
+    } catch (err) {
+      console.error('Error saving customer info:', err);
+      showNotification('error', 'Error', 'No se pudo guardar tu información');
+    }
   };
 
   // Componente de notificaciones modernas
@@ -1087,6 +1132,14 @@ const initSquareCard = useCallback(async () => {
               placeholder="tu.email@ejemplo.com"
             />
           </div>
+
+          <button
+            type="button"
+            onClick={saveCustomerInfo}
+            className="w-full bg-blue-100 text-blue-700 py-2 rounded-lg text-sm mb-4"
+          >
+            Guardar Información
+          </button>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
