@@ -43,8 +43,10 @@ serve(async (req) => {
         throw new Error('Datos de orden incompletos')
       }
 
-      // Referencia legible para P2P (NO se usa como id de la tabla)
+      // Referencia legible para P2P (se guarda en p2p_reference)
       const p2pRef = `P2P-${Date.now()}-${crypto.randomUUID()}`
+      // UUID para la columna id
+      const orderId = crypto.randomUUID()
 
       // Validate userId before constructing order record
       const userId = orderData?.userId
@@ -57,8 +59,9 @@ serve(async (req) => {
       const tax = Number((subtotal * 0.03).toFixed(2))
       const total = Number((subtotal + tax).toFixed(2))
 
-      // Preparar registro SIN 'id' (lo genera Postgres por ser UUID)
+      // Preparar registro con id generado y referencia P2P
       const orderRecord: any = {
+        id: orderId,
         user_id: userId || null,
         customer_name: orderData.customerInfo?.name?.trim() ?? null,
         customer_phone: orderData.customerInfo?.phone?.trim() ?? null,
@@ -71,6 +74,7 @@ serve(async (req) => {
         special_requests: orderData.specialRequests
           ? `${orderData.specialRequests}\n[Pagado con Zelle | Ref: ${p2pRef}]`
           : `[Pagado con Zelle | Ref: ${p2pRef}]`,
+        p2p_reference: p2pRef,
         status: 'pending',                  // esperando confirmación de pago
         order_date: new Date().toISOString(),
         payment_type: orderData.paymentMethod,
@@ -80,22 +84,20 @@ serve(async (req) => {
         updated_at: new Date().toISOString(),
       }
 
-      const { data: inserted, error: dbError } = await supabaseAdmin
+      const { error: dbError } = await supabaseAdmin
         .from('orders')
         .insert([orderRecord])
-        .select('id')
-        .single()
 
       if (dbError) {
         console.error('❌ Supabase insert error:', dbError)
         throw new Error(`Error guardando orden: ${dbError.message}`)
       }
 
-      console.log('✅ Orden P2P guardada:', inserted.id)
+      console.log('✅ Orden P2P guardada:', orderId)
 
       return new Response(JSON.stringify({
         success: true,
-        orderId: inserted.id,        // UUID real
+        orderId,                     // UUID real
         reference: p2pRef,           // tu referencia P2P legible
         status: 'pending_payment',
         amount: total,

@@ -5,6 +5,7 @@ import { useState } from 'react';
 
 interface Order {
   id: string;
+  p2p_reference?: string | null;
   customer_name: string;
   customer_phone: string;
   customer_email?: string;
@@ -111,7 +112,7 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
             </div>
             <div>
               <h4 className="font-semibold text-gray-900">{customerName}</h4>
-              <p className="text-sm text-gray-500">#{order.id.slice(-8)}</p>
+              <p className="text-sm text-gray-500">#{order.p2p_reference ?? order.id.slice(-8)}</p>
             </div>
           </div>
           
