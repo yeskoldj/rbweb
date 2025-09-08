@@ -3,12 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { createSquarePayment, createP2POrder, p2pPaymentConfig } from '@/lib/squareConfig';
+import { createSquarePayment, createP2POrder } from '@/lib/squareConfig';
 import Script from 'next/script';
-
-type OrderFormProps = {
-  squareReady?: boolean;
-};
 
 interface CartItem {
   id: string;
@@ -32,7 +28,6 @@ export default function OrderForm() {
   const [showPayment, setShowPayment] = useState(false);
   const [showCardForm, setShowCardForm] = useState(false);
 
-  const [sdkReady, setSdkReady] = useState(false);
   const [payments, setPayments] = useState<any>(null);
   const [card, setCard] = useState<any>(null);
   const [applePay, setApplePay] = useState<any>(null);
@@ -115,7 +110,7 @@ const initSquareCardCard = useCallback(async () => {
   // Inicializar Square para otros métodos de pago
   const initSquareCardPayments = useCallback(async () => {
     try {
-      // @ts-ignore
+      // @ts-expect-error Square SDK global
       const Square = (window as any).Square;
       if (!Square || payments) return;
 
@@ -132,9 +127,9 @@ const initSquareCardCard = useCallback(async () => {
         if (canMakePayment) {
           setApplePay(ap);
         }
-      } catch (e) {
-        console.log('Apple Pay not available');
-      }
+        } catch {
+          console.log('Apple Pay not available');
+        }
 
       // Google Pay
       try {
@@ -146,11 +141,10 @@ const initSquareCardCard = useCallback(async () => {
         if (canMakePayment) {
           setGooglePay(gp);
         }
-      } catch (e) {
-        console.log('Google Pay not available');
-      }
+        } catch {
+          console.log('Google Pay not available');
+        }
 
-      setSdkReady(true);
       console.log('✅ Square Payments SDK initialized');
     } catch (e) {
       console.error('Square init failed:', e);
@@ -161,7 +155,7 @@ const initSquareCardCard = useCallback(async () => {
   useEffect(() => {
     if (!payments) {
       const checkSquare = setInterval(() => {
-        // @ts-ignore
+        // @ts-expect-error Square global detection
         if ((window as any).Square) {
           initSquareCardPayments();
           clearInterval(checkSquare);
@@ -256,7 +250,7 @@ const initSquareCardCard = useCallback(async () => {
     };
 
     const existingCart = localStorage.getItem('bakery-cart');
-    let cart = existingCart ? JSON.parse(existingCart) : [];
+    const cart = existingCart ? JSON.parse(existingCart) : [];
     
     const existingItemIndex = cart.findIndex((cartItem: any) => cartItem.name === item.name);
     
@@ -723,24 +717,23 @@ const initSquareCardCard = useCallback(async () => {
             </button>
           </div>
 
-          <div className="mt-6 flex items-center justify-center space-x-4 text-xs text-gray-500">
-            <div className="flex items-center">
-              <i className="ri-shield-check-line text-green-500 mr-1"></i>
-              <span>SSL Seguro</span>
+            <div className="mt-6 flex items-center justify-center space-x-4 text-xs text-gray-500">
+              <div className="flex items-center">
+                <i className="ri-shield-check-line text-green-500 mr-1"></i>
+                <span>SSL Seguro</span>
+              </div>
+              <div className="flex items-center">
+                <i className="ri-bank-card-line text-blue-500 mr-1"></i>
+                <span>Todas las Tarjetas</span>
+              </div>
+              <div className="flex items-center">
+                <i className="ri-lock-line text-purple-500 mr-1"></i>
+                <span>Square Seguro</span>
+              </div>
             </div>
-            <div className="flex items-center">
-              <i className="ri-bank-card-line text-blue-500 mr-1"></i>
-              <span>Todas las Tarjetas</span>
-            </div>
-            <div className="flex items-center">
-              <i className="ri-lock-line text-purple-500 mr-1"></i>
-              <span>Square Seguro</span>
-            </div>
-          </div>
-        </div>
-      </>
-    );
-  }
+        </>
+      );
+    }
 
   if (showP2PInstructions) {
     return (
