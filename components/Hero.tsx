@@ -31,13 +31,13 @@ export default function Hero() {
         3. O edita las traducciones en lib/languages.ts para cambiar automáticamente
         */}
         <h2 className="text-3xl font-bold text-gray-800 mb-3">{t('bakeryName')}</h2>
-        <p className="text-gray-600 mb-6 leading-relaxed">Hechas con amor para tus momentos especiales</p>
+        <p className="text-gray-600 mb-6 leading-relaxed">{t('heroTagline')}</p>
         
         <Link 
           href="/menu"
           className="inline-block bg-gradient-to-r from-amber-600 to-amber-700 text-white px-6 py-2.5 rounded-full font-medium shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 text-sm"
         >
-          Ver Menú
+          {t('viewMenu')}
         </Link>
       </div>
     </section>

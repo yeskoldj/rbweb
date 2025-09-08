@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { quoteId, estimatedPrice, adminNotes, customerEmail, customerName, eventType, eventDate } = await req.json()
+    const { quoteId, estimatedPrice, adminNotes, customerEmail, customerName, eventType, eventDate, language = 'es' } = await req.json()
 
     if (!quoteId || !estimatedPrice || !customerEmail) {
       throw new Error('Missing required fields')
@@ -41,10 +41,10 @@ serve(async (req) => {
     }
 
     // Prepare email content
-    const emailSubject = `Cotización Lista - Ranger Bakery 🎂`
-    
-    const emailBody = `
-<!DOCTYPE html>
+    const templates = {
+      es: {
+        subject: `Cotización Lista - Ranger Bakery 🎂`,
+        body: `<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -87,7 +87,7 @@ serve(async (req) => {
             <h1>🎂 Ranger Bakery</h1>
             <p>Su cotización está lista</p>
         </div>
-        
+
         <div class="content">
             <h2 style="color: #f5576c; margin-bottom: 10px;">¡Hola ${customerName}!</h2>
             <p style="font-size: 16px; line-height: 1.6; color: #495057;">
@@ -169,19 +169,164 @@ serve(async (req) => {
                 </p>
             </div>
         </div>
-        
+
         <div class="footer">
             <p><strong>🎂 Ranger Bakery</strong></p>
             <p>Endulzando sus momentos especiales desde el corazón</p>
             <p>📧 rangerbakery@gmail.com | 📱 (862) 233-7204</p>
         </div>
-        
+
         <div class="watermark">
             <p>Email enviado automáticamente desde el sistema de gestión de Ranger Bakery</p>
         </div>
     </div>
 </body>
 </html>`
+      },
+      en: {
+        subject: `Quote Ready - Ranger Bakery 🎂`,
+        body: `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f8f9fa; }
+        .container { max-width: 600px; margin: 0 auto; background-color: white; }
+        .header { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 30px 20px; text-align: center; }
+        .header h1 { color: white; margin: 0; font-size: 28px; font-weight: bold; }
+        .header p { color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px; }
+        .content { padding: 30px 20px; }
+        .quote-card { background: #f8f9fa; border-left: 4px solid #f5576c; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .price-highlight { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; border-radius: 12px; margin: 20px 0; }
+        .price-highlight .amount { font-size: 32px; font-weight: bold; margin: 0; }
+        .price-highlight .label { font-size: 14px; opacity: 0.9; margin: 5px 0 0 0; }
+        .details-grid { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e9ecef; }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label { font-weight: 600; color: #495057; }
+        .detail-value { color: #6c757d; }
+        .notes-section { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 8px; margin: 20px 0; }
+        .notes-section h4 { color: #856404; margin: 0 0 10px 0; font-size: 16px; }
+        .notes-section p { color: #856404; margin: 0; line-height: 1.5; }
+        .action-buttons { text-align: center; margin: 30px 0; }
+        .btn { display: inline-block; padding: 15px 30px; margin: 0 10px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; }
+        .btn-accept { background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%); color: white; }
+        .btn-contact { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .contact-info { background: #e3f2fd; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0; }
+        .contact-info h4 { color: #1565c0; margin: 0 0 15px 0; }
+        .contact-methods { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
+        .contact-method { display: flex; align-items: center; color: #1565c0; font-weight: 500; }
+        .contact-method span { margin-left: 8px; }
+        .footer { background: #495057; color: white; padding: 20px; text-align: center; }
+        .footer p { margin: 5px 0; font-size: 14px; }
+        .watermark { text-align: center; padding: 15px; background: #f8f9fa; font-size: 12px; color: #6c757d; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎂 Ranger Bakery</h1>
+            <p>Your quote is ready</p>
+        </div>
+
+        <div class="content">
+            <h2 style="color: #f5576c; margin-bottom: 10px;">Hello ${customerName}!</h2>
+            <p style="font-size: 16px; line-height: 1.6; color: #495057;">
+                Thank you for choosing Ranger Bakery for your special event. We've carefully prepared your personalized quote.
+            </p>
+
+            ${eventType || eventDate ? `
+            <div class="quote-card">
+                <h4 style="color: #f5576c; margin: 0 0 15px 0;">📋 Event Details</h4>
+                <div class="details-grid" style="background: white; padding: 15px;">
+                    ${eventType ? `
+                    <div class="detail-row">
+                        <span class="detail-label">Event Type:</span>
+                        <span class="detail-value">${eventType}</span>
+                    </div>
+                    ` : ''}
+                    ${eventDate ? `
+                    <div class="detail-row">
+                        <span class="detail-label">Event Date:</span>
+                        <span class="detail-value">${eventDate}</span>
+                    </div>
+                    ` : ''}
+                </div>
+            </div>
+            ` : ''}
+
+            <div class="price-highlight">
+                <p class="amount">$${estimatedPrice}</p>
+                <p class="label">Estimated Price</p>
+            </div>
+
+            ${adminNotes ? `
+            <div class="notes-section">
+                <h4>💬 Special Notes from our Chef</h4>
+                <p>${adminNotes}</p>
+            </div>
+            ` : ''}
+
+            <div style="background: #e8f5e8; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h4 style="color: #2e7d32; margin: 0 0 10px 0;">✨ What's included in your quote:</h4>
+                <ul style="color: #2e7d32; margin: 0; padding-left: 20px;">
+                    <li>Custom design according to your specifications</li>
+                    <li>Fresh, high-quality ingredients</li>
+                    <li>Professional handcrafted decoration</li>
+                    <li>Free consultation for adjustments</li>
+                </ul>
+            </div>
+
+            <div class="action-buttons">
+                <a href="tel:8622337204" class="btn btn-contact">
+                    📞 Call Now
+                </a>
+                <a href="https://wa.me/18622337204?text=Hello%20Ranger%20Bakery,%20I%20accept%20the%20quote%20of%20$${estimatedPrice}%20for%20my%20event.%20I%20want%20to%20proceed%20with%20the%20order." class="btn btn-accept">
+                    ✅ Accept Quote
+                </a>
+            </div>
+
+            <div class="contact-info">
+                <h4>📞 Contact us to Confirm</h4>
+                <div class="contact-methods">
+                    <div class="contact-method">
+                        <strong>📱</strong>
+                        <span>(862) 233-7204</span>
+                    </div>
+                    <div class="contact-method">
+                        <strong>📧</strong>
+                        <span>rangerbakery@gmail.com</span>
+                    </div>
+                    <div class="contact-method">
+                        <strong>💬</strong>
+                        <span>WhatsApp Available</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0; color: #856404; font-size: 14px; text-align: center;">
+                    <strong>⏰ Important:</strong> This quote is valid for 7 days. To confirm your order, contact us as soon as possible.
+                </p>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p><strong>🎂 Ranger Bakery</strong></p>
+            <p>Sweetening your special moments from the heart</p>
+            <p>📧 rangerbakery@gmail.com | 📱 (862) 233-7204</p>
+        </div>
+
+        <div class="watermark">
+            <p>Email automatically sent from Ranger Bakery's management system</p>
+        </div>
+    </div>
+</body>
+</html>`
+      }
+    }
+
+    const { subject: emailSubject, body: emailBody } = templates[language as 'es' | 'en'] || templates.es
 
     // Send email using FormSubmit
     const formData = new FormData()

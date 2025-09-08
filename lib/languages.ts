@@ -111,7 +111,50 @@ export const translations = {
     shareExperience: "Compartir tu experiencia",
     viewOnGoogleMaps: "Ver en Google Maps",
     loadingReviews: "Cargando reseñas...",
-    
+
+    // Hero
+    heroTagline: "Hechas con amor para tus momentos especiales",
+    viewMenu: "Ver Menú",
+
+    // Gallery
+    galleryHeading: "Galería de Nuestras Creaciones",
+    viewMorePhotos: "Ver Más Fotos",
+    galleryModalHeading: "Nuestras Creaciones",
+    seeMoreOnInstagram: "Ver más en Instagram",
+
+    // Menu Preview
+    accountRequired: "Necesitas crear una cuenta para agregar productos al carrito",
+    addToCartError: "Error al agregar al carrito. Intenta de nuevo.",
+    addedToCart: "agregado al carrito",
+    customize: "Personalizar",
+    tresLechesCupName: "Tres Leches en Vaso",
+    tresLechesCupDesc: "Tradicional tres leches dominicano servido en vaso",
+    flanName: "Flan",
+    flanDesc: "Cremoso flan casero dominicano con caramelo",
+    cheesecakeName: "Cheesecake",
+    cheesecakeDesc: "Cremoso cheesecake estilo dominicano",
+    birthdayCakeName: "Cake de Cumpleaños",
+    birthdayCakeDesc: "Cake personalizado con decoración especial",
+    miniCakesName: "Mini Pasteles",
+    miniCakesDesc: "Pequeños pasteles dominicanos con frutas variadas",
+    oreoTresLechesName: "Tres Leches de Oreo",
+    oreoTresLechesDesc: "Nuestra versión especial dominicana con galletas Oreo",
+
+    // Price List
+    priceListTitle: "Precios de Pasteles - Ranger's Bakery",
+    priceListSubtitle: "Lista oficial de precios actualizada",
+    singleTierHeading: "TAMAÑOS SENCILLOS (1 piso)",
+    doubleTierHeading: "DOBLE (2 pisos del mismo tamaño)",
+    tripleTierHeading: "TRIPLE (3 pisos del mismo tamaño)",
+    eventCakesHeading: "MULTINIVEL (combinados por cantidad de personas)",
+    camouflageNote: "Nota \"Camuflaje\": En la lámina 2 aparece un precio alternativo si el pastel es Camuflaje: 1. $150+ | 2) $195+ | 3) $250+ | 4) $350+ | 5) $450",
+    sizeIndicationNote: "Cada tamaño se indica como un piso de \"2 layers\".",
+    extrasDecorationsHeading: "EXTRAS / DECORACIONES",
+    camouflageNoteExtras: "Nota \"Camuflaje\": En la lámina 2 aparece un precio alternativo si el pastel es Camuflaje. El \"+\" depende de la cantidad solicitada. (El \"+\" depende de la cantidad)",
+    customQuotePrompt: "¿Necesitas un presupuesto personalizado?",
+    whatsappLabel: "WhatsApp:",
+    callLabel: "Llamar:",
+
     // Common
     loading: "Cargando...",
     save: "Guardar",
@@ -224,7 +267,50 @@ export const translations = {
     shareExperience: "Share your experience",
     viewOnGoogleMaps: "View on Google Maps",
     loadingReviews: "Loading reviews...",
-    
+
+    // Hero
+    heroTagline: "Made with love for your special moments",
+    viewMenu: "View Menu",
+
+    // Gallery
+    galleryHeading: "Gallery of Our Creations",
+    viewMorePhotos: "View More Photos",
+    galleryModalHeading: "Our Creations",
+    seeMoreOnInstagram: "See more on Instagram",
+
+    // Menu Preview
+    accountRequired: "You need to create an account to add products to the cart",
+    addToCartError: "Error adding to cart. Please try again.",
+    addedToCart: "added to cart",
+    customize: "Customize",
+    tresLechesCupName: "Tres Leches Cup",
+    tresLechesCupDesc: "Traditional Dominican tres leches served in a cup",
+    flanName: "Flan",
+    flanDesc: "Creamy homemade Dominican flan with caramel",
+    cheesecakeName: "Cheesecake",
+    cheesecakeDesc: "Creamy Dominican-style cheesecake",
+    birthdayCakeName: "Birthday Cake",
+    birthdayCakeDesc: "Custom cake with special decoration",
+    miniCakesName: "Mini Cakes",
+    miniCakesDesc: "Small Dominican cakes with assorted fruits",
+    oreoTresLechesName: "Oreo Tres Leches",
+    oreoTresLechesDesc: "Our special Dominican version with Oreo cookies",
+
+    // Price List
+    priceListTitle: "Cake Prices - Ranger's Bakery",
+    priceListSubtitle: "Official updated price list",
+    singleTierHeading: "SINGLE TIERS (1 layer)",
+    doubleTierHeading: "DOUBLE (2 tiers same size)",
+    tripleTierHeading: "TRIPLE (3 tiers same size)",
+    eventCakesHeading: "MULTI-TIER (combined by number of people)",
+    camouflageNote: "Camouflage Note: On slide 2 there's an alternate price if the cake is Camouflage: 1. $150+ | 2) $195+ | 3) $250+ | 4) $350+ | 5) $450",
+    sizeIndicationNote: "Each size indicates a \"2 layers\" tier.",
+    extrasDecorationsHeading: "EXTRAS / DECORATIONS",
+    camouflageNoteExtras: "Camouflage Note: On slide 2 there is an alternate price if the cake is Camouflage. The \"+\" depends on the quantity requested. (The \"+\" depends on the amount)",
+    customQuotePrompt: "Need a custom quote?",
+    whatsappLabel: "WhatsApp:",
+    callLabel: "Call:",
+
     // Common
     loading: "Loading...",
     save: "Save",
