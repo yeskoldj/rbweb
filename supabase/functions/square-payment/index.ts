@@ -26,6 +26,13 @@ const corsHeaders = {
 
 const toCents = (amount: number) => Math.round(amount * 100);
 
+// Helper to verify if a string is a valid UUID
+const isValidUUID = (value: string | undefined | null): boolean => {
+  if (!value) return false;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(value);
+};
+
 // ======================
 
 serve(async (req) => {
@@ -104,6 +111,7 @@ serve(async (req) => {
       }
 
       // === Guardar orden en DB ===
+      const paymentId: string | undefined = paymentResult.id;
       const orderRecord: Record<string, any> = {
         // NO establezcas 'id' si tu columna es uuid
         user_id: orderData.userId || null,
@@ -118,7 +126,8 @@ serve(async (req) => {
         special_requests: orderData.specialRequests?.trim() || null,
         status: 'pending', // pendiente de producción
         order_date: new Date().toISOString().split('T')[0],
-        payment_id: paymentResult.id,
+        payment_id: isValidUUID(paymentId) ? paymentId : null,
+        payment_reference: paymentId,
         payment_method: orderData.paymentMethod || 'square',
         payment_status: 'completed',
         created_at: new Date().toISOString(),
