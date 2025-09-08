@@ -210,6 +210,47 @@ export async function createP2POrder(orderData: {
   }
 }
 
+// ---- Confirm P2P payment ----
+export async function confirmP2PPayment(orderId: string) {
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!supabaseUrl) throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL');
+
+    const functionUrl = `${supabaseUrl}/functions/v1/p2p-payment`;
+
+    const res = await fetch(functionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({
+        action: 'confirm_payment',
+        orderData: { orderId },
+      }),
+    });
+
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(`HTTP ${res.status}: ${txt}`);
+    }
+
+    const result = await res.json();
+    if (!result?.success) {
+      throw new Error(result?.error || 'Failed to confirm payment');
+    }
+
+    return {
+      success: true,
+      orderId: result.orderId,
+      status: result.status,
+    } as const;
+  } catch (err: any) {
+    console.error('confirmP2PPayment error:', err);
+    return { success: false, error: err?.message || 'Error confirming P2P payment' };
+  }
+}
+
 // ---- Refund (calls Square edge function) ----
 export async function processRefund(paymentId: string, amount?: number) {
   try {

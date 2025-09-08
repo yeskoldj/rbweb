@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { createSquarePayment, createP2POrder, p2pPaymentConfig } from '@/lib/squareConfig';
+import { createSquarePayment, createP2POrder, p2pPaymentConfig, confirmP2PPayment } from '@/lib/squareConfig';
 import Script from 'next/script';
 
 type OrderFormProps = {
@@ -53,6 +53,8 @@ useEffect(() => {
   const [showP2PInstructions, setShowP2PInstructions] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'card' | 'apple_pay' | 'google_pay' | 'zelle' | 'cashapp' | 'venmo'>('card');
   const [p2pInstructions, setP2PInstructions] = useState<any>(null);
+  const [paymentProof, setPaymentProof] = useState<File | null>(null);
+  const [uploadingProof, setUploadingProof] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
@@ -446,6 +448,49 @@ const initSquareCardCard = useCallback(async () => {
     setIsSubmitting(false);
   };
 
+  const handleConfirmP2P = async () => {
+    if (!p2pInstructions?.orderId) return;
+    try {
+      setUploadingProof(true);
+
+      let proofUrl: string | undefined;
+      if (paymentProof) {
+        const ext = paymentProof.name.split('.').pop();
+        const path = `proofs/${p2pInstructions.orderId}-${Date.now()}.${ext}`;
+        const { error: uploadError } = await supabase
+          .storage
+          .from('payment-proofs')
+          .upload(path, paymentProof);
+        if (uploadError) throw uploadError;
+
+        const { data: publicData } = supabase
+          .storage
+          .from('payment-proofs')
+          .getPublicUrl(path);
+        proofUrl = publicData.publicUrl;
+
+        await supabase
+          .from('orders')
+          .update({ payment_proof_url: proofUrl })
+          .eq('id', p2pInstructions.orderId);
+      }
+
+      const res = await confirmP2PPayment(p2pInstructions.orderId);
+      if (res.success) {
+        showNotification('success', 'Pago enviado', 'Estamos verificando tu pago');
+        setShowP2PInstructions(false);
+        router.push('/dashboard');
+      } else {
+        throw new Error(res.error);
+      }
+    } catch (error: any) {
+      console.error('Error confirming P2P payment:', error);
+      showNotification('error', 'Error', error?.message || 'No se pudo confirmar el pago');
+    } finally {
+      setUploadingProof(false);
+    }
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({
       ...formData,
@@ -577,18 +622,34 @@ const initSquareCardCard = useCallback(async () => {
           </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Sube el comprobante de pago
+            </label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setPaymentProof(e.target.files?.[0] || null)}
+              className="w-full"
+            />
+          </div>
           <button
-            onClick={() => {
-              setShowP2PInstructions(false);
-              router.push('/dashboard');
-            }}
-            className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 rounded-lg font-bold text-lg shadow-lg hover:shadow-xl transition-all"
+            onClick={handleConfirmP2P}
+            disabled={uploadingProof || !paymentProof}
+            className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 rounded-lg font-bold text-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <div className="flex items-center justify-center">
-              <i className="ri-check-line text-xl mr-2"></i>
-              Entendido - Ver Mis Órdenes
-            </div>
+            {uploadingProof ? (
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                Enviando...
+              </div>
+            ) : (
+              <div className="flex items-center justify-center">
+                <i className="ri-check-line text-xl mr-2"></i>
+                Confirmar Pago
+              </div>
+            )}
           </button>
 
           <p className="text-center text-xs text-gray-500">
