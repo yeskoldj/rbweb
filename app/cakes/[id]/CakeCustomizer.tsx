@@ -126,14 +126,14 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
   // Colores de decoración
   const colorOptions: CakeOption[] = [
     { id: 'white', name: 'Blanco', price: 0, color: '#FFFFFF' },
-    { id: 'pink', name: 'Rosa', price: 3, color: '#FF69B4' },
-    { id: 'blue', name: 'Azul', price: 3, color: '#4169E1' },
-    { id: 'purple', name: 'Morado', price: 3, color: '#9370DB' },
-    { id: 'green', name: 'Verde', price: 3, color: '#32CD32' },
-    { id: 'yellow', name: 'Amarillo', price: 3, color: '#FFD700' },
-    { id: 'red', name: 'Rojo', price: 3, color: '#DC143C' },
-    { id: 'gold', name: 'Dorado', price: 8, color: '#FFD700' },
-    { id: 'silver', name: 'Plateado', price: 8, color: '#C0C0C0' }
+    { id: 'pink', name: 'Rosa', price: 0, color: '#FF69B4' },
+    { id: 'blue', name: 'Azul', price: 0, color: '#4169E1' },
+    { id: 'purple', name: 'Morado', price: 0, color: '#9370DB' },
+    { id: 'green', name: 'Verde', price: 0, color: '#32CD32' },
+    { id: 'yellow', name: 'Amarillo', price: 0, color: '#FFD700' },
+    { id: 'red', name: 'Rojo', price: 0, color: '#DC143C' },
+    { id: 'gold', name: 'Dorado', price: 0, color: '#FFD700' },
+    { id: 'silver', name: 'Plateado', price: 0, color: '#C0C0C0' }
   ];
 
   // Rellenos disponibles
@@ -427,11 +427,6 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
     selectedOptions.flavors.forEach(flavorId => {
       const flavor = flavorOptions.find(f => f.id === flavorId);
       if (flavor) total += flavor.price;
-    });
-
-    selectedOptions.colors.forEach(colorId => {
-      const color = colorOptions.find(c => c.id === colorId);
-      if (color) total += color.price;
     });
 
     selectedOptions.fillings.forEach(fillingId => {
@@ -996,9 +991,6 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                       style={{ backgroundColor: color.color }}
                     ></div>
                     <h4 className="font-medium text-gray-800 text-sm mb-1">{color.name}</h4>
-                    <p className="text-xs font-bold text-blue-600">
-                      {color.price > 0 ? `+$${color.price}` : 'Incluido'}
-                    </p>
                   </div>
                 </label>
               ))}
@@ -1604,9 +1596,6 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                               style={{ backgroundColor: color.color }}
                             ></div>
                             <h4 className="font-medium text-gray-800 text-sm mb-1">{color.name}</h4>
-                            <p className="text-xs font-bold text-blue-600">
-                              {color.price > 0 ? `+$${color.price}` : 'Incluido'}
-                            </p>
                           </div>
                         </label>
                       ))}
