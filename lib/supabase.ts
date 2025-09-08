@@ -30,7 +30,7 @@ export interface Order {
   status: OrderStatus
   pickup_time?: string
   special_requests?: string
-  payment_method?: string
+  payment_type?: string
   payment_status: 'pending' | 'completed' | 'failed' | 'paid'
   order_date: string
   payment_id?: string | null

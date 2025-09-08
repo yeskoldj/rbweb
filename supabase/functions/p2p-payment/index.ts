@@ -68,7 +68,7 @@ serve(async (req) => {
           : `[Pagado con Zelle | Ref: ${p2pRef}]`,
         status: 'pending',                  // esperando confirmación de pago
         order_date: new Date().toISOString(),
-        payment_method: orderData.paymentMethod,
+        payment_type: orderData.paymentMethod,
         payment_reference: p2pRef,
         // Marcar como pagado vía Zelle sin requerir comprobación adicional
         payment_status: 'completed',
