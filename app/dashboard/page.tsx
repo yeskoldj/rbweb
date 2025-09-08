@@ -160,6 +160,7 @@ export default function DashboardPage() {
     if (savedOrders.length === 0) {
       const testOrder: Order = {
         id: `ORDER-${Date.now()}`,
+        p2p_reference: 'P2P-TEST',
         user_id: undefined,
         customer_name: 'Maria Gonzalez',
         customer_phone: '(555) 123-4567',
@@ -609,7 +610,7 @@ export default function DashboardPage() {
                     <div className="flex items-center justify-between mb-2">
                       <div>
                         <h4 className="font-bold text-gray-800">{request.order.customer_name}</h4>
-                        <p className="text-sm text-gray-600">Pedido #{orderId.slice(-8)}</p>
+                        <p className="text-sm text-gray-600">Pedido #{request.order.p2p_reference ?? orderId.slice(-8)}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-lg font-bold text-red-600">${request.order.total.toFixed(2)}</p>

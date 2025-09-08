@@ -20,6 +20,7 @@ export interface User {
 
 export interface Order {
   id: string
+  p2p_reference?: string | null
   user_id?: string
   customer_name: string
   customer_phone: string

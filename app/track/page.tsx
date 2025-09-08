@@ -8,6 +8,7 @@ import TabBar from '../../components/TabBar';
 
 interface Order {
   id: string;
+  p2p_reference?: string | null;
   user_id?: string;
   customer_name: string;
   customer_phone: string;
@@ -251,7 +252,7 @@ export default function TrackOrderPage() {
                   <div className="p-6">
                     <div className="flex items-center justify-between mb-6">
                       <div>
-                        <h3 className="text-xl font-bold text-gray-800">Order #{order.id.slice(-8)}</h3>
+                        <h3 className="text-xl font-bold text-gray-800">Order #{order.p2p_reference ?? order.id.slice(-8)}</h3>
                         <p className="text-sm text-gray-600">
                           {new Date(order.created_at).toLocaleDateString('en-US', {
                             year: 'numeric',
