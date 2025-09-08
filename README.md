@@ -28,3 +28,11 @@ To learn more about Next.js, take a look at the following resources:
 - [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## API Requirements
+
+When creating orders through the Supabase Edge Functions (`square-payment` or `p2p-payment`),
+the `orderData.userId` field is required and must be a valid UUID string
+(for example: `123e4567-e89b-12d3-a456-426614174000`).
+Requests missing this field or providing an improperly formatted value will
+be rejected before the order is inserted.

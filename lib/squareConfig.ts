@@ -71,7 +71,7 @@ export interface SquareOrderData {
   // Token returned by Square Web Payments SDK (card / Apple Pay / Google Pay)
   sourceId?: string;
 
-  userId?: string;
+  userId: string; // Must be a valid UUID
   pickupTime?: string | null;
   specialRequests?: string | null;
   currency?: 'USD';
@@ -85,9 +85,13 @@ export async function createSquarePayment(orderData: SquareOrderData) {
 
     const functionUrl = `${supabaseUrl}/functions/v1/square-payment`;
 
+    if (!orderData.userId || !isValidUUID(orderData.userId)) {
+      throw new Error('Missing or invalid userId; must be a UUID');
+    }
+
     const sanitizedOrderData = {
       ...orderData,
-      userId: orderData.userId && isValidUUID(orderData.userId) ? orderData.userId : undefined,
+      userId: orderData.userId,
       currency: orderData.currency ?? 'USD',
       // DO NOT send raw card data; we use sourceId from the SDK
     };
@@ -142,7 +146,7 @@ export async function createP2POrder(orderData: {
   items: SquareOrderItem[];
   customerInfo: { name: string; phone: string; email?: string };
   paymentMethod: 'zelle';
-  userId?: string;
+  userId: string; // Must be a valid UUID
   pickupTime?: string;
   specialRequests?: string;
 }) {
@@ -152,9 +156,13 @@ export async function createP2POrder(orderData: {
 
     const functionUrl = `${supabaseUrl}/functions/v1/p2p-payment`;
 
+    if (!orderData.userId || !isValidUUID(orderData.userId)) {
+      throw new Error('Missing or invalid userId; must be a UUID');
+    }
+
     const sanitizedOrderData = {
       ...orderData,
-      userId: orderData.userId && isValidUUID(orderData.userId) ? orderData.userId : undefined,
+      userId: orderData.userId,
     };
 
     const res = await fetch(functionUrl, {
