@@ -360,30 +360,54 @@ export default function OrderForm() {
           return;
         }
 
-        // Crear pago con Square
-        paymentResult = await createSquarePayment({
-          amount: parseFloat(calculateTotal()),
-          items: cartItems.map(item => ({
-            name: item.name,
-            price: getItemPrice(item),
-            quantity: item.quantity
-          })),
-          customerInfo: {
-            name: formData.name.trim(),
-            phone: formData.phone.trim(),
-            email: formData.email?.trim() || currentUser?.email || ''
-          },
-          cardInfo: selectedPaymentMethod === 'card' ? {
-            number: cardData.cardNumber.replace(/\s/g, ''),
-            expiry: cardData.expiry,
-            cvv: cardData.cvv,
-            name: cardData.name.trim()
-          } : undefined,
-          paymentMethod: selectedPaymentMethod,
-          userId: currentUser?.id,
-          pickupTime: formData.pickupTime || undefined,
-          specialRequests: formData.specialRequests?.trim() || undefined
-        });
+// 🔐 Tokenizar con Square según el método seleccionado
+let sourceId: string | undefined;
+
+if (selectedPaymentMethod === 'card') {
+  // requiere haber inicializado `card` con Square.payments(...)
+  const res = await card?.tokenize();
+  if (!res || res.status !== 'OK') {
+    throw new Error('Card tokenize failed');
+  }
+  sourceId = res.token;
+} else if (selectedPaymentMethod === 'apple_pay') {
+  const res = await applePay?.tokenize();
+  if (!res || res.status !== 'OK') {
+    throw new Error('Apple Pay tokenize failed');
+  }
+  sourceId = res.token;
+} else if (selectedPaymentMethod === 'google_pay') {
+  const res = await googlePay?.tokenize();
+  if (!res || res.status !== 'OK') {
+    throw new Error('Google Pay tokenize failed');
+  }
+  sourceId = res.token;
+} else {
+  // Si NO es un método de Square, no intentes crear pago con Square aquí
+  throw new Error('Invalid Square payment method');
+}
+
+    // ✅ Crear pago con Square usando el token (sourceId)
+    paymentResult = await createSquarePayment({
+      amount: parseFloat(calculateTotal()),
+      items: cartItems.map(item => ({
+        name: item.name,
+        price: getItemPrice(item),
+        quantity: item.quantity
+      })),
+      customerInfo: {
+        name: formData.name.trim(),
+        phone: formData.phone.trim(),
+        email: formData.email?.trim() || currentUser?.email || ''
+      },
+      paymentMethod: selectedPaymentMethod as 'card' | 'apple_pay' | 'google_pay',
+      sourceId,                 // 👈 el token del SDK
+      currency: 'USD',
+      userId: currentUser?.id,
+      pickupTime: formData.pickupTime || undefined,
+      specialRequests: formData.specialRequests?.trim() || undefined
+    });
+
 
         if (paymentResult.success) {
           // Limpiar carrito
