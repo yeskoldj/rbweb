@@ -184,6 +184,7 @@ export async function createP2POrder(orderData: {
     return {
       success: true,
       orderId: result.orderId,
+      reference: result.reference,
       status: 'pending_payment' as const,
       paymentInstructions: {
         method: orderData.paymentMethod,
@@ -192,6 +193,7 @@ export async function createP2POrder(orderData: {
         name: paymentConfig.name,
         instructions: paymentConfig.instructions,
         orderId: result.orderId,
+        reference: result.reference,
       },
     };
   } catch (err: any) {
