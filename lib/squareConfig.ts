@@ -19,36 +19,19 @@ export const squareConfig = {
 
 // ---- P2P config with proper typing to avoid union errors ----
 type ZelleConfig = {
-  email: string;
   phone: string;
-  instructions: string;
-};
-
-type HandleConfig = {
-  handle: string;
+  name: string;
   instructions: string;
 };
 
 export const p2pPaymentConfig: {
   zelle: ZelleConfig;
-  cashapp: HandleConfig;
-  venmo: HandleConfig;
 } = {
   zelle: {
-    email: 'rangerbakery@gmail.com',
     phone: '(862) 233-7204',
+    name: 'Rangers Bakery',
     instructions:
-      'Send your payment via Zelle and upload a screenshot as proof. Your order will be confirmed once the payment is verified.',
-  },
-  cashapp: {
-    handle: '$RangersBakery',
-    instructions:
-      'Send your payment via Cash App to $RangersBakery. Include your order number in the note. Your order will be confirmed once verified.',
-  },
-  venmo: {
-    handle: '@RangersBakery',
-    instructions:
-      'Send your payment via Venmo to @RangersBakery. Include your order number in the note. Your order will be confirmed once verified.',
+      'Send your payment via Zelle to the number below. After sending, click "Confirmar con Propietario" to submit your order.',
   },
 };
 
@@ -142,12 +125,12 @@ export async function createSquarePayment(orderData: SquareOrderData) {
   }
 }
 
-// ---- P2P order (Zelle / Cash App / Venmo) ----
+// ---- P2P order (Zelle) ----
 export async function createP2POrder(orderData: {
   amount: number; // dollars
   items: SquareOrderItem[];
   customerInfo: { name: string; phone: string; email?: string };
-  paymentMethod: 'zelle' | 'cashapp' | 'venmo';
+  paymentMethod: 'zelle';
   userId?: string;
   pickupTime?: string;
   specialRequests?: string;
@@ -180,12 +163,7 @@ export async function createP2POrder(orderData: {
       throw new Error(result?.error || 'Failed to create P2P order');
     }
 
-    const paymentConfig =
-      orderData.paymentMethod === 'zelle'
-        ? p2pPaymentConfig.zelle
-        : orderData.paymentMethod === 'cashapp'
-        ? p2pPaymentConfig.cashapp
-        : p2pPaymentConfig.venmo;
+    const paymentConfig = p2pPaymentConfig.zelle;
 
     return {
       success: true,
@@ -194,9 +172,8 @@ export async function createP2POrder(orderData: {
       paymentInstructions: {
         method: orderData.paymentMethod,
         amount: orderData.amount,
-        email: (paymentConfig as any).email,
-        phone: (paymentConfig as any).phone,
-        handle: (paymentConfig as any).handle,
+        phone: paymentConfig.phone,
+        name: paymentConfig.name,
         instructions: paymentConfig.instructions,
         orderId: result.orderId,
       },
