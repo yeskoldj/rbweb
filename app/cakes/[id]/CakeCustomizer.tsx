@@ -99,7 +99,8 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
   const shapeOptions: CakeOption[] = [
     { id: 'round', name: 'Redondo', price: 0, icon: 'ri-circle-line' },
     { id: 'square', name: 'Cuadrado', price: 5, icon: 'ri-stop-line' },
-    { id: 'rectangle', name: 'Rectangular', price: 8, icon: 'ri-rectangle-line' }
+    { id: 'rectangle', name: 'Rectangular', price: 8, icon: 'ri-rectangle-line' },
+    { id: 'heart', name: 'Corazón', price: 7, icon: 'ri-heart-line' }
   ];
 
   // TAMAÑOS ACTUALIZADOS SEGÚN TABLA OFICIAL
@@ -113,39 +114,35 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
 
   // Sabores disponibles
   const flavorOptions: CakeOption[] = [
-    { id: 'vanilla', name: 'Vainilla', price: 0, color: '#F5E6A3' },
-    { id: 'chocolate', name: 'Chocolate', price: 0, color: '#8B4513' },
-    { id: 'strawberry', name: 'Fresa', price: 3, color: '#FFB6C1' },
     { id: 'red-velvet', name: 'Red Velvet', price: 5, color: '#DC143C' },
-    { id: 'tres-leches', name: 'Tres Leches', price: 8, color: '#FFF8DC' },
-    { id: 'coconut', name: 'Coco', price: 5, color: '#FFFFFF' },
-    { id: 'lemon', name: 'Limón', price: 4, color: '#FFFF99' },
-    { id: 'carrot', name: 'Zanahoria', price: 6, color: '#DEB887' }
+    { id: 'carrot', name: 'Zanahoria', price: 6, color: '#DEB887' },
+    { id: 'vanilla', name: 'Vainilla', price: 0, color: '#F5E6A3' },
+    { id: 'chocolate', name: 'Chocolate', price: 0, color: '#8B4513' }
   ];
 
   // Colores de decoración
   const colorOptions: CakeOption[] = [
     { id: 'white', name: 'Blanco', price: 0, color: '#FFFFFF' },
-    { id: 'pink', name: 'Rosa', price: 3, color: '#FF69B4' },
-    { id: 'blue', name: 'Azul', price: 3, color: '#4169E1' },
-    { id: 'purple', name: 'Morado', price: 3, color: '#9370DB' },
-    { id: 'green', name: 'Verde', price: 3, color: '#32CD32' },
-    { id: 'yellow', name: 'Amarillo', price: 3, color: '#FFD700' },
-    { id: 'red', name: 'Rojo', price: 3, color: '#DC143C' },
-    { id: 'gold', name: 'Dorado', price: 8, color: '#FFD700' },
-    { id: 'silver', name: 'Plateado', price: 8, color: '#C0C0C0' }
+    { id: 'pink', name: 'Rosa', price: 0, color: '#FF69B4' },
+    { id: 'blue', name: 'Azul', price: 0, color: '#4169E1' },
+    { id: 'purple', name: 'Morado', price: 0, color: '#9370DB' },
+    { id: 'green', name: 'Verde', price: 0, color: '#32CD32' },
+    { id: 'yellow', name: 'Amarillo', price: 0, color: '#FFD700' },
+    { id: 'red', name: 'Rojo', price: 0, color: '#DC143C' },
+    { id: 'gold', name: 'Dorado', price: 0, color: '#FFD700' },
+    { id: 'silver', name: 'Plateado', price: 0, color: '#C0C0C0' }
   ];
 
   // Rellenos disponibles
   const fillingOptions: CakeOption[] = [
     { id: 'none', name: 'Sin Relleno', price: 0 },
-    { id: 'buttercream', name: 'Buttercream', price: 4 },
-    { id: 'cream-cheese', name: 'Crema de Queso', price: 5 },
-    { id: 'strawberry-jam', name: 'Mermelada de Fresa', price: 5 },
-    { id: 'chocolate-ganache', name: 'Ganache de Chocolate', price: 7 },
-    { id: 'dulce-leche', name: 'Dulce de Leche', price: 7 },
-    { id: 'fresh-fruits', name: 'Frutas Frescas', price: 10 },
-    { id: 'custard', name: 'Crema Pastelera', price: 6 }
+    { id: 'buttercream', name: 'Buttercream', price: 0 },
+    { id: 'cream-cheese', name: 'Crema de Queso', price: 0 },
+    { id: 'strawberry-jam', name: 'Mermelada de Fresa', price: 0 },
+    { id: 'chocolate-ganache', name: 'Ganache de Chocolate', price: 0 },
+    { id: 'dulce-leche', name: 'Dulce de Leche', price: 0 },
+    { id: 'fresh-fruits', name: 'Frutas Frescas', price: 0 },
+    { id: 'custard', name: 'Crema Pastelera', price: 0 }
   ];
 
   // DECORACIONES ACTUALIZADAS SEGÚN TABLA OFICIAL
