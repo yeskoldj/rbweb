@@ -478,8 +478,8 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
           return (
             <div key={`cake-preview-${layer.id}-${index}-${Date.now()}`} className="relative">
               <div
-                className={`${widthClass} ${heightClass} ${shapeClass} border-3 border-white shadow-md`}
-                style={{ 
+                className={`${widthClass} ${heightClass} ${shapeClass} shadow-md`}
+                style={{
                   background: `linear-gradient(145deg, ${layerColor}, ${layerColor}dd)`,
                   boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
                 }}
@@ -498,8 +498,8 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
               
               {selectedOptions.decorations.includes('pearls') && (
                 <div className="absolute top-1 right-2 flex space-x-1 z-20">
-                  <div className="w-1.5 h-1.5 bg-white rounded-full border border-gray-300 shadow-sm"></div>
-                  <div className="w-1.5 h-1.5 bg-white rounded-full border border-gray-300 shadow-sm"></div>
+                  <div className="w-1.5 h-1.5 bg-white rounded-full shadow-sm"></div>
+                  <div className="w-1.5 h-1.5 bg-white rounded-full shadow-sm"></div>
                 </div>
               )}
               
@@ -521,9 +521,9 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                   {selectedOptions.colors.slice(0, 2).map((colorId, i) => {
                     const color = colorOptions.find(c => c.id === colorId);
                     return (
-                      <div
+                  <div
                         key={`preview-color-${colorId}-${i}-${layer.id}`}
-                        className="w-2 h-2 rounded-full border-2 border-white shadow-sm"
+                        className="w-2 h-2 rounded-full shadow-sm"
                         style={{ backgroundColor: color?.color }}
                       />
                     );
@@ -532,22 +532,13 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
               )}
               
               {/* Etiqueta de tamaño MÁS PROMINENTE Y POR ENCIMA */}
-              <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-sm text-gray-800 bg-white px-3 py-1.5 rounded-full shadow-md font-bold border-2 border-gray-200 z-30">
+              <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-sm text-gray-800 bg-white px-3 py-1.5 rounded-full shadow-md font-bold z-30">
                 {layer.size}"
               </div>
             </div>
           );
         })}
         
-        {/* Base del pastel mejorada */}
-        <div className="relative mt-4">
-          <div className="w-28 h-3 bg-gradient-to-r from-amber-200 via-amber-300 to-amber-200 rounded-full opacity-70 shadow-sm"></div>
-          {selectedOptions.fillings.length > 0 && (
-            <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 text-amber-700 z-20">
-              <i className="ri-contrast-drop-line text-sm drop-shadow-sm"></i>
-            </div>
-          )}
-        </div>
         
         {/* Información resumida más clara */}
         <div className="text-center mt-3 space-y-1 z-30 relative">
@@ -577,108 +568,7 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
     }
   };
 
-  const renderCakePreview = () => {
-    if (selectedOptions.layers.length === 0) return null;
-
-    return (
-      <div className="bg-white rounded-xl p-6 border border-gray-200 mb-6 shadow-sm">
-        <h3 className="font-semibold text-gray-800 mb-4 text-center text-lg">Vista Previa del Pastel</h3>
-        
-        {/* Vista previa mejorada y más grande */}
-        <div className="flex justify-center mb-6">
-          <CakePreview />
-        </div>
-
-        {/* Información detallada con mejor espaciado */}
-        <div className="space-y-4">
-          {/* Información básica en tarjetas */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-gray-50 rounded-lg p-3 text-center">
-              <div className="text-xs text-gray-600 mb-1">Forma</div>
-              <div className="font-medium text-gray-800 capitalize">
-                {shapeOptions.find(s => s.id === selectedOptions.shape)?.name}
-              </div>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-3 text-center">
-              <div className="text-xs text-gray-600 mb-1">Niveles</div>
-              <div className="font-medium text-gray-800">
-                {selectedOptions.layers.length}
-              </div>
-            </div>
-          </div>
-
-          {/* Capas individuales mejoradas */}
-          <div className="space-y-2">
-            <h4 className="font-medium text-gray-700 text-sm">Detalles por Capa:</h4>
-            {selectedOptions.layers.map((layer, index) => (
-              <div key={`layer-detail-${layer.id}-${index}`} className="bg-gradient-to-r from-blue-50 to-pink-50 rounded-lg p-3">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-6 rounded border-2 border-white shadow-sm" 
-                         style={{ 
-                           background: flavorOptions.find(f => f.id === selectedOptions.flavors[0])?.color || '#F3F4F6'
-                         }}></div>
-                    <div>
-                      <span className="font-medium text-gray-800 text-sm">Capa {index + 1}</span>
-                      <div className="text-xs text-gray-600">
-                        {layer.size}" • {flavorOptions.find(f => f.id === selectedOptions.flavors[0])?.name || 'Sin sabor'}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-semibold text-pink-600">${layer.price}</div>
-                    <div className="text-xs text-gray-500">{sizeOptions.find(s => s.id === layer.size)?.serves}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Extras seleccionados */}
-          {(selectedOptions.decorations.length > 0 || selectedOptions.colors.length > 0 || selectedOptions.fillings.length > 0) && (
-            <div className="space-y-2">
-              <h4 className="font-medium text-gray-700 text-sm">Extras Seleccionados:</h4>
-              
-              {selectedOptions.decorations.length > 0 && (
-                <div className="bg-pink-50 rounded-lg p-3">
-                  <div className="text-xs text-pink-700 font-medium mb-2">✨ Decoraciones:</div>
-                  <div className="flex flex-wrap gap-1">
-                    {selectedOptions.decorations.map((decorationId, index) => {
-                      const decoration = decorationOptions.find(d => d.id === decorationId);
-                      return decoration ? (
-                        <span key={`decoration-tag-${decorationId}-${index}`} 
-                              className="bg-pink-100 text-pink-700 px-2 py-1 rounded-full text-xs">
-                          {decoration.name} (+${decoration.price})
-                        </span>
-                      ) : null;
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {selectedOptions.colors.length > 0 && (
-                <div className="bg-blue-50 rounded-lg p-3">
-                  <div className="text-xs text-blue-700 font-medium mb-2">🎨 Colores:</div>
-                  <div className="flex space-x-2">
-                    {selectedOptions.colors.map((colorId, index) => {
-                      const color = colorOptions.find(c => c.id === colorId);
-                      return color ? (
-                        <div key={`color-preview-${colorId}-${index}`} className="flex items-center space-x-1">
-                          <div className="w-4 h-4 rounded-full border-2 border-white shadow-sm"
-                               style={{ backgroundColor: color.color }}></div>
-                          <span className="text-xs text-blue-700">{color.name}</span>
-                        </div>
-                      ) : null;
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
+  // Previously used to render a detailed cake preview; removed to avoid duplicate previews.
 
   const addToCart = async () => {
     setIsAdding(true);
@@ -820,12 +710,6 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
             <p className="text-gray-600 mb-6">Construye tu pastel capa por capa con total control</p>
 
             <div className="space-y-6">
-              {/* Vista previa del pastel */}
-              <div className="bg-gradient-to-b from-blue-50 to-pink-50 rounded-xl p-6">
-                <h4 className="font-semibold text-gray-800 mb-4 text-center">Vista Previa</h4>
-                <CakePreview />
-              </div>
-
               {/* Controles de capas */}
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
