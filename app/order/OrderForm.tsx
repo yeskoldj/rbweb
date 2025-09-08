@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { createSquarePayment, createP2POrder, p2pPaymentConfig } from '@/lib/squareConfig';
+import { createSquarePayment, createP2POrder, p2pPaymentConfig, squareConfig } from '@/lib/squareConfig';
 import Script from 'next/script';
 
 type OrderFormProps = {
@@ -87,7 +87,10 @@ const initSquareCard = useCallback(async () => {
     }
 
     // Square.payments es síncrono
-    const p = Square.payments(appId, locationId);
+    // Explicitly specify the Square environment to match the sandbox credentials
+    const p = Square.payments(appId, locationId, {
+      environment: squareConfig.environment,
+    });
     setPayments(p);
 
     const c = await p.card();
@@ -119,7 +122,10 @@ const initSquareCard = useCallback(async () => {
       const Square = (window as any).Square;
       if (!Square || payments) return;
 
-      const p = await Square.payments(appId, locationId);
+      // Initialize the payments object with the configured environment
+      const p = await Square.payments(appId, locationId, {
+        environment: squareConfig.environment,
+      });
       setPayments(p);
 
       // Apple Pay
