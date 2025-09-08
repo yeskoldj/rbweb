@@ -6,10 +6,6 @@ import { supabase } from '@/lib/supabase';
 import { createSquarePayment, createP2POrder, p2pPaymentConfig, squareConfig } from '@/lib/squareConfig';
 import Script from 'next/script';
 
-type OrderFormProps = {
-  squareReady?: boolean;
-};
-
 interface CartItem {
   id: string;
   name: string;
@@ -32,7 +28,6 @@ export default function OrderForm() {
   const [showPayment, setShowPayment] = useState(false);
   const [showCardForm, setShowCardForm] = useState(false);
 
-  const [sdkReady, setSdkReady] = useState(false);
   const [payments, setPayments] = useState<any>(null);
   const [card, setCard] = useState<any>(null);
   const [applePay, setApplePay] = useState<any>(null);
@@ -118,7 +113,7 @@ const initSquareCard = useCallback(async () => {
   // Inicializar Square para otros métodos de pago
   const initSquareCardPayments = useCallback(async () => {
     try {
-      // @ts-ignore
+      // @ts-expect-error Square SDK global
       const Square = (window as any).Square;
       if (!Square || payments) return;
 
@@ -138,7 +133,7 @@ const initSquareCard = useCallback(async () => {
         if (canMakePayment) {
           setApplePay(ap);
         }
-      } catch (e) {
+      } catch {
         console.log('Apple Pay not available');
       }
 
@@ -152,11 +147,9 @@ const initSquareCard = useCallback(async () => {
         if (canMakePayment) {
           setGooglePay(gp);
         }
-      } catch (e) {
+      } catch {
         console.log('Google Pay not available');
       }
-
-      setSdkReady(true);
       console.log('✅ Square Payments SDK initialized');
     } catch (e) {
       console.error('Square init failed:', e);
@@ -167,7 +160,7 @@ const initSquareCard = useCallback(async () => {
   useEffect(() => {
     if (!payments) {
       const checkSquare = setInterval(() => {
-        // @ts-ignore
+        // @ts-expect-error Square SDK global
         if ((window as any).Square) {
           initSquareCardPayments();
           clearInterval(checkSquare);
@@ -262,7 +255,7 @@ const initSquareCard = useCallback(async () => {
     };
 
     const existingCart = localStorage.getItem('bakery-cart');
-    let cart = existingCart ? JSON.parse(existingCart) : [];
+    const cart = existingCart ? JSON.parse(existingCart) : [];
     
     const existingItemIndex = cart.findIndex((cartItem: any) => cartItem.name === item.name);
     
@@ -349,7 +342,7 @@ const initSquareCard = useCallback(async () => {
         return;
       }
 
-      let paymentResult;
+      
 
       // Tokenizar con Square según el método seleccionado
       let sourceId: string | undefined;
@@ -386,7 +379,7 @@ const initSquareCard = useCallback(async () => {
       }
 
       // Crear pago con Square usando el token
-      paymentResult = await createSquarePayment({
+      const paymentResult = await createSquarePayment({
         amount: parseFloat(calculateTotal()),
         items: cartItems.map(item => ({
           name: item.name,
@@ -614,6 +607,16 @@ const initSquareCard = useCallback(async () => {
                 Confirmar con Propietario
               </div>
             )}
+          </button>
+
+          <button
+            onClick={() => {
+              setShowP2PInstructions(false);
+              setShowPayment(true);
+            }}
+            className="w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-medium"
+          >
+            Elegir otro método de pago
           </button>
 
           <p className="text-center text-xs text-gray-500">
