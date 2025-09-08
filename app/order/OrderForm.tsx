@@ -106,11 +106,10 @@ export default function OrderForm() {
     if (result.status !== 'OK') throw new Error('Card tokenize failed');
 
     await createSquarePayment({
-      sourceId: result.token,          // token real
-      amount: total, // centavos
-      currency: 'USD',
+      ...orderPayload,
       paymentMethod: 'card',
-      orderData: orderPayload,
+      sourceId: result.token,     // token del SDK
+      currency: 'USD',
     });
   }
 
@@ -120,11 +119,10 @@ export default function OrderForm() {
     if (result.status !== 'OK') throw new Error('Apple Pay tokenize failed');
 
     await createSquarePayment({
-      sourceId: result.token,
-      amount: total,
+      ...orderPayload,
+      paymentMethod: 'card',
+      sourceId: result.token,     // token del SDK
       currency: 'USD',
-      paymentMethod: 'apple_pay',
-      orderData: orderPayload,
     });
   }
 
@@ -134,11 +132,10 @@ export default function OrderForm() {
     if (result.status !== 'OK') throw new Error('Google Pay tokenize failed');
 
     await createSquarePayment({
-      sourceId: result.token,
-      amount: total,
+      ...orderPayload,
+      paymentMethod: 'card',
+      sourceId: result.token,     // token del SDK
       currency: 'USD',
-      paymentMethod: 'google_pay',
-      orderData: orderPayload,
     });
   }
 
