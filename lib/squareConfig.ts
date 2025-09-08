@@ -42,6 +42,13 @@ export const formatAmountForSquare = (amount: number): number => {
   return Math.round(amount * 100);
 };
 
+// Validate that a string is a properly formatted UUID
+export const isValidUUID = (value?: string | null): boolean => {
+  if (!value) return false;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(value);
+};
+
 // ---- Types for Square payments ----
 export type SquarePaymentMethod = 'card' | 'apple_pay' | 'google_pay';
 
@@ -78,6 +85,13 @@ export async function createSquarePayment(orderData: SquareOrderData) {
 
     const functionUrl = `${supabaseUrl}/functions/v1/square-payment`;
 
+    const sanitizedOrderData = {
+      ...orderData,
+      userId: orderData.userId && isValidUUID(orderData.userId) ? orderData.userId : undefined,
+      currency: orderData.currency ?? 'USD',
+      // DO NOT send raw card data; we use sourceId from the SDK
+    };
+
     const res = await fetch(functionUrl, {
       method: 'POST',
       headers: {
@@ -87,11 +101,7 @@ export async function createSquarePayment(orderData: SquareOrderData) {
       },
       body: JSON.stringify({
         action: 'create_payment',
-        orderData: {
-          ...orderData,
-          currency: orderData.currency ?? 'USD',
-          // DO NOT send raw card data; we use sourceId from the SDK
-        },
+        orderData: sanitizedOrderData,
       }),
     });
 
@@ -142,6 +152,11 @@ export async function createP2POrder(orderData: {
 
     const functionUrl = `${supabaseUrl}/functions/v1/p2p-payment`;
 
+    const sanitizedOrderData = {
+      ...orderData,
+      userId: orderData.userId && isValidUUID(orderData.userId) ? orderData.userId : undefined,
+    };
+
     const res = await fetch(functionUrl, {
       method: 'POST',
       headers: {
@@ -150,7 +165,7 @@ export async function createP2POrder(orderData: {
       },
       body: JSON.stringify({
         action: 'create_order',
-        orderData,
+        orderData: sanitizedOrderData,
       }),
     });
 
