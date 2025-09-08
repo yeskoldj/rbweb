@@ -11,36 +11,36 @@ export default function MenuPreview() {
   const featuredItems = [
     {
       id: 1,
-      name: 'Tres Leches en Vaso',
+      name: t('tresLechesCupName'),
       price: '$5.00',
-      description: 'Tradicional tres leches dominicano servido en vaso',
+      description: t('tresLechesCupDesc'),
       image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/6e38ec235b30b7a74f673bc044a87814.jfif',
       category: 'dessert',
       type: 'dessert'
     },
     {
       id: 2,
-      name: 'Flan',
+      name: t('flanName'),
       price: '$4.00',
-      description: 'Cremoso flan casero dominicano con caramelo',
+      description: t('flanDesc'),
       image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/33b32b1e5581c150ed0666763a12e667.jfif',
       category: 'dessert',
       type: 'dessert'
     },
     {
       id: 3,
-      name: 'Cheesecake',
+      name: t('cheesecakeName'),
       price: '$5.00',
-      description: 'Cremoso cheesecake estilo dominicano',
+      description: t('cheesecakeDesc'),
       image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/ae1f7420251af709ef833638a428a131.jfif',
       category: 'dessert',
       type: 'dessert'
     },
     {
       id: 4,
-      name: 'Cake de Cumpleaños',
+      name: t('birthdayCakeName'),
       price: 'Desde $20.00',
-      description: 'Cake personalizado con decoración especial',
+      description: t('birthdayCakeDesc'),
       image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/58a3f870af7fe55c1b2733bc57137538.png',
       category: 'cake',
       type: 'cake',
@@ -48,18 +48,18 @@ export default function MenuPreview() {
     },
     {
       id: 5,
-      name: 'Mini Pasteles',
+      name: t('miniCakesName'),
       price: '$2.50',
-      description: 'Pequeños pasteles dominicanos con frutas variadas',
+      description: t('miniCakesDesc'),
       image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/7735a4789459e5d2fb59e816d88b8891.jfif',
       category: 'dessert',
       type: 'dessert'
     },
     {
       id: 6,
-      name: 'Tres Leches de Oreo',
+      name: t('oreoTresLechesName'),
       price: '$5.00',
-      description: 'Nuestra versión especial dominicana con galletas Oreo',
+      description: t('oreoTresLechesDesc'),
       image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/3426923c2c21bd56dac155cac89400e3.jfif',
       category: 'dessert',
       type: 'dessert'
@@ -70,7 +70,7 @@ export default function MenuPreview() {
     // Verificar autenticación primero
     const userData = localStorage.getItem('bakery-user');
     if (!userData) {
-      alert('Necesitas crear una cuenta para agregar productos al carrito');
+      alert(t('accountRequired'));
       return;
     }
 
@@ -108,7 +108,7 @@ export default function MenuPreview() {
       const confirmationElement = document.createElement('div');
       confirmationElement.innerHTML = `
         <div style="position: fixed; top: 80px; right: 20px; background: #10B981; color: white; padding: 12px 20px; border-radius: 8px; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-          ✅ ${item.name} agregado al carrito
+          ✅ ${item.name} ${t('addedToCart')}
         </div>
       `;
       document.body.appendChild(confirmationElement);
@@ -118,8 +118,8 @@ export default function MenuPreview() {
       }, 3000);
       
     } catch (error) {
-      console.error('Error agregando al carrito:', error);
-      alert('Error al agregar al carrito. Intenta de nuevo.');
+      console.error(t('addToCartError'), error);
+      alert(t('addToCartError'));
     }
   };
 
@@ -153,7 +153,7 @@ export default function MenuPreview() {
                   className="bg-gradient-to-r from-pink-400 to-teal-400 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:shadow-md transition-all"
                   onClick={() => handleAddToCart(item)}
                 >
-                  {item.type === 'cake' ? 'Personalizar' : t('addToCart')}
+                  {item.type === 'cake' ? t('customize') : t('addToCart')}
                 </button>
               </div>
             </div>

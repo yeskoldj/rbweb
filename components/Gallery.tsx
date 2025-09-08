@@ -58,7 +58,7 @@ export default function Gallery() {
   return (
     <section className="px-4 py-8">
       <h3 className="text-2xl font-bold text-amber-800 mb-6 text-center">
-        Galería de Nuestras Creaciones
+        {t('galleryHeading')}
       </h3>
 
       <div className="grid grid-cols-2 gap-4 mb-6">
@@ -79,7 +79,7 @@ export default function Gallery() {
           onClick={() => openModal(galleryImages[0].src)}
           className="bg-white border-2 border-pink-300 text-pink-500 px-5 py-2 rounded-xl font-medium shadow-sm hover:bg-pink-50 transition-colors text-sm"
         >
-          Ver Más Fotos
+          {t('viewMorePhotos')}
         </button>
       </div>
 
@@ -96,7 +96,7 @@ export default function Gallery() {
             
             <div className="p-4">
               <h4 className="text-xl font-bold text-amber-800 mb-4 text-center">
-                Nuestras Creaciones
+                {t('galleryModalHeading')}
               </h4>
               
               <div className="grid grid-cols-2 gap-3 max-h-96 overflow-y-auto">
@@ -119,7 +119,7 @@ export default function Gallery() {
                   className="inline-flex items-center bg-gradient-to-r from-pink-400 to-teal-400 text-white px-5 py-2.5 rounded-xl font-medium hover:shadow-md transition-all text-sm"
                 >
                   <i className="ri-instagram-line mr-2 text-base"></i>
-                  Ver más en Instagram
+                  {t('seeMoreOnInstagram')}
                 </a>
               </div>
             </div>
