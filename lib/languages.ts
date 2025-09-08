@@ -46,7 +46,7 @@ export const translations = {
     addToCartBenefit: "• Agregar productos al carrito",
     placeOrders: "• Realizar y rastrear pedidos",
     orderHistory: "• Ver historial de pedidos",
-    emailConfirmations: "• Confirmaciones por email",
+    emailConfirmations: "• Confirmaciones por correo electrónico",
     
     // Navigation
     home: "Inicio",
@@ -84,7 +84,7 @@ export const translations = {
     weddings: "Bodas",
     quinceaneras: "Quinceañeras",
     special: "Especiales",
-    photoCakes: "Photo Cakes",
+    photoCakes: "Pasteles con Foto",
     birthdayCakes: "Pasteles de Cumpleaños",
     weddingCakes: "Pasteles de Boda",
     quinceanerasCakes: "Pasteles de Quinceañera",
@@ -92,14 +92,14 @@ export const translations = {
     
     // Product details
     from: "Desde",
-    sizes: "tamaños",
-    flavors: "sabores",
+    sizes: "Tamaños",
+    flavors: "Sabores",
     customize: "Personalizar",
     
     // Menu & Cakes
     customizeCake: "Personalizar Pastel",
-    backToCakes: "Volver a Pasteles",
-    cakeCustomization: "Personalización de Pastel",
+    backToCakes: "Volver a los Pasteles",
+    cakeCustomization: "Personalización del Pastel",
     requires24Hours: "Requiere 24 horas de anticipación",
     
     // Reviews
