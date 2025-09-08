@@ -55,7 +55,6 @@ useEffect(() => {
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
-    email: '',
     specialRequests: '',
     pickupTime: ''
   });
@@ -235,8 +234,7 @@ const initSquareCard = useCallback(async () => {
           setFormData(prev => ({
             ...prev,
             name: prev.name || profile.full_name || '',
-            phone: prev.phone || profile.phone || '',
-            email: prev.email || profile.email || ''
+            phone: prev.phone || profile.phone || ''
           }));
         }
       } else {
@@ -247,8 +245,7 @@ const initSquareCard = useCallback(async () => {
           setFormData(prev => ({
             ...prev,
             name: prev.name || userData.fullName || '',
-            phone: prev.phone || userData.phone || '',
-            email: prev.email || userData.email || ''
+            phone: prev.phone || userData.phone || ''
           }));
         }
       }
@@ -401,7 +398,7 @@ const initSquareCard = useCallback(async () => {
         customerInfo: {
           name: formData.name.trim(),
           phone: formData.phone.trim(),
-          email: formData.email?.trim() || currentUser?.email || ''
+          email: currentUser?.email || ''
         },
         paymentMethod: selectedPaymentMethod as 'card' | 'apple_pay' | 'google_pay',
         sourceId,
@@ -455,7 +452,7 @@ const initSquareCard = useCallback(async () => {
         customerInfo: {
           name: formData.name.trim(),
           phone: formData.phone.trim(),
-          email: formData.email?.trim() || currentUser?.email || ''
+          email: currentUser?.email || ''
         },
         paymentMethod: 'zelle',
         userId: currentUser?.id,
@@ -499,7 +496,7 @@ const initSquareCard = useCallback(async () => {
         ...(currentUser || {}),
         fullName: formData.name,
         phone: formData.phone,
-        email: formData.email
+        email: currentUser?.email || ''
       };
 
       localStorage.setItem('bakery-user', JSON.stringify(updatedUser));
@@ -511,7 +508,6 @@ const initSquareCard = useCallback(async () => {
             id: currentUser.id,
             full_name: formData.name,
             phone: formData.phone,
-            email: formData.email,
             updated_at: new Date().toISOString()
           });
       }
@@ -1116,20 +1112,6 @@ const initSquareCard = useCallback(async () => {
               required
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"
               placeholder="(862) 233-7204"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Correo Electrónico
-            </label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"
-              placeholder="tu.email@ejemplo.com"
             />
           </div>
 
