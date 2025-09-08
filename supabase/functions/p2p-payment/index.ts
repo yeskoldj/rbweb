@@ -48,8 +48,8 @@ serve(async (req) => {
 
       // Validate userId before constructing order record
       const userId = orderData?.userId
-      if (userId && !isValidUUID(userId)) {
-        throw new Error('Invalid userId; must be a UUID')
+      if (!userId || !isValidUUID(userId)) {
+        throw new Error('Missing or invalid userId; must be a UUID')
       }
 
       // Calcular montos (orderData.amount representa el subtotal)
@@ -59,7 +59,7 @@ serve(async (req) => {
 
       // Preparar registro SIN 'id' (lo genera Postgres por ser UUID)
       const orderRecord: any = {
-        user_id: userId || null,
+        user_id: userId,
         customer_name: orderData.customerInfo?.name?.trim() ?? null,
         customer_phone: orderData.customerInfo?.phone?.trim() ?? null,
         customer_email: orderData.customerInfo?.email?.trim() ?? null,
