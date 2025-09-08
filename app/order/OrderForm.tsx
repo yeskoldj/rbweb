@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { createSquarePayment, createP2POrder, p2pPaymentConfig } from '@/lib/squareConfig';
 import Script from 'next/script';
+
+
 const [sdkReady, setSdkReady] = useState(false);
  <Script
     src="https://web.squarecdn.com/v1/square.js"
@@ -38,6 +40,14 @@ export default function OrderForm() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [showCardForm, setShowCardForm] = useState(false);
+
+  const [sdkReady, setSdkReady] = useState(false);
+  const [payments, setPayments] = useState<any>(null);
+  const [card, setCard] = useState<any>(null);
+  const [applePay, setApplePay] = useState<any>(null);
+  const [googlePay, setGooglePay] = useState<any>(null);
+
+
   const [showP2PInstructions, setShowP2PInstructions] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'card' | 'apple_pay' | 'google_pay' | 'zelle' | 'cashapp' | 'venmo'>('card');
   const [p2pInstructions, setP2PInstructions] = useState<any>(null);
@@ -58,6 +68,95 @@ export default function OrderForm() {
     cvv: '',
     name: ''
   });
+
+  const appId = process.env.NEXT_PUBLIC_SQUARE_APPLICATION_ID!;
+  const locationId = process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID!;
+
+  const initSquare = useCallback(async () => {
+    try {
+      // @ts-ignore
+      const Square = (window as any).Square;
+      if (!Square || payments) return;
+
+      const p = await Square.payments(appId, locationId);
+      setPayments(p);
+
+      // Card
+      const c = await p.card();
+      await c.attach('#card-container'); // <- NECESITA el div con este id en el JSX
+      setCard(c);
+
+      // Apple Pay
+      const ap = p.applePay ? await p.applePay() : null;
+      if (ap && (await ap.canMakePayment())) setApplePay(ap);
+
+      // Google Pay
+      const gp = p.googlePay ? await p.googlePay() : null;
+      if (gp && (await gp.canMakePayment())) setGooglePay(gp);
+
+      setSdkReady(true);
+      console.log('✅ Square SDK initialized');
+    } catch (e) {
+      console.error('Square init failed:', e);
+    }
+  }, [payments, appId, locationId]);
+  async function payWithCard(total: number, orderPayload: any) {
+    if (!card) return;
+    const result = await card.tokenize();
+    if (result.status !== 'OK') throw new Error('Card tokenize failed');
+
+    await createSquarePayment({
+      sourceId: result.token,          // token real
+      amount: Math.round(total * 100), // centavos
+      currency: 'USD',
+      paymentMethod: 'card',
+      orderData: orderPayload,
+    });
+  }
+
+  async function payWithApple(total: number, orderPayload: any) {
+    if (!applePay) return;
+    const result = await applePay.tokenize();
+    if (result.status !== 'OK') throw new Error('Apple Pay tokenize failed');
+
+    await createSquarePayment({
+      sourceId: result.token,
+      amount: Math.round(total * 100),
+      currency: 'USD',
+      paymentMethod: 'apple_pay',
+      orderData: orderPayload,
+    });
+  }
+
+  async function payWithGoogle(total: number, orderPayload: any) {
+    if (!googlePay) return;
+    const result = await googlePay.tokenize();
+    if (result.status !== 'OK') throw new Error('Google Pay tokenize failed');
+
+    await createSquarePayment({
+      sourceId: result.token,
+      amount: Math.round(total * 100),
+      currency: 'USD',
+      paymentMethod: 'google_pay',
+      orderData: orderPayload,
+    });
+  }
+
+  // Reintento suave por si el script tarda
+  useEffect(() => {
+    if (!payments) {
+      const t = setInterval(() => {
+        // @ts-ignore
+        if ((window as any).Square) {
+          initSquare();
+          clearInterval(t);
+        }
+      }, 400);
+      return () => clearInterval(t);
+    }
+  }, [initSquare, payments]);
+
+
 
   // Función para mostrar notificaciones modernas
   const showNotification = (type: 'success' | 'error' | 'warning' | 'info', title: string, message: string) => {
@@ -119,6 +218,9 @@ export default function OrderForm() {
       console.log('Error checking user:', error);
     }
   };
+
+
+
 
   const addToCart = (item: CartItem) => {
     const cartItem = {
