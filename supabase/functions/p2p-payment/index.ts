@@ -57,11 +57,7 @@ serve(async (req) => {
       const tax = Number((subtotal * 0.03).toFixed(2))
       const total = Number((subtotal + tax).toFixed(2))
 
-      // Generar id de orden de antemano para evitar conflictos de merge
-      const orderId = crypto.randomUUID()
-
       const orderRecord: any = {
-        id: orderId,
         user_id: userId,
         customer_name: orderData.customerInfo?.name?.trim() ?? null,
         customer_phone: orderData.customerInfo?.phone?.trim() ?? null,
@@ -83,21 +79,23 @@ serve(async (req) => {
         updated_at: new Date().toISOString(),
       }
 
-      const { error: dbError } = await supabaseAdmin
+      const { data: inserted, error: dbError } = await supabaseAdmin
         .from('orders')
         .insert([orderRecord])
+        .select('id')
+        .single()
 
       if (dbError) {
         console.error('❌ Supabase insert error:', dbError)
         throw new Error(`Error guardando orden: ${dbError.message}`)
       }
 
-      console.log('✅ Orden P2P guardada:', orderId)
+      console.log('✅ Orden P2P guardada:', inserted.id)
 
       return new Response(JSON.stringify({
         success: true,
-        orderId,                      // UUID real generado
-        reference: p2pRef,            // tu referencia P2P legible
+        orderId: inserted.id,        // UUID generado por la DB
+        reference: p2pRef,           // tu referencia P2P legible
         status: 'pending_payment',
         amount: total,
         paymentMethod: orderData.paymentMethod,
