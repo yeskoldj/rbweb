@@ -84,7 +84,7 @@ export default function OrderPage() {
             Complete the form and we’ll prepare your delicious products.
           </p>
 
-
+<OrderForm />
         </div>
       </div>
 
