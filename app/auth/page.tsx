@@ -22,7 +22,7 @@ export default function AuthPage() {
   const { t } = useLanguage();
 
   const ownerEmails = [
-    'yskmem@pm.me','yeskoldj@gmail.com',
+    'yskmem@pm.me','yeskoldj@gmail.com','rangerbakery@gmail.com',
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {
