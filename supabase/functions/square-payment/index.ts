@@ -2,9 +2,9 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 // === CONFIG ===========
-const ENV = Deno.env.get("SQUARE_ENV") || "production";
+const ENV = Deno.env.get("SQUARE_ENV") || "sandbox";
 const SQUARE_BASE_URL =
-  ENV === "production"
+  ENV === "sandbox"
     ? "https://connect.squareup.com"
     : "https://connect.squareupsandbox.com";
 
