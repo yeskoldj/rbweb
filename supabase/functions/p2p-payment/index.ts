@@ -57,7 +57,7 @@ serve(async (req) => {
       const tax = Number((subtotal * 0.03).toFixed(2))
       const total = Number((subtotal + tax).toFixed(2))
 
-      const orderRecord: any = {
+      const orderRecord: Record<string, any> = {
         user_id: userId,
         customer_name: orderData.customerInfo?.name?.trim() ?? null,
         customer_phone: orderData.customerInfo?.phone?.trim() ?? null,
