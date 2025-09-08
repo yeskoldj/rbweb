@@ -2,8 +2,11 @@
 
 // ---- Public (front-end) Square config (non-secret) ----
 export const squareConfig = {
-  // Use sandbox by default during development to avoid production charges
-  environment: 'sandbox',
+  // Set via NEXT_PUBLIC_SQUARE_ENVIRONMENT ('sandbox' for testing, defaults to production)
+  environment:
+    process.env.NEXT_PUBLIC_SQUARE_ENVIRONMENT === 'sandbox'
+      ? 'sandbox'
+      : 'production',
   bakeryEmail: 'rangerbakery@gmail.com',
 
   baseUrl: 'https://connect.squareup.com',          // Production
