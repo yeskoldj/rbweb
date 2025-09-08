@@ -166,6 +166,8 @@ export default function DashboardPage() {
         status: 'pending',
         pickup_time: '2:00 PM',
         special_requests: 'Please include a birthday candle',
+        payment_method: 'zelle',
+        payment_status: 'completed',
         order_date: new Date().toISOString().split('T')[0],
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

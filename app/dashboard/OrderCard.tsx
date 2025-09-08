@@ -18,8 +18,9 @@ interface Order {
   status: 'received' | 'ready' | 'delivered';
   pickup_date: string;
   pickup_time: string;
-  special_instructions?: string;
-  payment_status: 'pending' | 'paid' | 'failed';
+  special_requests?: string;
+  payment_method?: string;
+  payment_status: 'pending' | 'completed' | 'paid' | 'failed';
   created_at: string;
 }
 
@@ -60,6 +61,7 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
   const getPaymentStatusColor = (status: Order['payment_status']) => {
     switch (status) {
       case 'paid':
+      case 'completed':
         return 'bg-green-100 text-green-800';
       case 'pending':
         return 'bg-yellow-100 text-yellow-800';
@@ -73,6 +75,7 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
   const getPaymentStatusText = (status: Order['payment_status']) => {
     switch (status) {
       case 'paid':
+      case 'completed':
         return 'Pagado';
       case 'pending':
         return 'Pendiente';
@@ -120,6 +123,11 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
               <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPaymentStatusColor(order.payment_status)}`}>
                 {getPaymentStatusText(order.payment_status)}
               </span>
+              {order.payment_method === 'zelle' && (
+                <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                  Pagado con Zelle
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -189,11 +197,11 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
           </div>
 
           {/* Special Instructions */}
-          {order.special_instructions && (
+          {order.special_requests && (
             <div className="px-4 pb-4">
               <h5 className="font-medium text-gray-900 mb-2">Instrucciones Especiales</h5>
               <p className="text-sm text-gray-600 bg-yellow-50 p-3 rounded-lg">
-                {order.special_instructions}
+                {order.special_requests}
               </p>
             </div>
           )}
