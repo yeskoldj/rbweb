@@ -12,6 +12,7 @@ export default function QuotePage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [uploadedPhoto, setUploadedPhoto] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPath, setPhotoPath] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [quoteData, setQuoteData] = useState({
     hasReferencePhoto: false,
@@ -185,7 +186,7 @@ export default function QuotePage() {
     }
   };
 
-  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -203,18 +204,25 @@ export default function QuotePage() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = e.target?.result as string;
-      setUploadedPhoto(result);
-      setPhotoFile(file);
-    };
-    reader.readAsDataURL(file);
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}.${fileExt}`;
+
+    const { data, error } = await supabase.storage.from('temp-uploads').upload(fileName, file);
+    if (error) {
+      console.error('Error uploading photo:', error);
+      alert(language === 'es' ? 'Error al subir la foto' : 'Error uploading photo');
+      return;
+    }
+
+    setPhotoPath(data.path);
+    setUploadedPhoto(URL.createObjectURL(file));
+    setPhotoFile(file);
   };
 
   const removePhoto = () => {
     setUploadedPhoto(null);
     setPhotoFile(null);
+    setPhotoPath(null);
     setQuoteData(prev => ({ ...prev, hasReferencePhoto: false, photoDescription: '' }));
   };
 
@@ -269,7 +277,7 @@ export default function QuotePage() {
         event_details: quoteData.details || null,
         has_reference_photo: quoteData.hasReferencePhoto,
         photo_description: quoteData.photoDescription || null,
-        reference_photo_url: uploadedPhoto || null,
+        reference_photo_url: photoPath || null,
         status: 'pending',
         priority: 'normal'
       };
@@ -308,6 +316,7 @@ export default function QuotePage() {
       });
       setUploadedPhoto(null);
       setPhotoFile(null);
+      setPhotoPath(null);
       setCurrentStep(0);
 
     } catch (error) {

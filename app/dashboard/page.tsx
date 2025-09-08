@@ -259,8 +259,20 @@ export default function DashboardPage() {
         return;
       }
 
-      console.log('Quotes loaded from Supabase:', quotesData);
-      setQuotes(quotesData || []);
+      const quotesWithUrls = await Promise.all(
+        (quotesData || []).map(async (quote) => {
+          if (quote.reference_photo_url) {
+            const { data: signed } = await supabase.storage
+              .from('temp-uploads')
+              .createSignedUrl(quote.reference_photo_url, 60 * 60);
+            return { ...quote, reference_photo_url: signed?.signedUrl || null };
+          }
+          return quote;
+        })
+      );
+
+      console.log('Quotes loaded from Supabase:', quotesWithUrls);
+      setQuotes(quotesWithUrls);
     } catch (error) {
       console.error('Supabase quotes connection error:', error);
     }
