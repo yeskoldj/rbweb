@@ -135,7 +135,7 @@ serve(async (req) => {
         order_date: new Date().toISOString().split('T')[0],
         payment_id: isValidUUID(paymentId) ? paymentId : null,
         payment_reference: paymentId,
-        payment_method: orderData.paymentMethod || 'square',
+        payment_type: orderData.paymentMethod || 'square',
         payment_status: 'completed',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

@@ -20,7 +20,7 @@ interface Order {
   pickup_date: string;
   pickup_time: string;
   special_requests?: string;
-  payment_method?: string;
+  payment_type?: string;
   payment_status: 'pending' | 'completed' | 'paid' | 'failed';
   created_at: string;
 }
@@ -124,7 +124,7 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
               <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPaymentStatusColor(order.payment_status)}`}>
                 {getPaymentStatusText(order.payment_status)}
               </span>
-              {order.payment_method === 'zelle' && (
+              {order.payment_type === 'zelle' && (
                 <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                   Pagado con Zelle
                 </span>
