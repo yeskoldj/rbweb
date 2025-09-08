@@ -129,7 +129,25 @@ export default function DashboardPage() {
       }
 
       console.log('Orders loaded from Supabase:', orders);
-      setOrders(orders || []);
+
+      const ordersWithUrls = await Promise.all(
+        (orders || []).map(async (order: any) => {
+          const itemsWithUrls = await Promise.all(
+            (order.items || []).map(async (item: any) => {
+              if (item.photoUrl) {
+                const { data: signed } = await supabase.storage
+                  .from('temp-uploads')
+                  .createSignedUrl(item.photoUrl, 60 * 60);
+                return { ...item, photoUrl: signed?.signedUrl };
+              }
+              return item;
+            })
+          );
+          return { ...order, items: itemsWithUrls };
+        })
+      );
+
+      setOrders(ordersWithUrls);
     } catch (error) {
       console.error('Supabase connection error:', error);
       loadOrdersFromLocal();
