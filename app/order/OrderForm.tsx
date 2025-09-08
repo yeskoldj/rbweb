@@ -332,7 +332,7 @@ const initSquareCard = useCallback(async () => {
         setP2PInstructions({
           method: 'zelle',
           amount: parseFloat(calculateTotal()),
-          phone: p2pPaymentConfig.zelle.phone,
+          email: p2pPaymentConfig.zelle.email,
           name: p2pPaymentConfig.zelle.name,
           instructions: p2pPaymentConfig.zelle.instructions,
         });
@@ -541,16 +541,16 @@ const initSquareCard = useCallback(async () => {
           <div className="space-y-3 mb-4">
             <div className="flex items-center justify-between bg-white rounded-lg p-4 border-2 border-blue-200">
               <div className="flex items-center">
-                <i className="ri-phone-line text-blue-600 mr-3 text-xl"></i>
+                <i className="ri-mail-line text-blue-600 mr-3 text-xl"></i>
                 <div>
-                  <p className="text-xs text-gray-600">Teléfono</p>
-                  <span className="font-bold text-lg text-gray-800">{p2pInstructions.phone}</span>
+                  <p className="text-xs text-gray-600">Correo</p>
+                  <span className="font-bold text-lg text-gray-800">{p2pInstructions.email}</span>
                 </div>
               </div>
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(p2pInstructions.phone);
-                  showNotification('success', 'Copiado', 'Teléfono copiado al portapapeles');
+                  navigator.clipboard.writeText(p2pInstructions.email);
+                  showNotification('success', 'Copiado', 'Correo copiado al portapapeles');
                 }}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium text-sm flex items-center"
               >
