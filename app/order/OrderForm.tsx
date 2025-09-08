@@ -12,6 +12,8 @@ interface CartItem {
   price: string | number;
   quantity: number;
   image?: string;
+  photoUrl?: string;
+  customization?: any;
 }
 
 interface Notification {
@@ -384,7 +386,8 @@ const initSquareCard = useCallback(async () => {
         items: cartItems.map(item => ({
           name: item.name,
           price: getItemPrice(item),
-          quantity: item.quantity
+          quantity: item.quantity,
+          photoUrl: item.photoUrl
         })),
         customerInfo: {
           name: formData.name.trim(),
@@ -437,7 +440,8 @@ const initSquareCard = useCallback(async () => {
         items: cartItems.map(item => ({
           name: item.name,
           price: getItemPrice(item),
-          quantity: item.quantity
+          quantity: item.quantity,
+          photoUrl: item.photoUrl
         })),
         customerInfo: {
           name: formData.name.trim(),
