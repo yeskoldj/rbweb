@@ -35,8 +35,6 @@ export interface Order {
   order_date: string
   payment_id?: string | null
   payment_reference?: string | null
-  payment_method?: string
-  payment_status?: string
   created_at: string
   updated_at: string
 }
