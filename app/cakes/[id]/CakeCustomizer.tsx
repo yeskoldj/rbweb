@@ -139,13 +139,12 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
   // Rellenos disponibles
   const fillingOptions: CakeOption[] = [
     { id: 'none', name: 'Sin Relleno', price: 0 },
-    { id: 'buttercream', name: 'Buttercream', price: 4 },
-    { id: 'cream-cheese', name: 'Crema de Queso', price: 5 },
-    { id: 'strawberry-jam', name: 'Mermelada de Fresa', price: 5 },
-    { id: 'chocolate-ganache', name: 'Ganache de Chocolate', price: 7 },
-    { id: 'dulce-leche', name: 'Dulce de Leche', price: 7 },
-    { id: 'fresh-fruits', name: 'Frutas Frescas', price: 10 },
-    { id: 'custard', name: 'Crema Pastelera', price: 6 }
+    { id: 'buttercream', name: 'Buttercream', price: 0 },
+    { id: 'cream-cheese', name: 'Crema de Queso', price: 0 },
+    { id: 'strawberry-jam', name: 'Mermelada de Fresa', price: 0 },
+    { id: 'chocolate-ganache', name: 'Ganache de Chocolate', price: 0 },
+    { id: 'dulce-leche', name: 'Dulce de Leche', price: 0 },
+    { id: 'custard', name: 'Crema Pastelera', price: 0 }
   ];
 
   // DECORACIONES ACTUALIZADAS SEGÚN TABLA OFICIAL
@@ -432,11 +431,6 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
     selectedOptions.colors.forEach(colorId => {
       const color = colorOptions.find(c => c.id === colorId);
       if (color) total += color.price;
-    });
-
-    selectedOptions.fillings.forEach(fillingId => {
-      const filling = fillingOptions.find(f => f.id === fillingId);
-      if (filling) total += filling.price;
     });
 
     selectedOptions.decorations.forEach(decorationId => {
