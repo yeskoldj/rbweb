@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
-import { createCloverPayment } from '../../lib/cloverConfig';
+import { createSquarePayment, createP2POrder, p2pPaymentConfig } from '../../lib/squareConfig';
 
 interface CartItem {
   id: string;
@@ -27,6 +27,9 @@ export default function OrderForm() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [showCardForm, setShowCardForm] = useState(false);
+  const [showP2PInstructions, setShowP2PInstructions] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'card' | 'apple_pay' | 'google_pay' | 'zelle' | 'cashapp' | 'venmo'>('card');
+  const [p2pInstructions, setP2PInstructions] = useState<any>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
@@ -202,63 +205,97 @@ export default function OrderForm() {
   };
 
   const processPayment = async () => {
-    if (!cardData.cardNumber || !cardData.expiry || !cardData.cvv || !cardData.name) {
-      showNotification('error', 'Datos Incompletos', 'Por favor completa todos los campos de la tarjeta');
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
-      console.log('🔥 Iniciando proceso de pago Clover...');
+      console.log('🔥 Iniciando proceso de pago:', selectedPaymentMethod);
       
-      // Crear pago con datos completos
-      const paymentResult = await createCloverPayment({
-        amount: parseFloat(calculateTotal()),
-        items: cartItems.map(item => ({
-          name: item.name,
-          price: getItemPrice(item),
-          quantity: item.quantity
-        })),
-        customerInfo: {
-          name: formData.name.trim(),
-          phone: formData.phone.trim(),
-          email: formData.email?.trim() || currentUser?.email || ''
-        },
-        cardInfo: {
-          number: cardData.cardNumber.replace(/\s/g, ''),
-          expiry: cardData.expiry,
-          cvv: cardData.cvv,
-          name: cardData.name.trim()
-        },
-        userId: currentUser?.id,
-        pickupTime: formData.pickupTime || undefined,
-        specialRequests: formData.specialRequests?.trim() || undefined
-      });
+      let paymentResult;
 
-      console.log('💳 Resultado de Clover:', paymentResult);
+      if (selectedPaymentMethod === 'zelle' || selectedPaymentMethod === 'cashapp' || selectedPaymentMethod === 'venmo') {
+        // Crear orden P2P
+        paymentResult = await createP2POrder({
+          amount: parseFloat(calculateTotal()),
+          items: cartItems.map(item => ({
+            name: item.name,
+            price: getItemPrice(item),
+            quantity: item.quantity
+          })),
+          customerInfo: {
+            name: formData.name.trim(),
+            phone: formData.phone.trim(),
+            email: formData.email?.trim() || currentUser?.email || ''
+          },
+          paymentMethod: selectedPaymentMethod,
+          userId: currentUser?.id,
+          pickupTime: formData.pickupTime || undefined,
+          specialRequests: formData.specialRequests?.trim() || undefined
+        });
 
-      // VALIDACIÓN ESTRICTA: Solo continuar si Clover confirma éxito
-      if (!paymentResult.success) {
-        throw new Error(paymentResult.error || 'Pago rechazado por Clover');
+        if (paymentResult.success) {
+          setP2PInstructions(paymentResult.paymentInstructions);
+          setShowP2PInstructions(true);
+          setShowPayment(false);
+          setShowCardForm(false);
+          
+          // Limpiar carrito
+          localStorage.removeItem('bakery-cart');
+        }
+        
+      } else {
+        // Validar datos de tarjeta para pagos electrónicos
+        if (selectedPaymentMethod === 'card' && (!cardData.cardNumber || !cardData.expiry || !cardData.cvv || !cardData.name)) {
+          showNotification('error', 'Datos Incompletos', 'Por favor completa todos los campos de la tarjeta');
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Crear pago con Square
+        paymentResult = await createSquarePayment({
+          amount: parseFloat(calculateTotal()),
+          items: cartItems.map(item => ({
+            name: item.name,
+            price: getItemPrice(item),
+            quantity: item.quantity
+          })),
+          customerInfo: {
+            name: formData.name.trim(),
+            phone: formData.phone.trim(),
+            email: formData.email?.trim() || currentUser?.email || ''
+          },
+          cardInfo: selectedPaymentMethod === 'card' ? {
+            number: cardData.cardNumber.replace(/\s/g, ''),
+            expiry: cardData.expiry,
+            cvv: cardData.cvv,
+            name: cardData.name.trim()
+          } : undefined,
+          paymentMethod: selectedPaymentMethod,
+          userId: currentUser?.id,
+          pickupTime: formData.pickupTime || undefined,
+          specialRequests: formData.specialRequests?.trim() || undefined
+        });
+
+        if (paymentResult.success) {
+          // Limpiar carrito
+          localStorage.removeItem('bakery-cart');
+          
+          // Mostrar éxito
+          setShowSuccess(true);
+          setShowPayment(false);
+          setShowCardForm(false);
+
+          // Redirigir al dashboard
+          setTimeout(() => {
+            setShowSuccess(false);
+            router.push('/dashboard');
+          }, 3000);
+        }
       }
 
-      // Si llegamos aquí, el pago fue exitoso Y se guardó en Supabase
-      console.log('✅ Pago exitoso y orden guardada!');
-      
-      // Limpiar carrito
-      localStorage.removeItem('bakery-cart');
-      
-      // Mostrar éxito
-      setShowSuccess(true);
-      setShowPayment(false);
-      setShowCardForm(false);
-
-      // Redirigir al dashboard
-      setTimeout(() => {
-        setShowSuccess(false);
-        router.push('/dashboard');
-      }, 3000);
+      // VALIDACIÓN ESTRICTA: Solo continuar si el procesamiento fue exitoso
+      if (!paymentResult.success) {
+        throw new Error(paymentResult.error || 'Error en el procesamiento del pago');
+      }
 
     } catch (error: any) {
       console.error('❌ Error en el proceso de pago:', error);
@@ -317,6 +354,117 @@ export default function OrderForm() {
       ))}
     </div>
   );
+
+  // Componente de instrucciones P2P
+  const P2PInstructionsModal = () => {
+    if (!showP2PInstructions || !p2pInstructions) return null;
+
+    return (
+      <div className="bg-white rounded-xl shadow-lg p-8">
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 flex items-center justify-center bg-gradient-to-br from-green-100 to-emerald-100 rounded-full mx-auto mb-4">
+            <i className="ri-smartphone-line text-green-600 text-2xl"></i>
+          </div>
+          <h3 className="text-xl font-bold text-gray-800 mb-2">¡Orden Creada Exitosamente!</h3>
+          <p className="text-gray-600 text-sm mb-4">Número de orden: <span className="font-mono text-green-600">{p2pInstructions.orderId}</span></p>
+        </div>
+
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200 mb-6">
+          <div className="flex items-center mb-4">
+            <div className="w-12 h-12 flex items-center justify-center bg-blue-100 rounded-full mr-4">
+              <i className={`text-blue-600 text-xl ${
+                p2pInstructions.method === 'zelle' ? 'ri-bank-line' :
+                p2pInstructions.method === 'cashapp' ? 'ri-money-dollar-circle-line' :
+                'ri-smartphone-line'
+              }`}></i>
+            </div>
+            <div>
+              <h4 className="text-lg font-bold text-blue-800 capitalize">
+                Pagar con {p2pInstructions.method === 'cashapp' ? 'Cash App' : p2pInstructions.method}
+              </h4>
+              <p className="text-2xl font-bold text-blue-900">${p2pInstructions.amount.toFixed(2)}</p>
+            </div>
+          </div>
+
+          <div className="space-y-3 mb-4">
+            {p2pInstructions.email && (
+              <div className="flex items-center justify-between bg-white rounded-lg p-3 border">
+                <div className="flex items-center">
+                  <i className="ri-mail-line text-gray-600 mr-3"></i>
+                  <span className="font-medium">{p2pInstructions.email}</span>
+                </div>
+                <button 
+                  onClick={() => navigator.clipboard.writeText(p2pInstructions.email)}
+                  className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                >
+                  Copiar
+                </button>
+              </div>
+            )}
+            
+            {p2pInstructions.phone && (
+              <div className="flex items-center justify-between bg-white rounded-lg p-3 border">
+                <div className="flex items-center">
+                  <i className="ri-phone-line text-gray-600 mr-3"></i>
+                  <span className="font-medium">{p2pInstructions.phone}</span>
+                </div>
+                <button 
+                  onClick={() => navigator.clipboard.writeText(p2pInstructions.phone)}
+                  className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                >
+                  Copiar
+                </button>
+              </div>
+            )}
+            
+            {p2pInstructions.handle && (
+              <div className="flex items-center justify-between bg-white rounded-lg p-3 border">
+                <div className="flex items-center">
+                  <i className="ri-user-line text-gray-600 mr-3"></i>
+                  <span className="font-medium">{p2pInstructions.handle}</span>
+                </div>
+                <button 
+                  onClick={() => navigator.clipboard.writeText(p2pInstructions.handle)}
+                  className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                >
+                  Copiar
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-amber-50 rounded-lg p-4 border border-amber-200 mb-4">
+            <div className="flex items-start">
+              <i className="ri-information-line text-amber-600 text-lg mt-0.5 mr-3 flex-shrink-0"></i>
+              <div>
+                <h5 className="font-medium text-amber-800 mb-1">Instrucciones Importantes:</h5>
+                <p className="text-sm text-amber-700">{p2pInstructions.instructions}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <button
+            onClick={() => {
+              setShowP2PInstructions(false);
+              router.push('/dashboard');
+            }}
+            className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 rounded-lg font-bold text-lg shadow-lg hover:shadow-xl transition-all"
+          >
+            <div className="flex items-center justify-center">
+              <i className="ri-check-line text-xl mr-2"></i>
+              Entendido - Ver Mis Órdenes
+            </div>
+          </button>
+
+          <p className="text-center text-xs text-gray-500">
+            Tu orden estará lista una vez confirmemos tu pago
+          </p>
+        </div>
+      </div>
+    );
+  };
 
   if (showSuccess) {
     return (
@@ -479,6 +627,15 @@ export default function OrderForm() {
     );
   }
 
+  if (showP2PInstructions) {
+    return (
+      <>
+        <NotificationSystem />
+        <P2PInstructionsModal />
+      </>
+    );
+  }
+
   if (showPayment) {
     return (
       <>
@@ -488,24 +645,12 @@ export default function OrderForm() {
             <div className="w-16 h-16 flex items-center justify-center bg-gradient-to-br from-pink-100 to-purple-100 rounded-full mx-auto mb-4">
               <i className="ri-secure-payment-line text-pink-500 text-2xl"></i>
             </div>
-            <h3 className="text-xl font-bold text-gray-800 mb-2">Pago Seguro</h3>
-            <p className="text-gray-600 text-sm mb-4">Completa tu pago con Clover</p>
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200 mb-6">
-              <div className="flex items-center justify-center space-x-4">
-                <img 
-                  src="https://readdy.ai/api/search-image?query=Clover%20payment%20system%20logo%2C%20secure%20payment%20processing%2C%20fintech%20branding%2C%20professional%20clean%20design%2C%20payment%20gateway&width=120&height=40&seq=cloverlogo2&orientation=landscape"
-                  alt="Clover Payment"
-                  className="h-8 object-contain"
-                />
-                <div className="text-left">
-                  <p className="font-semibold text-blue-800">Powered by Clover</p>
-                  <p className="text-xs text-blue-700">Procesamiento seguro y confiable</p>
-                </div>
-              </div>
-            </div>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Selecciona tu Método de Pago</h3>
+            <p className="text-gray-600 text-sm mb-4">Elige cómo quieres pagar tu orden</p>
           </div>
 
           <div className="space-y-4 mb-6">
+            {/* Resumen del pago */}
             <div className="bg-gray-50 rounded-xl p-4">
               <h4 className="font-semibold text-gray-800 mb-3">Resumen del Pago</h4>
               <div className="space-y-2 text-sm">
@@ -524,35 +669,186 @@ export default function OrderForm() {
               </div>
             </div>
 
-            <div className="bg-amber-50 rounded-xl p-4 border border-amber-200">
-              <div className="flex items-start">
-                <div className="w-5 h-5 flex items-center justify-center">
-                  <i className="ri-shield-check-line text-amber-600 text-sm"></i>
+            {/* Opciones de pago */}
+            <div className="space-y-3">
+              <h4 className="font-semibold text-gray-800">Métodos de Pago Disponibles</h4>
+              
+              {/* Tarjeta de crédito */}
+              <button
+                onClick={() => setSelectedPaymentMethod('card')}
+                className={`w-full p-4 rounded-xl border-2 transition-all ${
+                  selectedPaymentMethod === 'card' 
+                    ? 'border-blue-500 bg-blue-50' 
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center">
+                  <div className="w-12 h-12 flex items-center justify-center bg-blue-100 rounded-full mr-4">
+                    <i className="ri-bank-card-line text-blue-600 text-xl"></i>
+                  </div>
+                  <div className="text-left">
+                    <h5 className="font-medium text-gray-800">Tarjeta de Crédito/Débito</h5>
+                    <p className="text-sm text-gray-600">Visa, Mastercard, American Express</p>
+                  </div>
+                  {selectedPaymentMethod === 'card' && (
+                    <i className="ri-check-line text-blue-600 text-xl ml-auto"></i>
+                  )}
                 </div>
-                <div className="ml-3">
-                  <h4 className="text-sm font-medium text-amber-800">Pago Seguro</h4>
-                  <p className="text-xs text-amber-700 mt-1">
-                    Tu pago se procesa de forma segura a través del sistema encriptado de Clover. Nunca almacenamos tu información de tarjeta.
-                  </p>
+              </button>
+
+              {/* Apple Pay */}
+              <button
+                onClick={() => setSelectedPaymentMethod('apple_pay')}
+                className={`w-full p-4 rounded-xl border-2 transition-all ${
+                  selectedPaymentMethod === 'apple_pay' 
+                    ? 'border-gray-800 bg-gray-50' 
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center">
+                  <div className="w-12 h-12 flex items-center justify-center bg-gray-100 rounded-full mr-4">
+                    <i className="ri-apple-line text-gray-800 text-xl"></i>
+                  </div>
+                  <div className="text-left">
+                    <h5 className="font-medium text-gray-800">Apple Pay</h5>
+                    <p className="text-sm text-gray-600">Pago rápido y seguro</p>
+                  </div>
+                  {selectedPaymentMethod === 'apple_pay' && (
+                    <i className="ri-check-line text-gray-800 text-xl ml-auto"></i>
+                  )}
                 </div>
+              </button>
+
+              {/* Google Pay */}
+              <button
+                onClick={() => setSelectedPaymentMethod('google_pay')}
+                className={`w-full p-4 rounded-xl border-2 transition-all ${
+                  selectedPaymentMethod === 'google_pay' 
+                    ? 'border-green-500 bg-green-50' 
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center">
+                  <div className="w-12 h-12 flex items-center justify-center bg-green-100 rounded-full mr-4">
+                    <i className="ri-google-line text-green-600 text-xl"></i>
+                  </div>
+                  <div className="text-left">
+                    <h5 className="font-medium text-gray-800">Google Pay</h5>
+                    <p className="text-sm text-gray-600">Pago rápido y seguro</p>
+                  </div>
+                  {selectedPaymentMethod === 'google_pay' && (
+                    <i className="ri-check-line text-green-600 text-xl ml-auto"></i>
+                  )}
+                </div>
+              </button>
+
+              <div className="border-t pt-4">
+                <h5 className="font-medium text-gray-800 mb-3">Transferencias P2P</h5>
+                
+                {/* Zelle */}
+                <button
+                  onClick={() => setSelectedPaymentMethod('zelle')}
+                  className={`w-full p-4 rounded-xl border-2 transition-all mb-3 ${
+                    selectedPaymentMethod === 'zelle' 
+                      ? 'border-purple-500 bg-purple-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 flex items-center justify-center bg-purple-100 rounded-full mr-4">
+                      <i className="ri-bank-line text-purple-600 text-xl"></i>
+                    </div>
+                    <div className="text-left">
+                      <h5 className="font-medium text-gray-800">Zelle</h5>
+                      <p className="text-sm text-gray-600">Transferencia bancaria instantánea</p>
+                    </div>
+                    {selectedPaymentMethod === 'zelle' && (
+                      <i className="ri-check-line text-purple-600 text-xl ml-auto"></i>
+                    )}
+                  </div>
+                </button>
+
+                {/* Cash App */}
+                <button
+                  onClick={() => setSelectedPaymentMethod('cashapp')}
+                  className={`w-full p-4 rounded-xl border-2 transition-all mb-3 ${
+                    selectedPaymentMethod === 'cashapp' 
+                      ? 'border-green-500 bg-green-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 flex items-center justify-center bg-green-100 rounded-full mr-4">
+                      <i className="ri-money-dollar-circle-line text-green-600 text-xl"></i>
+                    </div>
+                    <div className="text-left">
+                      <h5 className="font-medium text-gray-800">Cash App</h5>
+                      <p className="text-sm text-gray-600">Pago móvil rápido</p>
+                    </div>
+                    {selectedPaymentMethod === 'cashapp' && (
+                      <i className="ri-check-line text-green-600 text-xl ml-auto"></i>
+                    )}
+                  </div>
+                </button>
+
+                {/* Venmo */}
+                <button
+                  onClick={() => setSelectedPaymentMethod('venmo')}
+                  className={`w-full p-4 rounded-xl border-2 transition-all ${
+                    selectedPaymentMethod === 'venmo' 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 flex items-center justify-center bg-blue-100 rounded-full mr-4">
+                      <i className="ri-smartphone-line text-blue-600 text-xl"></i>
+                    </div>
+                    <div className="text-left">
+                      <h5 className="font-medium text-gray-800">Venmo</h5>
+                      <p className="text-sm text-gray-600">Pago social móvil</p>
+                    </div>
+                    {selectedPaymentMethod === 'venmo' && (
+                      <i className="ri-check-line text-blue-600 text-xl ml-auto"></i>
+                    )}
+                  </div>
+                </button>
               </div>
             </div>
           </div>
 
           <div className="space-y-3">
             <button
-              onClick={() => setShowCardForm(true)}
-              className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-4 rounded-lg font-bold !rounded-button text-lg shadow-lg hover:shadow-xl transition-all"
+              onClick={() => {
+                if (selectedPaymentMethod === 'card') {
+                  setShowCardForm(true);
+                } else {
+                  processPayment();
+                }
+              }}
+              disabled={isSubmitting}
+              className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-4 rounded-lg font-bold text-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
             >
-              <div className="flex items-center justify-center">
-                <i className="ri-bank-card-line text-xl mr-2"></i>
-                Ingresar Datos de Tarjeta
-              </div>
+              {isSubmitting ? (
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  Procesando...
+                </div>
+              ) : (
+                <div className="flex items-center justify-center">
+                  <i className="ri-arrow-right-line text-xl mr-2"></i>
+                  {selectedPaymentMethod === 'card' ? 'Ingresar Datos de Tarjeta' : 
+                   selectedPaymentMethod === 'apple_pay' ? 'Pagar con Apple Pay' :
+                   selectedPaymentMethod === 'google_pay' ? 'Pagar con Google Pay' :
+                   `Continuar con ${selectedPaymentMethod === 'cashapp' ? 'Cash App' : 
+                     selectedPaymentMethod.charAt(0).toUpperCase() + selectedPaymentMethod.slice(1)}`}
+                </div>
+              )}
             </button>
 
             <button
               onClick={() => setShowPayment(false)}
-              className="w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-medium !rounded-button"
+              className="w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-medium"
             >
               Volver a Detalles del Pedido
             </button>

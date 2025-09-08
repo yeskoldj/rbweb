@@ -763,6 +763,475 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
 
   const totalPrice = calculateTotal();
 
+  const renderAdvancedStep = () => {
+    switch (currentStep) {
+      case 1: // Forma
+        return (
+          <div className="p-6">
+            <h3 className="text-xl font-bold text-amber-800 mb-4 flex items-center">
+              <i className="ri-shape-line mr-3 text-pink-500 text-2xl"></i>
+              Selecciona la Forma
+            </h3>
+            <p className="text-gray-600 mb-6">Elige la forma que mejor se adapte a tu ocasión especial</p>
+
+            <div className="grid grid-cols-2 gap-4">
+              {shapeOptions.map(shape => (
+                <label
+                  key={shape.id}
+                  className={`p-4 border-2 rounded-xl cursor-pointer transition-all hover:shadow-md ${
+                    selectedOptions.shape === shape.id
+                      ? 'border-pink-500 bg-pink-50 shadow-lg scale-105'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="shape"
+                    checked={selectedOptions.shape === shape.id}
+                    onChange={() => setSelectedOptions(prev => ({ ...prev, shape: shape.id }))}
+                    className="opacity-0 absolute"
+                  />
+                  <div className="text-center">
+                    <div className={`w-16 h-16 mx-auto mb-3 rounded-full flex items-center justify-center ${
+                      selectedOptions.shape === shape.id
+                        ? 'bg-pink-100 text-pink-600'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      <i className={`${shape.icon} text-2xl`}></i>
+                    </div>
+                    <h4 className="font-semibold text-gray-800 mb-1">{shape.name}</h4>
+                    <p className="text-sm font-bold text-pink-600">
+                      {shape.price > 0 ? `+$${shape.price}` : 'Incluido'}
+                    </p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+        );
+
+      case 2: // Niveles (Avanzado)
+        return (
+          <div className="p-6">
+            <h3 className="text-xl font-bold text-amber-800 mb-4 flex items-center">
+              <i className="ri-stack-line mr-3 text-orange-500 text-2xl"></i>
+              Construye tus Niveles
+            </h3>
+            <p className="text-gray-600 mb-6">Construye tu pastel capa por capa con total control</p>
+
+            <div className="space-y-6">
+              {/* Vista previa del pastel */}
+              <div className="bg-gradient-to-b from-blue-50 to-pink-50 rounded-xl p-6">
+                <h4 className="font-semibold text-gray-800 mb-4 text-center">Vista Previa</h4>
+                <CakePreview />
+              </div>
+
+              {/* Controles de capas */}
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h4 className="font-semibold text-gray-800">Capas del Pastel</h4>
+                  <button
+                    type="button"
+                    onClick={addLayer}
+                    className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-600 transition-colors"
+                  >
+                    <i className="ri-add-line mr-1"></i>
+                    Agregar Capa
+                  </button>
+                </div>
+
+                {selectedOptions.layers.map((layer, index) => (
+                  <div key={`layer-${layer.id}-${index}`} className="bg-white border-2 border-gray-200 rounded-xl p-4">
+                    <div className="flex justify-between items-center mb-3">
+                      <h5 className="font-medium text-gray-800">Capa {index + 1}</h5>
+                      {selectedOptions.layers.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeLayer(layer.id)}
+                          className="text-red-500 hover:text-red-700 p-1"
+                        >
+                          <i className="ri-close-line"></i>
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Tamaño de la Capa {index + 1}
+                        </label>
+                        <select
+                          value={layer.size}
+                          onChange={(e) => updateLayer(layer.id, 'size', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+                        >
+                          {getAvailableSizesForLayer(index).map(size => (
+                            <option key={size.id} value={size.id}>
+                              {size.name} - ${size.price} ({size.serves})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="text-right">
+                        <span className="text-lg font-bold text-orange-600">
+                          ${layer.price}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Validación */}
+              {!validateCakeStructure().isValid && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                  <div className="flex items-start">
+                    <i className="ri-error-warning-line text-red-500 mr-3 mt-0.5"></i>
+                    <div>
+                      <h5 className="font-medium text-red-800 mb-1">Estructura inválida</h5>
+                      <ul className="text-sm text-red-700 space-y-1">
+                        {validateCakeStructure().errors.map((error, index) => (
+                          <li key={index}>• {error}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
+      case 3: // Sabores (Avanzado)
+        return (
+          <div className="p-6">
+            <h3 className="text-xl font-bold text-amber-800 mb-4 flex items-center">
+              <i className="ri-cake-3-line mr-3 text-purple-500 text-2xl"></i>
+              Sabores por Capa
+            </h3>
+            <p className="text-gray-600 mb-6">Selecciona sabores diferentes para cada capa (opcional)</p>
+
+            <div className="grid grid-cols-2 gap-4">
+              {flavorOptions.map(flavor => (
+                <label
+                  key={flavor.id}
+                  className={`p-4 border-2 rounded-xl cursor-pointer transition-all hover:shadow-md ${
+                    selectedOptions.flavors.includes(flavor.id)
+                      ? 'border-purple-500 bg-purple-50 shadow-lg'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedOptions.flavors.includes(flavor.id)}
+                    onChange={() => toggleOption('flavors', flavor.id)}
+                    className="opacity-0 absolute"
+                  />
+                  <div className="text-center">
+                    <div
+                      className="w-12 h-12 mx-auto mb-3 rounded-full border-4 border-white shadow-md"
+                      style={{ backgroundColor: flavor.color }}
+                    ></div>
+                    <h4 className="font-semibold text-gray-800 mb-1">{flavor.name}</h4>
+                    <p className="text-sm font-bold text-purple-600">
+                      {flavor.price > 0 ? `+$${flavor.price}` : 'Incluido'}
+                    </p>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            <div className="mt-4 text-center text-sm text-gray-500">
+              {selectedOptions.flavors.length} sabor{selectedOptions.flavors.length !== 1 ? 'es' : ''} seleccionado{selectedOptions.flavors.length !== 1 ? 's' : ''}
+            </div>
+          </div>
+        );
+
+      case 4: // Colores (Avanzado)
+        return (
+          <div className="p-6">
+            <h3 className="text-xl font-bold text-amber-800 mb-4 flex items-center">
+              <i className="ri-palette-line mr-3 text-blue-500 text-2xl"></i>
+              Esquema de Colores
+            </h3>
+            <p className="text-gray-600 mb-6">Selecciona hasta 3 colores para la decoración</p>
+
+            <div className="grid grid-cols-3 gap-4">
+              {colorOptions.map(color => (
+                <label
+                  key={color.id}
+                  className={`p-4 border-2 rounded-xl cursor-pointer transition-all hover:shadow-md ${
+                    selectedOptions.colors.includes(color.id)
+                      ? 'border-blue-500 bg-blue-50 shadow-lg'
+                      : 'border-gray-200 hover:border-gray-300'
+                  } ${
+                    selectedOptions.colors.length >= 3 && !selectedOptions.colors.includes(color.id)
+                      ? 'opacity-50 cursor-not-allowed'
+                      : ''
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedOptions.colors.includes(color.id)}
+                    onChange={() => {
+                      if (selectedOptions.colors.includes(color.id)) {
+                        setSelectedOptions(prev => ({
+                          ...prev,
+                          colors: prev.colors.filter(id => id !== color.id)
+                        }));
+                      } else if (selectedOptions.colors.length < 3) {
+                        setSelectedOptions(prev => ({
+                          ...prev,
+                          colors: [...prev.colors, color.id]
+                        }));
+                      }
+                    }}
+                    disabled={selectedOptions.colors.length >= 3 && !selectedOptions.colors.includes(color.id)}
+                    className="opacity-0 absolute"
+                  />
+                  <div className="text-center">
+                    <div
+                      className="w-10 h-10 mx-auto mb-1 rounded-full border-4 border-white shadow-md"
+                      style={{ backgroundColor: color.color }}
+                    ></div>
+                    <h4 className="font-medium text-gray-800 text-sm mb-1">{color.name}</h4>
+                    <p className="text-xs font-bold text-blue-600">
+                      {color.price > 0 ? `+$${color.price}` : 'Incluido'}
+                    </p>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            <div className="mt-4 text-center text-sm text-gray-500">
+              {selectedOptions.colors.length}/3 colores seleccionados
+            </div>
+          </div>
+        );
+
+      case 5: // Rellenos (Avanzado)
+        return (
+          <div className="p-6">
+            <h3 className="text-xl font-bold text-amber-800 mb-4 flex items-center">
+              <i className="ri-contrast-drop-line mr-3 text-amber-500 text-2xl"></i>
+              Rellenos Especiales
+            </h3>
+            <p className="text-gray-600 mb-6">Agrega rellenos deliciosos entre las capas</p>
+
+            <div className="space-y-3">
+              {fillingOptions.map(filling => (
+                <label
+                  key={filling.id}
+                  className={`flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all hover:shadow-md ${
+                    selectedOptions.fillings.includes(filling.id)
+                      ? 'border-amber-500 bg-amber-50 shadow-lg'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedOptions.fillings.includes(filling.id)}
+                    onChange={() => toggleOption('fillings', filling.id)}
+                    className="opacity-0 absolute"
+                  />
+                  <div className="flex-1 flex items-center justify-between">
+                    <div>
+                      <h4 className="font-semibold text-gray-800">{filling.name}</h4>
+                      <p className="text-sm text-gray-600">Relleno cremoso entre capas</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-amber-600">
+                        {filling.price > 0 ? `+$${filling.price}` : 'Incluido'}
+                      </p>
+                    </div>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+        );
+
+      case 6: // Decoraciones (Avanzado)
+        return (
+          <div className="p-6">
+            <h3 className="text-xl font-bold text-amber-800 mb-4 flex items-center">
+              <i className="ri-star-line mr-3 text-yellow-500 text-2xl"></i>
+              Decoraciones Premium
+            </h3>
+            <p className="text-gray-600 mb-6">Selecciona decoraciones especiales para tu pastel</p>
+
+            <div className="grid grid-cols-2 gap-4">
+              {decorationOptions.map(decoration => (
+                <label
+                  key={decoration.id}
+                  className={`p-4 border-2 rounded-xl cursor-pointer transition-all hover:shadow-md ${
+                    selectedOptions.decorations.includes(decoration.id)
+                      ? 'border-yellow-500 bg-yellow-50 shadow-lg'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedOptions.decorations.includes(decoration.id)}
+                    onChange={() => toggleOption('decorations', decoration.id)}
+                    className="opacity-0 absolute"
+                  />
+                  <div className="text-center">
+                    <div className={`w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center ${
+                      selectedOptions.decorations.includes(decoration.id)
+                        ? 'bg-yellow-100 text-yellow-600'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      <i className={`${decoration.icon} text-xl`}></i>
+                    </div>
+                    <h4 className="font-semibold text-gray-800 mb-1 text-sm">{decoration.name}</h4>
+                    <p className="text-xs text-gray-600 mb-2">{decoration.description}</p>
+                    <p className="text-sm font-bold text-yellow-600">
+                      +${decoration.price}
+                    </p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+        );
+
+      case 7: // Detalles finales (Avanzado)
+        return (
+          <div className="p-6">
+            <h3 className="text-xl font-bold text-amber-800 mb-4 flex items-center">
+              <i className="ri-edit-line mr-3 text-green-500 text-2xl"></i>
+              Toques Finales
+            </h3>
+            <p className="text-gray-600 mb-6">Personaliza los detalles finales de tu pastel</p>
+
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  Mensaje o Inscripción (Opcional)
+                </label>
+                <input
+                  type="text"
+                  value={selectedOptions.inscription}
+                  onChange={e => setSelectedOptions(prev => ({ ...prev, inscription: e.target.value }))}
+                  placeholder="Ej: ¡Feliz Cumpleaños María!"
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-green-500 transition-colors"
+                  maxLength={50}
+                />
+                <div className="text-xs text-gray-500 mt-1 text-right">
+                  {selectedOptions.inscription.length}/50 caracteres
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  Solicitudes Especiales (Opcional)
+                </label>
+                <textarea
+                  value={selectedOptions.specialRequests}
+                  onChange={e => setSelectedOptions(prev => ({ ...prev, specialRequests: e.target.value }))}
+                  placeholder="Cualquier instrucción especial, alergias, o detalles adicionales..."
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-green-500 transition-colors h-24 resize-none"
+                  maxLength={300}
+                />
+                <div className="text-xs text-gray-500 mt-1 text-right">
+                  {selectedOptions.specialRequests.length}/300 caracteres
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  Cantidad
+                </label>
+                <div className="flex items-center justify-center space-x-4 bg-gray-50 rounded-xl p-4">
+                  <button
+                    type="button"
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    className="w-12 h-12 flex items-center justify-center bg-gray-300 rounded-full hover:bg-gray-400 transition-colors"
+                  >
+                    <i className="ri-subtract-line text-xl"></i>
+                  </button>
+                  <span className="text-3xl font-bold text-gray-800 w-16 text-center">{quantity}</span>
+                  <button
+                    type="button"
+                    onClick={() => setQuantity(quantity + 1)}
+                    className="w-12 h-12 flex items-center justify-center bg-green-500 text-white rounded-full hover:bg-green-600 transition-colors"
+                  >
+                    <i className="ri-add-line text-xl"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-r from-green-50 to-teal-50 rounded-xl p-6 border border-green-200">
+                <h4 className="font-bold text-green-800 mb-4 text-lg">Resumen Final</h4>
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-700">Forma:</span>
+                    <span className="font-medium text-gray-800 capitalize">
+                      {shapeOptions.find(s => s.id === selectedOptions.shape)?.name}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-700">Capas:</span>
+                    <span className="font-medium text-gray-800">
+                      {selectedOptions.layers.length} nivel{selectedOptions.layers.length > 1 ? 'es' : ''}
+                    </span>
+                  </div>
+                  {selectedOptions.flavors.length > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-700">Sabores:</span>
+                      <span className="font-medium text-gray-800">
+                        {selectedOptions.flavors.length} sabor{selectedOptions.flavors.length > 1 ? 'es' : ''}
+                      </span>
+                    </div>
+                  )}
+                  {selectedOptions.colors.length > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-700">Colores:</span>
+                      <span className="font-medium text-gray-800">
+                        {selectedOptions.colors.length} color{selectedOptions.colors.length > 1 ? 'es' : ''}
+                      </span>
+                    </div>
+                  )}
+                  {selectedOptions.fillings.length > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-700">Rellenos:</span>
+                      <span className="font-medium text-gray-800">
+                        {selectedOptions.fillings.length} relleno{selectedOptions.fillings.length > 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  )}
+                  {selectedOptions.decorations.length > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-700">Decoraciones:</span>
+                      <span className="font-medium text-gray-800">
+                        {selectedOptions.decorations.length} decoración{selectedOptions.decorations.length > 1 ? 'es' : ''}
+                      </span>
+                    </div>
+                  )}
+                  <div className="border-t border-green-200 pt-3 mt-3">
+                    <div className="flex justify-between text-lg">
+                      <span className="font-bold text-gray-800">Total:</span>
+                      <span className="font-bold text-green-600 text-xl">
+                        ${totalPrice.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-600 text-right mt-1">
+                      Precio por {quantity} pastel{quantity > 1 ? 'es' : ''}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 to-purple-50">
       <Header />
@@ -827,7 +1296,6 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
 
           <div className="bg-white rounded-xl shadow-lg p-4 mb-6 sticky top-20 z-10">
             <div className="flex items-center space-x-4">
-              {/* Vista previa del pastel más grande y centrada */}
               <div className="w-40 flex-shrink-0">
                 <CakePreview />
               </div>
@@ -842,7 +1310,6 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                   </span>
                 </div>
                 
-                {/* Información mejorada con iconos */}
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center text-sm text-gray-600">
                     <i className="ri-checkbox-blank-circle-line text-pink-500 mr-2"></i>
@@ -857,7 +1324,7 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                   {selectedOptions.flavors.length > 0 && (
                     <div className="flex items-center text-sm text-gray-600">
                       <i className="ri-cake-3-line text-purple-500 mr-2"></i>
-                      <span>{flavorOptions.find(f => f.id === selectedOptions.flavors[0])?.name}</span>
+                      <span>{selectedOptions.flavors.length} sabor{selectedOptions.flavors.length > 1 ? 'es' : ''}</span>
                     </div>
                   )}
                   
@@ -869,7 +1336,6 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                   )}
                 </div>
                 
-                {/* Precio total destacado */}
                 <div className="text-right bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg p-3">
                   <div className="text-2xl font-bold text-pink-600">
                     ${totalPrice.toFixed(2)}
@@ -1267,13 +1733,7 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
               </>
             )}
 
-            {customizerMode === 'advanced' && (
-              <>
-                <div className="p-6 text-center text-gray-600">
-                  El modo avanzado está en desarrollo. Vuelve pronto para más opciones.
-                </div>
-              </>
-            )}
+            {customizerMode === 'advanced' && renderAdvancedStep()}
 
             <div className="border-t bg-gray-50 p-4">
               <div className="flex justify-between items-center">
