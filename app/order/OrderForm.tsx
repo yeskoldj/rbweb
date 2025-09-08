@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -6,9 +5,6 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { createSquarePayment, createP2POrder, p2pPaymentConfig } from '@/lib/squareConfig';
 import Script from 'next/script';
-
-
-
 
 type OrderFormProps = {
   squareReady?: boolean;
@@ -42,7 +38,6 @@ export default function OrderForm() {
   const [applePay, setApplePay] = useState<any>(null);
   const [googlePay, setGooglePay] = useState<any>(null);
 
-
   const [showP2PInstructions, setShowP2PInstructions] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'card' | 'apple_pay' | 'google_pay' | 'zelle' | 'cashapp' | 'venmo'>('card');
   const [p2pInstructions, setP2PInstructions] = useState<any>(null);
@@ -57,17 +52,55 @@ export default function OrderForm() {
     specialRequests: '',
     pickupTime: ''
   });
-  const [cardData, setCardData] = useState({
-    cardNumber: '',
-    expiry: '',
-    cvv: '',
-    name: ''
-  });
 
   const appId = process.env.NEXT_PUBLIC_SQUARE_APPLICATION_ID!;
   const locationId = process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID!;
 
-  const initSquare = useCallback(async () => {
+  // Inicializar Square después de mostrar el formulario de tarjeta
+  const initSquareCard = useCallback(async () => {
+    try {
+      // @ts-ignore
+      const Square = (window as any).Square;
+      if (!Square) {
+        console.error('Square SDK not loaded');
+        return false;
+      }
+
+      // Si ya tenemos payments, solo necesitamos inicializar card
+      let p = payments;
+      if (!p) {
+        p = await Square.payments(appId, locationId);
+        setPayments(p);
+      }
+
+      // Verificar que el contenedor existe
+      const container = document.getElementById('card-container');
+      if (!container) {
+        console.error('Card container not found');
+        return false;
+      }
+
+      // Si ya hay una tarjeta, destruirla primero
+      if (card) {
+        await card.destroy();
+        setCard(null);
+      }
+
+      // Crear y adjuntar el card element
+      const c = await p.card();
+      await c.attach('#card-container');
+      setCard(c);
+
+      console.log('✅ Square Card initialized');
+      return true;
+    } catch (e) {
+      console.error('Square Card init failed:', e);
+      return false;
+    }
+  }, [payments, card, appId, locationId]);
+
+  // Inicializar Square para otros métodos de pago
+  const initSquarePayments = useCallback(async () => {
     try {
       // @ts-ignore
       const Square = (window as any).Square;
@@ -76,79 +109,68 @@ export default function OrderForm() {
       const p = await Square.payments(appId, locationId);
       setPayments(p);
 
-      // Card
-      const c = await p.card();
-      await c.attach('#card-container'); // <- NECESITA el div con este id en el JSX
-      setCard(c);
-
       // Apple Pay
-      const ap = p.applePay ? await p.applePay() : null;
-      if (ap && (await ap.canMakePayment())) setApplePay(ap);
+      try {
+        const ap = await p.applePay({
+          countryCode: 'US',
+          currencyCode: 'USD'
+        });
+        const canMakePayment = await ap.canMakePayment();
+        if (canMakePayment) {
+          setApplePay(ap);
+        }
+      } catch (e) {
+        console.log('Apple Pay not available');
+      }
 
       // Google Pay
-      const gp = p.googlePay ? await p.googlePay() : null;
-      if (gp && (await gp.canMakePayment())) setGooglePay(gp);
+      try {
+        const gp = await p.googlePay({
+          countryCode: 'US',
+          currencyCode: 'USD'
+        });
+        const canMakePayment = await gp.canMakePayment();
+        if (canMakePayment) {
+          setGooglePay(gp);
+        }
+      } catch (e) {
+        console.log('Google Pay not available');
+      }
 
       setSdkReady(true);
-      console.log('✅ Square SDK initialized');
+      console.log('✅ Square Payments SDK initialized');
     } catch (e) {
       console.error('Square init failed:', e);
     }
   }, [payments, appId, locationId]);
-  async function payWithCard(total: number, orderPayload: any) {
-    if (!card) return;
-    const result = await card.tokenize();
-    if (result.status !== 'OK') throw new Error('Card tokenize failed');
 
-    await createSquarePayment({
-      ...orderPayload,
-      paymentMethod: 'card',
-      sourceId: result.token,     // token del SDK
-      currency: 'USD',
-    });
-  }
-
-  async function payWithApple(total: number, orderPayload: any) {
-    if (!applePay) return;
-    const result = await applePay.tokenize();
-    if (result.status !== 'OK') throw new Error('Apple Pay tokenize failed');
-
-    await createSquarePayment({
-      ...orderPayload,
-      paymentMethod: 'card',
-      sourceId: result.token,     // token del SDK
-      currency: 'USD',
-    });
-  }
-
-  async function payWithGoogle(total: number, orderPayload: any) {
-    if (!googlePay) return;
-    const result = await googlePay.tokenize();
-    if (result.status !== 'OK') throw new Error('Google Pay tokenize failed');
-
-    await createSquarePayment({
-      ...orderPayload,
-      paymentMethod: 'card',
-      sourceId: result.token,     // token del SDK
-      currency: 'USD',
-    });
-  }
-
-  // Reintento suave por si el script tarda
+  // Inicializar Square cuando se carga el script
   useEffect(() => {
     if (!payments) {
-      const t = setInterval(() => {
+      const checkSquare = setInterval(() => {
         // @ts-ignore
         if ((window as any).Square) {
-          initSquare();
-          clearInterval(t);
+          initSquarePayments();
+          clearInterval(checkSquare);
         }
-      }, 400);
-      return () => clearInterval(t);
+      }, 100);
+      
+      // Limpiar después de 10 segundos si no se carga
+      setTimeout(() => clearInterval(checkSquare), 10000);
+      
+      return () => clearInterval(checkSquare);
     }
-  }, [initSquare, payments]);
+  }, [initSquarePayments, payments]);
 
-
+  // Inicializar Square Card cuando se muestra el formulario
+  useEffect(() => {
+    if (showCardForm && !card) {
+      // Dar tiempo al DOM para renderizar
+      setTimeout(() => {
+        initSquareCard();
+      }, 100);
+    }
+  }, [showCardForm, card, initSquareCard]);
 
   // Función para mostrar notificaciones modernas
   const showNotification = (type: 'success' | 'error' | 'warning' | 'info', title: string, message: string) => {
@@ -210,9 +232,6 @@ export default function OrderForm() {
       console.log('Error checking user:', error);
     }
   };
-
-
-
 
   const addToCart = (item: CartItem) => {
     const cartItem = {
@@ -290,25 +309,6 @@ export default function OrderForm() {
     setShowPayment(true);
   };
 
-  const handleCardInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    let formattedValue = value;
-
-    if (name === 'cardNumber') {
-      formattedValue = value.replace(/\s/g, '').replace(/(.{4})/g, '$1 ').trim();
-      if (formattedValue.length > 19) formattedValue = formattedValue.slice(0, 19);
-    } else if (name === 'expiry') {
-      formattedValue = value.replace(/\D/g, '').replace(/(\d{2})(\d)/, '$1/$2').slice(0, 5);
-    } else if (name === 'cvv') {
-      formattedValue = value.replace(/\D/g, '').slice(0, 4);
-    }
-
-    setCardData(prev => ({
-      ...prev,
-      [name]: formattedValue
-    }));
-  };
-
   const processPayment = async () => {
     setIsSubmitting(true);
 
@@ -348,61 +348,60 @@ export default function OrderForm() {
         }
         
       } else {
-        // Validar datos de tarjeta para pagos electrónicos
-        if (selectedPaymentMethod === 'card' && (!cardData.cardNumber || !cardData.expiry || !cardData.cvv || !cardData.name)) {
-          showNotification('error', 'Datos Incompletos', 'Por favor completa todos los campos de la tarjeta');
-          setIsSubmitting(false);
-          return;
+        // Tokenizar con Square según el método seleccionado
+        let sourceId: string | undefined;
+
+        if (selectedPaymentMethod === 'card') {
+          if (!card) {
+            throw new Error('Square Card no está inicializado. Por favor recarga la página.');
+          }
+          const res = await card.tokenize();
+          if (!res || res.status !== 'OK') {
+            throw new Error(res?.errors?.[0]?.detail || 'Error al procesar la tarjeta');
+          }
+          sourceId = res.token;
+        } else if (selectedPaymentMethod === 'apple_pay') {
+          if (!applePay) {
+            throw new Error('Apple Pay no está disponible en este dispositivo');
+          }
+          const res = await applePay.tokenize();
+          if (!res || res.status !== 'OK') {
+            throw new Error('Error al procesar Apple Pay');
+          }
+          sourceId = res.token;
+        } else if (selectedPaymentMethod === 'google_pay') {
+          if (!googlePay) {
+            throw new Error('Google Pay no está disponible en este dispositivo');
+          }
+          const res = await googlePay.tokenize();
+          if (!res || res.status !== 'OK') {
+            throw new Error('Error al procesar Google Pay');
+          }
+          sourceId = res.token;
+        } else {
+          throw new Error('Método de pago no válido');
         }
 
-// 🔐 Tokenizar con Square según el método seleccionado
-let sourceId: string | undefined;
-
-if (selectedPaymentMethod === 'card') {
-  // requiere haber inicializado `card` con Square.payments(...)
-  const res = await card?.tokenize();
-  if (!res || res.status !== 'OK') {
-    throw new Error('Card tokenize failed');
-  }
-  sourceId = res.token;
-} else if (selectedPaymentMethod === 'apple_pay') {
-  const res = await applePay?.tokenize();
-  if (!res || res.status !== 'OK') {
-    throw new Error('Apple Pay tokenize failed');
-  }
-  sourceId = res.token;
-} else if (selectedPaymentMethod === 'google_pay') {
-  const res = await googlePay?.tokenize();
-  if (!res || res.status !== 'OK') {
-    throw new Error('Google Pay tokenize failed');
-  }
-  sourceId = res.token;
-} else {
-  // Si NO es un método de Square, no intentes crear pago con Square aquí
-  throw new Error('Invalid Square payment method');
-}
-
-    // ✅ Crear pago con Square usando el token (sourceId)
-    paymentResult = await createSquarePayment({
-      amount: parseFloat(calculateTotal()),
-      items: cartItems.map(item => ({
-        name: item.name,
-        price: getItemPrice(item),
-        quantity: item.quantity
-      })),
-      customerInfo: {
-        name: formData.name.trim(),
-        phone: formData.phone.trim(),
-        email: formData.email?.trim() || currentUser?.email || ''
-      },
-      paymentMethod: selectedPaymentMethod as 'card' | 'apple_pay' | 'google_pay',
-      sourceId,                 // 👈 el token del SDK
-      currency: 'USD',
-      userId: currentUser?.id,
-      pickupTime: formData.pickupTime || undefined,
-      specialRequests: formData.specialRequests?.trim() || undefined
-    });
-
+        // Crear pago con Square usando el token
+        paymentResult = await createSquarePayment({
+          amount: parseFloat(calculateTotal()),
+          items: cartItems.map(item => ({
+            name: item.name,
+            price: getItemPrice(item),
+            quantity: item.quantity
+          })),
+          customerInfo: {
+            name: formData.name.trim(),
+            phone: formData.phone.trim(),
+            email: formData.email?.trim() || currentUser?.email || ''
+          },
+          paymentMethod: selectedPaymentMethod as 'card' | 'apple_pay' | 'google_pay',
+          sourceId,
+          currency: 'USD',
+          userId: currentUser?.id,
+          pickupTime: formData.pickupTime || undefined,
+          specialRequests: formData.specialRequests?.trim() || undefined
+        });
 
         if (paymentResult.success) {
           // Limpiar carrito
@@ -421,7 +420,7 @@ if (selectedPaymentMethod === 'card') {
         }
       }
 
-      // VALIDACIÓN ESTRICTA: Solo continuar si el procesamiento fue exitoso
+      // Validación: Solo continuar si el procesamiento fue exitoso
       if (!paymentResult.success) {
         throw new Error(paymentResult.error || 'Error en el procesamiento del pago');
       }
@@ -484,9 +483,29 @@ if (selectedPaymentMethod === 'card') {
     </div>
   );
 
-  // Componente de instrucciones P2P
+  // Componente de instrucciones P2P mejorado (solo muestra el username)
   const P2PInstructionsModal = () => {
     if (!showP2PInstructions || !p2pInstructions) return null;
+
+    const getP2PUsername = () => {
+      // Para Zelle usa el email, para otros usa el handle
+      if (p2pInstructions.method === 'zelle') {
+        return p2pInstructions.email;
+      }
+      return p2pInstructions.handle;
+    };
+
+    const getP2PIcon = () => {
+      if (p2pInstructions.method === 'zelle') return 'ri-bank-line';
+      if (p2pInstructions.method === 'cashapp') return 'ri-money-dollar-circle-line';
+      return 'ri-smartphone-line';
+    };
+
+    const getP2PLabel = () => {
+      if (p2pInstructions.method === 'zelle') return 'Email/Teléfono';
+      if (p2pInstructions.method === 'cashapp') return 'Cashtag';
+      return 'Username';
+    };
 
     return (
       <div className="bg-white rounded-xl shadow-lg p-8">
@@ -501,11 +520,7 @@ if (selectedPaymentMethod === 'card') {
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200 mb-6">
           <div className="flex items-center mb-4">
             <div className="w-12 h-12 flex items-center justify-center bg-blue-100 rounded-full mr-4">
-              <i className={`text-blue-600 text-xl ${
-                p2pInstructions.method === 'zelle' ? 'ri-bank-line' :
-                p2pInstructions.method === 'cashapp' ? 'ri-money-dollar-circle-line' :
-                'ri-smartphone-line'
-              }`}></i>
+              <i className={`text-blue-600 text-xl ${getP2PIcon()}`}></i>
             </div>
             <div>
               <h4 className="text-lg font-bold text-blue-800 capitalize">
@@ -516,50 +531,26 @@ if (selectedPaymentMethod === 'card') {
           </div>
 
           <div className="space-y-3 mb-4">
-            {p2pInstructions.email && (
-              <div className="flex items-center justify-between bg-white rounded-lg p-3 border">
-                <div className="flex items-center">
-                  <i className="ri-mail-line text-gray-600 mr-3"></i>
-                  <span className="font-medium">{p2pInstructions.email}</span>
+            {/* Solo mostrar el username/handle/email principal */}
+            <div className="flex items-center justify-between bg-white rounded-lg p-4 border-2 border-blue-200">
+              <div className="flex items-center">
+                <i className="ri-user-line text-blue-600 mr-3 text-xl"></i>
+                <div>
+                  <p className="text-xs text-gray-600">{getP2PLabel()}</p>
+                  <span className="font-bold text-lg text-gray-800">{getP2PUsername()}</span>
                 </div>
-                <button 
-                  onClick={() => navigator.clipboard.writeText(p2pInstructions.email)}
-                  className="text-blue-600 hover:text-blue-800 font-medium text-sm"
-                >
-                  Copiar
-                </button>
               </div>
-            )}
-            
-            {p2pInstructions.phone && (
-              <div className="flex items-center justify-between bg-white rounded-lg p-3 border">
-                <div className="flex items-center">
-                  <i className="ri-phone-line text-gray-600 mr-3"></i>
-                  <span className="font-medium">{p2pInstructions.phone}</span>
-                </div>
-                <button 
-                  onClick={() => navigator.clipboard.writeText(p2pInstructions.phone)}
-                  className="text-blue-600 hover:text-blue-800 font-medium text-sm"
-                >
-                  Copiar
-                </button>
-              </div>
-            )}
-            
-            {p2pInstructions.handle && (
-              <div className="flex items-center justify-between bg-white rounded-lg p-3 border">
-                <div className="flex items-center">
-                  <i className="ri-user-line text-gray-600 mr-3"></i>
-                  <span className="font-medium">{p2pInstructions.handle}</span>
-                </div>
-                <button 
-                  onClick={() => navigator.clipboard.writeText(p2pInstructions.handle)}
-                  className="text-blue-600 hover:text-blue-800 font-medium text-sm"
-                >
-                  Copiar
-                </button>
-              </div>
-            )}
+              <button 
+                onClick={() => {
+                  navigator.clipboard.writeText(getP2PUsername());
+                  showNotification('success', 'Copiado', `${getP2PLabel()} copiado al portapapeles`);
+                }}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium text-sm flex items-center"
+              >
+                <i className="ri-file-copy-line mr-2"></i>
+                Copiar
+              </button>
+            </div>
           </div>
 
           <div className="bg-amber-50 rounded-lg p-4 border border-amber-200 mb-4">
@@ -624,71 +615,35 @@ if (selectedPaymentMethod === 'card') {
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-3 border border-green-200 mb-4">
               <div className="flex items-center justify-center space-x-2">
                 <i className="ri-shield-check-line text-green-600 text-lg"></i>
-                <span className="text-sm font-medium text-green-800">Procesado por Square - Totalmente Seguro</span>
+                <span className="text-sm font-medium text-green-800">Procesado por Square - PCI Compliant</span>
               </div>
             </div>
           </div>
 
+          {/* CONTENEDOR PARA SQUARE CARD ELEMENT */}
           <div className="space-y-4 mb-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Número de Tarjeta
+                Detalles de la Tarjeta
               </label>
-              <input
-                type="text"
-                name="cardNumber"
-                value={cardData.cardNumber}
-                onChange={handleCardInputChange}
-                placeholder="1234 5678 9012 3456"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg font-mono"
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Fecha de Vencimiento
-                </label>
-                <input
-                  type="text"
-                  name="expiry"
-                  value={cardData.expiry}
-                  onChange={handleCardInputChange}
-                  placeholder="MM/YY"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg font-mono"
-                  required
-                />
+              {/* Este es el contenedor donde Square adjuntará el iframe seguro */}
+              <div 
+                id="card-container"
+                className="min-h-[90px] border border-gray-300 rounded-lg p-4 bg-white"
+              >
+                {/* Square insertará su iframe aquí */}
+                {!card && (
+                  <div className="flex items-center justify-center h-[58px]">
+                    <div className="animate-pulse text-gray-400">
+                      <i className="ri-loader-4-line animate-spin text-2xl"></i>
+                      <span className="ml-2">Cargando formulario seguro...</span>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  CVV
-                </label>
-                <input
-                  type="text"
-                  name="cvv"
-                  value={cardData.cvv}
-                  onChange={handleCardInputChange}
-                  placeholder="123"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg font-mono"
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nombre en la Tarjeta
-              </label>
-              <input
-                type="text"
-                name="name"
-                value={cardData.name}
-                onChange={handleCardInputChange}
-                placeholder="Nombre completo como aparece en la tarjeta"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              />
+              <p className="text-xs text-gray-500 mt-2">
+                Los datos de tu tarjeta son procesados de forma segura por Square
+              </p>
             </div>
 
             <div className="bg-gray-50 rounded-xl p-4">
@@ -713,8 +668,8 @@ if (selectedPaymentMethod === 'card') {
           <div className="space-y-3">
             <button
               onClick={processPayment}
-              disabled={isSubmitting}
-              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 rounded-lg font-bold !rounded-button disabled:opacity-50 disabled:cursor-not-allowed text-lg shadow-lg hover:shadow-xl transition-all"
+              disabled={isSubmitting || !card}
+              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 rounded-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed text-lg shadow-lg hover:shadow-xl transition-all"
             >
               {isSubmitting ? (
                 <div className="flex items-center justify-center">
@@ -730,8 +685,15 @@ if (selectedPaymentMethod === 'card') {
             </button>
 
             <button
-              onClick={() => setShowCardForm(false)}
-              className="w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-medium !rounded-button"
+              onClick={() => {
+                setShowCardForm(false);
+                // Destruir el card element cuando volvemos
+                if (card) {
+                  card.destroy();
+                  setCard(null);
+                }
+              }}
+              className="w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-medium"
             >
               Volver
             </button>
@@ -825,51 +787,55 @@ if (selectedPaymentMethod === 'card') {
                 </div>
               </button>
 
-              {/* Apple Pay */}
-              <button
-                onClick={() => setSelectedPaymentMethod('apple_pay')}
-                className={`w-full p-4 rounded-xl border-2 transition-all ${
-                  selectedPaymentMethod === 'apple_pay' 
-                    ? 'border-gray-800 bg-gray-50' 
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex items-center">
-                  <div className="w-12 h-12 flex items-center justify-center bg-gray-100 rounded-full mr-4">
-                    <i className="ri-apple-line text-gray-800 text-xl"></i>
+              {/* Apple Pay - Solo mostrar si está disponible */}
+              {applePay && (
+                <button
+                  onClick={() => setSelectedPaymentMethod('apple_pay')}
+                  className={`w-full p-4 rounded-xl border-2 transition-all ${
+                    selectedPaymentMethod === 'apple_pay' 
+                      ? 'border-gray-800 bg-gray-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 flex items-center justify-center bg-gray-100 rounded-full mr-4">
+                      <i className="ri-apple-line text-gray-800 text-xl"></i>
+                    </div>
+                    <div className="text-left">
+                      <h5 className="font-medium text-gray-800">Apple Pay</h5>
+                      <p className="text-sm text-gray-600">Pago rápido y seguro</p>
+                    </div>
+                    {selectedPaymentMethod === 'apple_pay' && (
+                      <i className="ri-check-line text-gray-800 text-xl ml-auto"></i>
+                    )}
                   </div>
-                  <div className="text-left">
-                    <h5 className="font-medium text-gray-800">Apple Pay</h5>
-                    <p className="text-sm text-gray-600">Pago rápido y seguro</p>
-                  </div>
-                  {selectedPaymentMethod === 'apple_pay' && (
-                    <i className="ri-check-line text-gray-800 text-xl ml-auto"></i>
-                  )}
-                </div>
-              </button>
+                </button>
+              )}
 
-              {/* Google Pay */}
-              <button
-                onClick={() => setSelectedPaymentMethod('google_pay')}
-                className={`w-full p-4 rounded-xl border-2 transition-all ${
-                  selectedPaymentMethod === 'google_pay' 
-                    ? 'border-green-500 bg-green-50' 
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex items-center">
-                  <div className="w-12 h-12 flex items-center justify-center bg-green-100 rounded-full mr-4">
-                    <i className="ri-google-line text-green-600 text-xl"></i>
+              {/* Google Pay - Solo mostrar si está disponible */}
+              {googlePay && (
+                <button
+                  onClick={() => setSelectedPaymentMethod('google_pay')}
+                  className={`w-full p-4 rounded-xl border-2 transition-all ${
+                    selectedPaymentMethod === 'google_pay' 
+                      ? 'border-green-500 bg-green-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 flex items-center justify-center bg-green-100 rounded-full mr-4">
+                      <i className="ri-google-line text-green-600 text-xl"></i>
+                    </div>
+                    <div className="text-left">
+                      <h5 className="font-medium text-gray-800">Google Pay</h5>
+                      <p className="text-sm text-gray-600">Pago rápido y seguro</p>
+                    </div>
+                    {selectedPaymentMethod === 'google_pay' && (
+                      <i className="ri-check-line text-green-600 text-xl ml-auto"></i>
+                    )}
                   </div>
-                  <div className="text-left">
-                    <h5 className="font-medium text-gray-800">Google Pay</h5>
-                    <p className="text-sm text-gray-600">Pago rápido y seguro</p>
-                  </div>
-                  {selectedPaymentMethod === 'google_pay' && (
-                    <i className="ri-check-line text-green-600 text-xl ml-auto"></i>
-                  )}
-                </div>
-              </button>
+                </button>
+              )}
 
               <div className="border-t pt-4">
                 <h5 className="font-medium text-gray-800 mb-3">Transferencias P2P</h5>
@@ -1012,7 +978,7 @@ if (selectedPaymentMethod === 'card') {
           </div>
           <h3 className="text-xl font-semibold text-gray-800 mb-2">Tu carrito está vacío</h3>
           <p className="text-gray-600 mb-6">Por favor agrega productos a tu carrito antes de realizar un pedido</p>
-          <a href="/menu" className="bg-gradient-to-r from-pink-400 to-teal-400 text-white px-6 py-3 rounded-lg font-medium !rounded-button inline-block">
+          <a href="/menu" className="bg-gradient-to-r from-pink-400 to-teal-400 text-white px-6 py-3 rounded-lg font-medium inline-block">
             Ver Menú
           </a>
         </div>
@@ -1022,12 +988,11 @@ if (selectedPaymentMethod === 'card') {
 
   return (
     <>
-<Script
+      <Script
         src="https://web.squarecdn.com/v1/square.js"
         strategy="afterInteractive"
-        onLoad={() => initSquare()}
+        onLoad={() => initSquarePayments()}
       />
-      <NotificationSystem />
       <NotificationSystem />
       <form id="bakery-order" onSubmit={handleSubmit} className="bg-white rounded-xl shadow-lg p-6">
         <div className="space-y-4">
@@ -1157,7 +1122,7 @@ if (selectedPaymentMethod === 'card') {
 
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-pink-400 to-teal-400 text-white py-3 rounded-lg font-medium !rounded-button"
+            className="w-full bg-gradient-to-r from-pink-400 to-teal-400 text-white py-3 rounded-lg font-medium"
           >
             Continuar al Pago - ${calculateTotal()}
           </button>
