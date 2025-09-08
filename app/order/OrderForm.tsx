@@ -308,9 +308,7 @@ const initSquareCardCard = useCallback(async () => {
     return calculateSubtotal() * 0.03;
   };
 
-  const calculateTotal = () => {
-    return (calculateSubtotal() + calculateTax()).toFixed(2);
-  };
+  const calculateTotal = () => calculateSubtotal() + calculateTax();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -333,7 +331,7 @@ const initSquareCardCard = useCallback(async () => {
       if (selectedPaymentMethod === 'zelle' || selectedPaymentMethod === 'cashapp' || selectedPaymentMethod === 'venmo') {
         // Crear orden P2P
         paymentResult = await createP2POrder({
-          amount: parseFloat(calculateTotal()),
+          amount: calculateTotal(),
           items: cartItems.map(item => ({
             name: item.name,
             price: getItemPrice(item),
@@ -397,7 +395,7 @@ const initSquareCardCard = useCallback(async () => {
 
         // Crear pago con Square usando el token
         paymentResult = await createSquarePayment({
-          amount: parseFloat(calculateTotal()),
+          amount: calculateTotal(),
           items: cartItems.map(item => ({
             name: item.name,
             price: getItemPrice(item),
@@ -683,7 +681,7 @@ const initSquareCardCard = useCallback(async () => {
                 </div>
                 <div className="flex justify-between font-bold text-lg border-t pt-2">
                   <span>Total:</span>
-                  <span className="text-blue-600">${calculateTotal()}</span>
+                    <span className="text-blue-600">${calculateTotal().toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -703,7 +701,7 @@ const initSquareCardCard = useCallback(async () => {
               ) : (
                 <div className="flex items-center justify-center">
                   <i className="ri-secure-payment-line text-xl mr-2"></i>
-                  Pagar ${calculateTotal()}
+                    Pagar ${calculateTotal().toFixed(2)}
                 </div>
               )}
             </button>
@@ -779,7 +777,7 @@ const initSquareCardCard = useCallback(async () => {
                 </div>
                 <div className="flex justify-between font-bold text-lg border-t pt-2">
                   <span>Total:</span>
-                  <span className="text-pink-600">${calculateTotal()}</span>
+                    <span className="text-pink-600">${calculateTotal().toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -1057,7 +1055,7 @@ const initSquareCardCard = useCallback(async () => {
               </div>
               <div className="flex justify-between">
                 <span className="text-lg font-bold text-gray-800">Total:</span>
-                <span className="text-lg font-bold text-pink-600">${calculateTotal()}</span>
+                <span className="text-lg font-bold text-pink-600">${calculateTotal().toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -1148,7 +1146,7 @@ const initSquareCardCard = useCallback(async () => {
             type="submit"
             className="w-full bg-gradient-to-r from-pink-400 to-teal-400 text-white py-3 rounded-lg font-medium"
           >
-            Continuar al Pago - ${calculateTotal()}
+            Continuar al Pago - ${calculateTotal().toFixed(2)}
           </button>
         </div>
 
