@@ -29,12 +29,6 @@ export default function TabBar() {
       label: t('cakes')
     },
     { 
-      href: '/cart', 
-      icon: 'ri-shopping-cart-line', 
-      activeIcon: 'ri-shopping-cart-fill', 
-      label: t('cart')
-    },
-    { 
       href: '/order', 
       icon: 'ri-shopping-bag-line', 
       activeIcon: 'ri-shopping-bag-fill', 
