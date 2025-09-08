@@ -179,9 +179,9 @@ export const createP2POrder = async (orderData: {
         paymentInstructions: {
           method: orderData.paymentMethod,
           amount: orderData.amount,
-          email: 'email' in paymentConfig ? paymentConfig.email : undefined,
-          phone: 'phone' in paymentConfig ? paymentConfig.phone : undefined,
-          handle: 'handle' in paymentConfig ? paymentConfig.handle : undefined,
+          email: paymentConfig.email || undefined,
+          phone: paymentConfig.phone || undefined,
+          handle: paymentConfig.handle || undefined,
           instructions: paymentConfig.instructions,
           orderId: result.orderId
         }

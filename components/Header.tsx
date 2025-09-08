@@ -8,33 +8,34 @@ import { useLanguage } from '../lib/languageContext';
 import LanguageSelector from './LanguageSelector';
 
 export default function Header() {
-  const [user, setUser] = useState<any>(null);
-  const [localUser, setLocalUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const { t } = useLanguage();
 
   useEffect(() => {
-    checkUser();
-    checkLocalUser();
+    checkCurrentUser();
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         checkUserRole(session.user.id);
       } else {
-        setUser(null);
+        checkLocalUser();
       }
     });
     
     return () => subscription.unsubscribe();
   }, []);
 
-  const checkUser = async () => {
+  const checkCurrentUser = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        checkUserRole(user.id);
+        await checkUserRole(user.id);
+      } else {
+        checkLocalUser();
       }
     } catch (error) {
-      console.log('Supabase auth check failed, using local storage');
+      console.log('Usando almacenamiento local');
+      checkLocalUser();
     }
   };
 
@@ -43,10 +44,18 @@ export default function Header() {
     if (userData) {
       try {
         const parsedUser = JSON.parse(userData);
-        setLocalUser(parsedUser);
+        setCurrentUser({
+          email: parsedUser.email,
+          full_name: parsedUser.fullName || parsedUser.email.split('@')[0],
+          role: parsedUser.isOwner ? 'owner' : 'customer',
+          isLocal: true
+        });
       } catch (error) {
         console.log('Error parsing local user data');
+        setCurrentUser(null);
       }
+    } else {
+      setCurrentUser(null);
     }
   };
 
@@ -58,24 +67,26 @@ export default function Header() {
         .eq('id', userId)
         .single();
 
-      setUser(userData);
+      if (userData) {
+        setCurrentUser({
+          ...userData,
+          isLocal: false
+        });
+      } else {
+        checkLocalUser();
+      }
     } catch (error) {
-      console.log('Error fetching user role from Supabase');
+      console.log('Error fetching user role, usando local');
+      checkLocalUser();
     }
   };
 
   const isOwnerOrEmployee = () => {
-    if (user && (user.role === 'employee' || user.role === 'owner')) {
-      return true;
-    }
-    if (localUser && localUser.isOwner) {
-      return true;
-    }
-    return false;
+    return currentUser && (currentUser.role === 'employee' || currentUser.role === 'owner');
   };
 
   const isAuthenticated = () => {
-    return user || localUser;
+    return currentUser !== null;
   };
 
   return (
@@ -83,34 +94,18 @@ export default function Header() {
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center space-x-3">
           <div className="w-12 h-12 flex items-center justify-center bg-white rounded-full p-1 shadow-md">
-            {/* 
-            🖼️ CAMBIAR LOGO:
-            - Reemplaza la URL en src="" con tu logo
-            - Mantén las dimensiones w-10 h-10 para consistencia
-            - Asegúrate que sea un archivo PNG con fondo transparente
-            - Recomendación: 200x200px mínimo
-            */}
             <img 
               src="https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/3c3401df8a967b2c425ed28b75bf5296.png"
               alt="Ranger's Bakery Logo"
               className="w-10 h-10 object-contain"
             />
           </div>
-          {/* 
-          📝 CAMBIAR NOMBRE DE LA PANADERÍA:
-          - El texto se cambia automáticamente desde lib/languages.ts
-          - O puedes cambiarlo directamente aquí reemplazando {t('bakeryName')}
-          */}
           <h1 className="font-[('Pacifico')] text-xl text-white drop-shadow-sm">{t('bakeryName')}</h1>
         </div>
         
         <div className="flex items-center space-x-3">
           <LanguageSelector />
           
-          {/* 
-          🔗 CAMBIAR ENLACE DE INSTAGRAM:
-          Reemplaza "https://www.instagram.com/rangersbakery/" con tu cuenta
-          */}
           <a 
             href="https://www.instagram.com/rangersbakery/" 
             target="_blank" 
