@@ -55,9 +55,9 @@ serve(async (req) => {
           : `[Payment: ${orderData.paymentMethod} | Ref: ${p2pRef}]`,
         status: 'pending',                  // esperando confirmación de pago
         order_date: new Date().toISOString(),
-        payment_method: orderData.paymentMethod, // requiere columna en la tabla
-        payment_status: 'pending',              // requiere columna en la tabla
-        payment_reference: p2pRef,              // requiere columna en la tabla
+        payment_method: orderData.paymentMethod,
+        payment_status: 'pending',
+        p2p_reference: p2pRef,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
