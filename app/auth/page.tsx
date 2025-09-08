@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '../../lib/languageContext';
 import { supabase } from '../../lib/supabase';
+import { saveUser } from '../../lib/authStorage';
 import Header from '../../components/Header';
 import TabBar from '../../components/TabBar';
 
@@ -88,8 +89,8 @@ export default function AuthPage() {
             loginTime: Date.now()
           };
 
-          // Guardar en localStorage para compatibilidad
-          localStorage.setItem('bakery-user', JSON.stringify(userData));
+          // Guardar usuario sanitisado en localStorage con expiración
+          saveUser(userData);
 
           console.log('👤 Usuario autenticado:', userData);
 

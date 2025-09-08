@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { createSquarePayment, createP2POrder, p2pPaymentConfig, squareConfig } from '@/lib/squareConfig';
 import Script from 'next/script';
+import { getEnvVar } from '@/lib/env';
 
 interface CartItem {
   id: string;
@@ -60,8 +61,8 @@ useEffect(() => {
     pickupTime: ''
   });
 
-  const appId = process.env.NEXT_PUBLIC_SQUARE_APPLICATION_ID!;
-  const locationId = process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID!;
+  const appId = getEnvVar('NEXT_PUBLIC_SQUARE_APPLICATION_ID');
+  const locationId = getEnvVar('NEXT_PUBLIC_SQUARE_LOCATION_ID');
 
   // Inicializar Square después de mostrar el formulario de tarjeta
 const initSquareCard = useCallback(async () => {

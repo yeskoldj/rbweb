@@ -3,6 +3,7 @@
 
 import Link from 'next/link';
 import { useLanguage } from '../lib/languageContext';
+import { getUser } from '../lib/authStorage';
 
 export default function MenuPreview() {
   const { t } = useLanguage();
@@ -68,8 +69,8 @@ export default function MenuPreview() {
 
   const handleAddToCart = (item: any) => {
     // Verificar autenticación primero
-    const userData = localStorage.getItem('bakery-user');
-    if (!userData) {
+    const user = getUser();
+    if (!user) {
       alert('Necesitas crear una cuenta para agregar productos al carrito');
       return;
     }
