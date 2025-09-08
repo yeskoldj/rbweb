@@ -426,11 +426,6 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
       if (flavor) total += flavor.price;
     });
 
-    selectedOptions.colors.forEach(colorId => {
-      const color = colorOptions.find(c => c.id === colorId);
-      if (color) total += color.price;
-    });
-
     selectedOptions.fillings.forEach(fillingId => {
       const filling = fillingOptions.find(f => f.id === fillingId);
       if (filling) total += filling.price;
@@ -877,9 +872,6 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                       style={{ backgroundColor: color.color }}
                     ></div>
                     <h4 className="font-medium text-gray-800 text-sm mb-1">{color.name}</h4>
-                    <p className="text-xs font-bold text-blue-600">
-                      {color.price > 0 ? `+$${color.price}` : 'Incluido'}
-                    </p>
                   </div>
                 </label>
               ))}
@@ -1485,9 +1477,6 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                               style={{ backgroundColor: color.color }}
                             ></div>
                             <h4 className="font-medium text-gray-800 text-sm mb-1">{color.name}</h4>
-                            <p className="text-xs font-bold text-blue-600">
-                              {color.price > 0 ? `+$${color.price}` : 'Incluido'}
-                            </p>
                           </div>
                         </label>
                       ))}
