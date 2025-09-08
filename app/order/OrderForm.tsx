@@ -55,7 +55,6 @@ useEffect(() => {
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [formData, setFormData] = useState({
-    name: '',
     phone: '',
     specialRequests: '',
     pickupTime: ''
@@ -211,7 +210,12 @@ const initSquareCard = useCallback(async () => {
 
     const savedForm = localStorage.getItem('bakery-order-form');
     if (savedForm) {
-      setFormData(JSON.parse(savedForm));
+      const parsed = JSON.parse(savedForm);
+      setFormData({
+        phone: parsed.phone || '',
+        specialRequests: parsed.specialRequests || '',
+        pickupTime: parsed.pickupTime || ''
+      });
     }
 
     checkCurrentUser();
@@ -235,7 +239,6 @@ const initSquareCard = useCallback(async () => {
           setCurrentUser(profile);
           setFormData(prev => ({
             ...prev,
-            name: prev.name || profile.full_name || '',
             phone: prev.phone || profile.phone || ''
           }));
         }
@@ -246,7 +249,6 @@ const initSquareCard = useCallback(async () => {
           setCurrentUser(userData);
           setFormData(prev => ({
             ...prev,
-            name: prev.name || userData.fullName || '',
             phone: prev.phone || userData.phone || ''
           }));
         }
@@ -288,6 +290,19 @@ const initSquareCard = useCallback(async () => {
         return newSet;
       });
     }, 1500);
+  };
+
+  const removeFromCart = (id: string) => {
+    const existingCart = localStorage.getItem('bakery-cart');
+    let cart = existingCart ? JSON.parse(existingCart) : [];
+    cart = cart.filter((cartItem: any) => cartItem.id !== id);
+    localStorage.setItem('bakery-cart', JSON.stringify(cart));
+    setCartItems(cart);
+    setAddedItems(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(id);
+      return newSet;
+    });
   };
 
   const getItemPrice = (item: CartItem): number => {
@@ -399,7 +414,7 @@ const initSquareCard = useCallback(async () => {
           photoUrl: item.photoUrl
         })),
         customerInfo: {
-          name: formData.name.trim(),
+          name: (currentUser?.full_name || currentUser?.fullName || '').trim(),
           phone: formData.phone.trim(),
           email: currentUser?.email || ''
         },
@@ -454,7 +469,7 @@ const initSquareCard = useCallback(async () => {
           photoUrl: item.photoUrl
         })),
         customerInfo: {
-          name: formData.name.trim(),
+          name: (currentUser?.full_name || currentUser?.fullName || '').trim(),
           phone: formData.phone.trim(),
           email: currentUser?.email || ''
         },
@@ -498,7 +513,7 @@ const initSquareCard = useCallback(async () => {
     try {
       const updatedUser = {
         ...(currentUser || {}),
-        fullName: formData.name,
+        fullName: currentUser?.full_name || currentUser?.fullName || '',
         phone: formData.phone,
         email: currentUser?.email || ''
       };
@@ -510,7 +525,7 @@ const initSquareCard = useCallback(async () => {
           .from('profiles')
           .upsert({
             id: currentUser.id,
-            full_name: formData.name,
+            full_name: currentUser?.full_name || currentUser?.fullName || '',
             phone: formData.phone,
             updated_at: new Date().toISOString()
           });
@@ -1069,6 +1084,13 @@ const initSquareCard = useCallback(async () => {
                     >
                       {addedItems.has(item.id) ? '¡Agregado!' : 'Agregar'}
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => removeFromCart(item.id)}
+                      className="px-3 py-1 rounded-full text-xs font-medium bg-red-500 text-white hover:bg-red-600"
+                    >
+                      Eliminar
+                    </button>
                   </div>
                 </div>
               ))}
@@ -1091,17 +1113,11 @@ const initSquareCard = useCallback(async () => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Nombre Completo *
+              Nombre
             </label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"
-              placeholder="Ingresa tu nombre completo"
-            />
+            <div className="w-full px-4 py-3 bg-gray-100 rounded-lg text-sm">
+              {currentUser?.full_name || currentUser?.fullName || ''}
+            </div>
           </div>
 
           <div>
