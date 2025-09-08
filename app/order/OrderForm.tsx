@@ -69,7 +69,7 @@ useEffect(() => {
   const locationId = process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID!;
 
   // Inicializar Square después de mostrar el formulario de tarjeta
-const initSquareCardCard = useCallback(async () => {
+const initSquareCard = useCallback(async () => {
   try {
     setCardMountState('loading');
 
@@ -180,10 +180,10 @@ const initSquareCardCard = useCallback(async () => {
     if (showCardForm && !card) {
       // Dar tiempo al DOM para renderizar
       setTimeout(() => {
-        initSquareCardCard();
+        initSquareCard();
       }, 100);
     }
-  }, [showCardForm, card, initSquareCardCard]);
+  }, [showCardForm, card, initSquareCard]);
 
   // Función para mostrar notificaciones modernas
   const showNotification = (type: 'success' | 'error' | 'warning' | 'info', title: string, message: string) => {
@@ -619,7 +619,7 @@ const initSquareCardCard = useCallback(async () => {
         <Script
             src="https://web.squarecdn.com/v1/square.js"
             strategy="afterInteractive"
-            onLoad={initSquareCardCard}
+            onLoad={initSquareCard}
             onError={() => {
               setCardMountState('error');
               showNotification('error', 'No se pudo cargar el SDK de Square', 'Permite web.squarecdn.com / intenta sin Brave Shields');
@@ -715,6 +715,7 @@ const initSquareCardCard = useCallback(async () => {
                 if (card) {
                   card.destroy();
                   setCard(null);
+                  delete (window as any).__sq_card;
                 }
               }}
               className="w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-medium"
@@ -737,7 +738,6 @@ const initSquareCardCard = useCallback(async () => {
               <span>Square Seguro</span>
             </div>
           </div>
-        </div>
       </>
     );
   }
