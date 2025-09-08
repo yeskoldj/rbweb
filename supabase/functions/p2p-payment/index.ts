@@ -53,6 +53,7 @@ serve(async (req) => {
         special_requests: orderData.specialRequests
           ? `${orderData.specialRequests}\n[Pagado con Zelle | Ref: ${p2pRef}]`
           : `[Pagado con Zelle | Ref: ${p2pRef}]`,
+        p2p_reference: p2pRef,
         status: 'pending',                  // esperando confirmación de pago
         order_date: new Date().toISOString(),
         payment_method: orderData.paymentMethod,
