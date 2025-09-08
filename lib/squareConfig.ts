@@ -20,7 +20,7 @@ export const squareConfig = {
 
 // ---- P2P config with proper typing to avoid union errors ----
 type ZelleConfig = {
-  phone: string;
+  email: string;
   name: string;
   instructions: string;
 };
@@ -29,10 +29,10 @@ export const p2pPaymentConfig: {
   zelle: ZelleConfig;
 } = {
   zelle: {
-    phone: '(862) 233-7204',
-    name: 'Rangers Bakery',
+    email: 'rangerbakery@gmail.com',
+    name: "Ranger's Bakery LLC",
     instructions:
-      'Send your payment via Zelle to the number below. After sending, click "Confirmar con Propietario" to submit your order.',
+      'Send your payment via Zelle to the email below. After sending, click "Confirmar con Propietario" to submit your order.',
   },
 };
 
@@ -173,7 +173,7 @@ export async function createP2POrder(orderData: {
       paymentInstructions: {
         method: orderData.paymentMethod,
         amount: orderData.amount,
-        phone: paymentConfig.phone,
+        email: paymentConfig.email,
         name: paymentConfig.name,
         instructions: paymentConfig.instructions,
         orderId: result.orderId,
