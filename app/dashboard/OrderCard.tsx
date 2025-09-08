@@ -13,6 +13,7 @@ interface Order {
     quantity: number;
     price: string;
     details?: string;
+    photoUrl?: string;
   }>;
   total: string;
   status: 'received' | 'ready' | 'delivered';
@@ -181,6 +182,17 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
                     </div>
                     {item.details && (
                       <p className="text-xs text-gray-500 mt-1 ml-6">{item.details}</p>
+                    )}
+                    {item.photoUrl && (
+                      <a
+                        href={item.photoUrl}
+                        download
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-600 mt-1 ml-6 underline block"
+                      >
+                        Descargar foto
+                      </a>
                     )}
                   </div>
                   <span className="font-medium">${item.price}</span>

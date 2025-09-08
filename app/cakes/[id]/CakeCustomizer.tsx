@@ -7,6 +7,7 @@ import Link from 'next/link';
 import Header from '../../../components/Header';
 import TabBar from '../../../components/TabBar';
 import { useLanguage } from '../../../lib/languageContext';
+import { supabase } from '../../../lib/supabase';
 
 interface CakeCustomizerProps {
   cakeId: string;
@@ -45,6 +46,10 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
 
+  const isPhotoCake = cakeId === 'photo-cake-basic' || cakeId === 'photo-cake-premium';
+  const [uploadedPhoto, setUploadedPhoto] = useState<string | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+
   const [selectedOptions, setSelectedOptions] = useState({
     shape: 'round',
     layers: [] as CakeLayer[],
@@ -53,7 +58,8 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
     fillings: [] as string[],
     decorations: [] as string[],
     inscription: '',
-    specialRequests: ''
+    specialRequests: '',
+    photoUrl: ''
   });
 
   // Datos de los pasteles usando imágenes reales - PRECIOS ACTUALIZADOS SEGÚN TABLA
@@ -439,6 +445,52 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
     return total * quantity;
   };
 
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    const maxSize = 5 * 1024 * 1024; // 5MB
+
+    if (!allowedTypes.includes(file.type)) {
+      alert('Por favor selecciona solo archivos de imagen (JPG, PNG, GIF, WEBP)');
+      return;
+    }
+
+    if (file.size > maxSize) {
+      alert('La imagen es demasiado grande. Máximo 5MB permitido.');
+      return;
+    }
+
+    setIsUploadingPhoto(true);
+
+    const filePath = `photo-cakes/${Date.now()}-${file.name}`;
+    const { error } = await supabase.storage.from('cake-photos').upload(filePath, file);
+    if (error) {
+      console.error('Error uploading photo:', error);
+      alert('No se pudo subir la foto. Intenta nuevamente.');
+      setIsUploadingPhoto(false);
+      return;
+    }
+
+    const { data: publicData } = supabase.storage.from('cake-photos').getPublicUrl(filePath);
+    setSelectedOptions(prev => ({ ...prev, photoUrl: publicData.publicUrl }));
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      setUploadedPhoto(result);
+    };
+    reader.readAsDataURL(file);
+
+    setIsUploadingPhoto(false);
+  };
+
+  const removePhoto = () => {
+    setUploadedPhoto(null);
+    setSelectedOptions(prev => ({ ...prev, photoUrl: '' }));
+  };
+
   // Vista previa visual del pastel
   const CakePreview = () => {
     const layers = selectedOptions.layers;
@@ -523,19 +575,17 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                 </div>
               )}
               
-              {/* Etiqueta de tamaño MÁS PROMINENTE Y POR ENCIMA */}
-              <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-sm text-gray-800 bg-white px-3 py-1.5 rounded-full shadow-md font-bold z-30">
-                {layer.size}"
-              </div>
             </div>
           );
         })}
-        
-        
+
+
         {/* Información resumida más clara */}
         <div className="text-center mt-3 space-y-1 z-30 relative">
-          <div className="text-sm text-gray-700 font-medium">
-            {selectedOptions.layers.length} nivel{selectedOptions.layers.length > 1 ? 'es' : ''} • {shapeOptions.find(s => s.id === selectedOptions.shape)?.name}
+          <div className="text-sm text-gray-700 font-medium flex items-center justify-center space-x-1">
+            <span>{selectedOptions.layers.length} nivel{selectedOptions.layers.length > 1 ? 'es' : ''}</span>
+            {selectedOptions.layers[0] && <span>{selectedOptions.layers[0].size}"</span>}
+            <span>{shapeOptions.find(s => s.id === selectedOptions.shape)?.name}</span>
           </div>
           {selectedOptions.decorations.length > 0 && (
             <div className="text-xs text-pink-600 font-medium">
@@ -585,6 +635,7 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
       price: `$${calculateTotal().toFixed(2)}`,
       quantity: quantity,
       image: currentProduct?.image || '',
+      photoUrl: selectedOptions.photoUrl || undefined,
       type: 'cake',
       customization: {
         mode: customizerMode,
@@ -601,7 +652,8 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
           .join(', ') : '',
         decorations: customizerMode === 'advanced' ? decorationNames : '',
         inscription: selectedOptions.inscription,
-        specialRequests: selectedOptions.specialRequests
+        specialRequests: selectedOptions.specialRequests,
+        photoUrl: selectedOptions.photoUrl || undefined
       }
     };
 
@@ -1529,6 +1581,29 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                           {selectedOptions.specialRequests.length}/300 caracteres
                         </div>
                       </div>
+
+                      {isPhotoCake && (
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-3">
+                            Foto para el pastel
+                          </label>
+                          {uploadedPhoto ? (
+                            <div className="relative w-32 h-32">
+                              <img src={uploadedPhoto} alt="Foto subida" className="w-32 h-32 object-cover rounded-lg" />
+                              <button type="button" onClick={removePhoto} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1">
+                                <i className="ri-close-line text-xs"></i>
+                              </button>
+                            </div>
+                          ) : (
+                            <label className="flex flex-col items-center justify-center w-32 h-32 border-2 border-dashed border-pink-400 rounded-lg cursor-pointer">
+                              <i className="ri-add-line text-pink-400 text-2xl"></i>
+                              <span className="text-xs mt-1 text-pink-400 text-center">Subir foto</span>
+                              <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+                            </label>
+                          )}
+                          {isUploadingPhoto && <p className="text-xs text-gray-500 mt-2">Subiendo foto...</p>}
+                        </div>
+                      )}
 
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-3">
