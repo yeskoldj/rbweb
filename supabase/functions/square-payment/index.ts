@@ -1,223 +1,129 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-// ✅ CONFIGURACIÓN SQUARE - LISTA PARA CREDENCIALES REALES
+// === CONFIG ===========
 const ENV = Deno.env.get("SQUARE_ENV") || "production";
-const SQUARE_BASE_URL = ENV === "production" ? "https://connect.squareup.com" : "https://connect.squareupsandbox.com";
+const SQUARE_BASE_URL =
+  ENV === "production"
+    ? "https://connect.squareup.com"
+    : "https://connect.squareupsandbox.com";
 
-// 🔑 CREDENCIALES REALES DESDE SUPABASE SECRETS
-const ACCESS_TOKEN = Deno.env.get("SQUARE_ACCESS_TOKEN");
-const APPLICATION_ID = Deno.env.get("SQUARE_APPLICATION_ID");
+const ACCESS_TOKEN   = Deno.env.get("SQUARE_ACCESS_TOKEN") || "";
+const APPLICATION_ID = Deno.env.get("SQUARE_APPLICATION_ID") || "";
+const LOCATION_ID    = Deno.env.get("SQUARE_LOCATION_ID") || ""; // <-- NUEVO (opcional)
 
-console.log('🚀 Square Payment Function iniciada');
-console.log('📍 Environment:', ENV);
-console.log('🔗 Base URL:', SQUARE_BASE_URL);
-console.log('🔑 Credenciales configuradas:', !!ACCESS_TOKEN && !!APPLICATION_ID);
-
-const formatAmountForSquare = (amount: number): number => {
-  return Math.round(amount * 100);
-};
-
-// Cliente Supabase con service_role para insertar sin RLS
 const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_URL') || '',
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
 );
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+const toCents = (amount: number) => Math.round(amount * 100);
+
+// ======================
+
 serve(async (req) => {
-  // Handle CORS
   if (req.method === 'OPTIONS') {
-    return new Response('ok', {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-      }
-    })
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
     if (req.method !== 'POST') {
-      return new Response(
-        JSON.stringify({ error: 'Method not allowed' }),
-        { 
-          status: 405,
-          headers: { 
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          } 
-        }
-      )
+      return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+        status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    const { orderData, action = 'create_payment' } = await req.json()
-    console.log('🚀 Nueva solicitud Square:', { 
-      action, 
-      amount: orderData?.amount,
-      paymentMethod: orderData?.paymentMethod,
-      env: ENV,
-      hasCredentials: !!ACCESS_TOKEN && !!APPLICATION_ID
-    })
+    const body = await req.json();
+    const action   = body?.action ?? 'create_payment';
+    const orderData = body?.orderData || {};
+    const sourceId  = body?.sourceId ?? orderData?.sourceId; // <-- TOKEN del frontend
 
     if (action === 'create_payment') {
-      // Validación de datos requeridos
-      if (!orderData?.amount) {
-        throw new Error('Datos de pago incompletos');
+      if (typeof orderData.amount !== 'number') {
+        throw new Error('Missing or invalid amount');
       }
 
-      console.log('💳 Procesando pago con Square');
-      
-      // Generar ID único para el pedido
-      const orderId = `ORDER-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      const idempotencyKey = `${orderId}-${Date.now()}`;
-      
-      let paymentResult;
+      const idempotencyKey = `PAY_${Date.now()}_${crypto.randomUUID()}`;
+      let paymentResult: any;
 
-      // 🔥 VERIFICAR SI TENEMOS CREDENCIALES REALES
+      // --- SIMULACIÓN si faltan credenciales ---
       if (!ACCESS_TOKEN || !APPLICATION_ID) {
-        console.log('⚠️ MODO SIMULACIÓN - Falta configurar credenciales de Square en Supabase Secrets');
-        console.log('📝 Para configurar: Dashboard Supabase → Settings → Edge Functions → Secrets');
-        console.log('📝 Agregar: SQUARE_ACCESS_TOKEN, SQUARE_APPLICATION_ID, SQUARE_ENV');
-        
-        // Simular pago exitoso para testing
         paymentResult = {
-          id: `SIMULATED_${idempotencyKey}`,
+          id: `SIM_${idempotencyKey}`,
           status: 'COMPLETED',
-          amount_money: {
-            amount: formatAmountForSquare(orderData.amount),
-            currency: 'USD'
-          }
+          amount_money: { amount: toCents(orderData.amount), currency: 'USD' }
         };
       } else {
-        console.log('✅ CREDENCIALES ENCONTRADAS - Procesando pago real con Square');
-        
-        if (orderData.paymentMethod === 'card' && orderData.cardInfo) {
-          // Pago con tarjeta de crédito - REAL
-          const cardNumber = orderData.cardInfo.number.replace(/\s+/g, '');
-          const expiryParts = orderData.cardInfo.expiry.split('/');
-          
-          const [mm, yyRaw] = expiryParts;
-          const exp_year = (yyRaw || "").length === 2 ? `20${yyRaw.trim()}` : (yyRaw || "");
-
-          console.log('🔐 Procesando pago real con tarjeta:', {
-            cardMasked: `****-****-****-${cardNumber.slice(-4)}`,
-            exp_month: mm,
-            exp_year: exp_year
-          });
-
-          // Crear pago real con Square API
-          const paymentRequest = {
-            source_id: 'CARD_TOKEN_HERE', // Se reemplazará con tokenización real
-            idempotency_key: idempotencyKey,
-            amount_money: {
-              amount: formatAmountForSquare(orderData.amount),
-              currency: 'USD'
-            },
-            app_fee_money: {
-              amount: 0,
-              currency: 'USD'
-            },
-            buyer_email_address: orderData.customerInfo.email
-          };
-
-          try {
-            const response = await fetch(`${SQUARE_BASE_URL}/v2/payments`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${ACCESS_TOKEN}`,
-                'Content-Type': 'application/json',
-                'Square-Version': '2024-01-18'
-              },
-              body: JSON.stringify(paymentRequest)
-            });
-
-            const responseData = await response.json();
-            
-            if (!response.ok) {
-              throw new Error(`Square API Error: ${JSON.stringify(responseData)}`);
-            }
-
-            paymentResult = responseData.payment;
-            console.log('✅ Pago real procesado exitosamente:', paymentResult.id);
-
-          } catch (squareError) {
-            console.error('❌ Error con Square API real:', squareError);
-            throw new Error(`Error de Square: ${squareError.message}`);
-          }
-
-        } else if (orderData.paymentMethod === 'apple_pay' || orderData.paymentMethod === 'google_pay') {
-          // Apple Pay / Google Pay - REAL
-          console.log(`📱 Procesando ${orderData.paymentMethod} real`);
-          
-          const paymentRequest = {
-            source_id: 'DIGITAL_WALLET_TOKEN_HERE',
-            idempotency_key: idempotencyKey,
-            amount_money: {
-              amount: formatAmountForSquare(orderData.amount),
-              currency: 'USD'
-            }
-          };
-
-          try {
-            const response = await fetch(`${SQUARE_BASE_URL}/v2/payments`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${ACCESS_TOKEN}`,
-                'Content-Type': 'application/json',
-                'Square-Version': '2024-01-18'
-              },
-              body: JSON.stringify(paymentRequest)
-            });
-
-            const responseData = await response.json();
-            
-            if (!response.ok) {
-              throw new Error(`Square API Error: ${JSON.stringify(responseData)}`);
-            }
-
-            paymentResult = responseData.payment;
-            console.log(`✅ ${orderData.paymentMethod} real procesado:`, paymentResult.id);
-
-          } catch (squareError) {
-            console.error(`❌ Error con ${orderData.paymentMethod} real:`, squareError);
-            throw new Error(`Error de Square: ${squareError.message}`);
-          }
+        // Pago REAL: necesitamos el token del frontend
+        if (!sourceId) {
+          throw new Error('Missing sourceId. Tokenize in the frontend and send it here.');
         }
+
+        const paymentRequest: Record<string, any> = {
+          source_id: sourceId,
+          idempotency_key: idempotencyKey,
+          amount_money: {
+            amount: toCents(orderData.amount),
+            currency: 'USD',
+          },
+          // Autocomplete por defecto = true
+          buyer_email_address: orderData?.customerInfo?.email || undefined,
+          note: `Online order`,
+        };
+
+        // Location (recomendado)
+        if (LOCATION_ID) paymentRequest.location_id = LOCATION_ID;
+
+        const resp = await fetch(`${SQUARE_BASE_URL}/v2/payments`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${ACCESS_TOKEN}`,
+            'Content-Type': 'application/json',
+            'Square-Version': '2024-01-18',
+          },
+          body: JSON.stringify(paymentRequest),
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) {
+          throw new Error(`Square API Error: ${JSON.stringify(data)}`);
+        }
+
+        paymentResult = data.payment;
       }
 
-      // VALIDACIÓN ESTRICTA - Solo "COMPLETED"
       if (!paymentResult || paymentResult.status !== 'COMPLETED') {
-        const errorMsg = 'Pago rechazado por Square';
-        console.error('❌ Square rechazó el pago:', paymentResult);
-        throw new Error(errorMsg);
+        throw new Error('Payment not completed');
       }
 
-      console.log('✅ PAGO EXITOSO! Status: COMPLETED, ID:', paymentResult.id);
-      console.log('💾 Guardando orden en DB...')
-
-      // Guardar orden en base de datos
-      const orderRecord = {
-        id: orderId,
+      // === Guardar orden en DB ===
+      const orderRecord: Record<string, any> = {
+        // NO establezcas 'id' si tu columna es uuid
         user_id: orderData.userId || null,
-        customer_name: orderData.customerInfo.name.trim(),
-        customer_phone: orderData.customerInfo.phone.trim(),
-        customer_email: orderData.customerInfo.email?.trim() || null,
+        customer_name: orderData.customerInfo?.name?.trim() || null,
+        customer_phone: orderData.customerInfo?.phone?.trim() || null,
+        customer_email: orderData.customerInfo?.email?.trim() || null,
         items: orderData.items,
-        subtotal: parseFloat((orderData.amount - (orderData.amount * 0.03)).toFixed(2)),
-        tax: parseFloat((orderData.amount * 0.03).toFixed(2)),
-        total: parseFloat(orderData.amount.toFixed(2)),
+        subtotal: +(orderData.amount - orderData.amount * 0.03).toFixed(2),
+        tax: +(orderData.amount * 0.03).toFixed(2),
+        total: +orderData.amount.toFixed(2),
         pickup_time: orderData.pickupTime || null,
         special_requests: orderData.specialRequests?.trim() || null,
-        status: 'pending' as const,
+        status: 'pending', // pendiente de producción
         order_date: new Date().toISOString().split('T')[0],
         payment_id: paymentResult.id,
         payment_method: orderData.paymentMethod || 'square',
         payment_status: 'completed',
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
 
-      // Insertar con service_role (server-side)
       const { data: insertedOrder, error: dbError } = await supabaseAdmin
         .from('orders')
         .insert([orderRecord])
@@ -225,195 +131,115 @@ serve(async (req) => {
         .single();
 
       if (dbError) {
-        console.error('❌ Error guardando en Supabase:', dbError);
-        throw new Error(`Pago exitoso pero error guardando: ${dbError.message}`);
+        throw new Error(`Payment ok but DB error: ${dbError.message}`);
       }
 
-      console.log('✅ Orden guardada en Supabase:', insertedOrder.id);
-
-      // RESPUESTA EXITOSA
-      return new Response(
-        JSON.stringify({
-          success: true,
-          paymentId: paymentResult.id,
-          orderId: insertedOrder.id,
-          status: 'completed',
-          amount: orderData.amount,
-          currency: 'USD',
-          environment: ENV,
-          paymentMethod: orderData.paymentMethod,
-          isSimulated: !ACCESS_TOKEN || !APPLICATION_ID
-        }),
-        { 
-          headers: { 
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          } 
-        }
-      )
+      return new Response(JSON.stringify({
+        success: true,
+        paymentId: paymentResult.id,
+        orderId: insertedOrder.id, // ← id generado por la DB
+        status: 'completed',
+        amount: orderData.amount,
+        currency: 'USD',
+        environment: ENV,
+        paymentMethod: orderData.paymentMethod,
+        isSimulated: !ACCESS_TOKEN || !APPLICATION_ID,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Refund action
+    // === Refund ===
     if (action === 'refund') {
-      const { paymentId, amount } = orderData
-      
-      let refundResult;
-      
+      const paymentId = orderData?.paymentId;
+      const amount    = orderData?.amount;
+
       if (!ACCESS_TOKEN || !APPLICATION_ID) {
-        // Simular refund
-        refundResult = {
-          id: `REFUND_SIMULATED_${Date.now()}`,
-          status: 'COMPLETED',
-          amount_money: {
-            amount: amount ? formatAmountForSquare(amount) : 0,
-            currency: 'USD'
-          }
-        };
-      } else {
-        // Refund real con Square API
-        try {
-          const refundRequest = {
-            idempotency_key: `REFUND_${Date.now()}`,
-            amount_money: {
-              amount: amount ? formatAmountForSquare(amount) : undefined,
-              currency: 'USD'
-            },
-            payment_id: paymentId
-          };
-
-          const response = await fetch(`${SQUARE_BASE_URL}/v2/refunds`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${ACCESS_TOKEN}`,
-              'Content-Type': 'application/json',
-              'Square-Version': '2024-01-18'
-            },
-            body: JSON.stringify(refundRequest)
-          });
-
-          const responseData = await response.json();
-          
-          if (!response.ok) {
-            throw new Error(`Square Refund Error: ${JSON.stringify(responseData)}`);
-          }
-
-          refundResult = responseData.refund;
-        } catch (refundError) {
-          console.error('❌ Error con refund real:', refundError);
-          throw new Error(`Error procesando reembolso: ${refundError.message}`);
-        }
-      }
-
-      return new Response(
-        JSON.stringify({
+        return new Response(JSON.stringify({
           success: true,
-          refundId: refundResult.id,
+          refundId: `REFUND_SIM_${Date.now()}`,
           status: 'completed',
-          amount: (refundResult.amount_money?.amount || 0) / 100,
-          originalPaymentId: paymentId,
+          amount,
           environment: ENV,
-          isSimulated: !ACCESS_TOKEN || !APPLICATION_ID
-        }),
-        { 
-          headers: { 
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          } 
-        }
-      )
+          isSimulated: true,
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      const refundReq: any = {
+        idempotency_key: `REF_${Date.now()}_${crypto.randomUUID()}`,
+        payment_id: paymentId,
+      };
+      if (typeof amount === 'number') {
+        refundReq.amount_money = { amount: toCents(amount), currency: 'USD' };
+      }
+
+      const resp = await fetch(`${SQUARE_BASE_URL}/v2/refunds`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${ACCESS_TOKEN}`,
+          'Content-Type': 'application/json',
+          'Square-Version': '2024-01-18',
+        },
+        body: JSON.stringify(refundReq),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(`Square Refund Error: ${JSON.stringify(data)}`);
+
+      return new Response(JSON.stringify({
+        success: true,
+        refundId: data.refund.id,
+        status: data.refund.status,
+        amount: (data.refund.amount_money?.amount || 0) / 100,
+        environment: ENV,
+        isSimulated: false,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Get status action
+    // === Get status ===
     if (action === 'get_status') {
-      const { paymentId } = orderData
-      
-      let statusResult;
-      
+      const paymentId = orderData?.paymentId;
+
       if (!ACCESS_TOKEN || !APPLICATION_ID) {
-        // Simular status
-        statusResult = {
-          id: paymentId,
+        return new Response(JSON.stringify({
+          success: true,
+          paymentId,
           status: 'COMPLETED',
-          amount_money: {
-            amount: 0,
-            currency: 'USD'
-          },
-          created_at: new Date().toISOString()
-        };
-      } else {
-        // Status real con Square API
-        try {
-          const response = await fetch(`${SQUARE_BASE_URL}/v2/payments/${paymentId}`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${ACCESS_TOKEN}`,
-              'Square-Version': '2024-01-18'
-            }
-          });
-
-          const responseData = await response.json();
-          
-          if (!response.ok) {
-            throw new Error(`Square Status Error: ${JSON.stringify(responseData)}`);
-          }
-
-          statusResult = responseData.payment;
-        } catch (statusError) {
-          console.error('❌ Error consultando status real:', statusError);
-          throw new Error(`Error consultando estado: ${statusError.message}`);
-        }
+          amount: 0,
+          currency: 'USD',
+          created: new Date().toISOString(),
+          environment: ENV,
+          isSimulated: true,
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
-      return new Response(
-        JSON.stringify({
-          success: true,
-          paymentId: statusResult.id,
-          status: statusResult.status,
-          amount: (statusResult.amount_money?.amount || 0) / 100,
-          currency: statusResult.amount_money?.currency || 'USD',
-          created: statusResult.created_at,
-          environment: ENV,
-          isSimulated: !ACCESS_TOKEN || !APPLICATION_ID
-        }),
-        { 
-          headers: { 
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          } 
-        }
-      )
+      const resp = await fetch(`${SQUARE_BASE_URL}/v2/payments/${paymentId}`, {
+        headers: {
+          'Authorization': `Bearer ${ACCESS_TOKEN}`,
+          'Square-Version': '2024-01-18',
+        },
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(`Square Status Error: ${JSON.stringify(data)}`);
+
+      return new Response(JSON.stringify({
+        success: true,
+        paymentId: data.payment.id,
+        status: data.payment.status,
+        amount: (data.payment.amount_money?.amount || 0) / 100,
+        currency: data.payment.amount_money?.currency || 'USD',
+        created: data.payment.created_at,
+        environment: ENV,
+        isSimulated: false,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    return new Response(
-      JSON.stringify({ error: 'Acción inválida' }),
-      { 
-        status: 400,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        } 
-      }
-    )
+    return new Response(JSON.stringify({ error: 'Invalid action' }), {
+      status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
 
-  } catch (error: any) {
-    console.error('❌ ERROR en función Square:', {
-      message: error.message,
-      stack: error.stack,
-      timestamp: new Date().toISOString()
-    })
-    
-    return new Response(
-      JSON.stringify({ 
-        success: false,
-        error: error.message || 'Error procesando pago con Square'
-      }),
-      { 
-        status: 500,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        } 
-      }
-    )
+  } catch (err: any) {
+    console.error('Square function error:', err);
+    return new Response(JSON.stringify({
+      success: false,
+      error: err?.message || 'Square payment error',
+    }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
-})
+});

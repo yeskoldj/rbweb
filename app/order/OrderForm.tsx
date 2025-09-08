@@ -5,6 +5,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { createSquarePayment, createP2POrder, p2pPaymentConfig } from '@/lib/squareConfig';
+import Script from 'next/script';
+
 
 interface CartItem {
   id: string;
