@@ -357,7 +357,7 @@ export default function DashboardPage() {
           adminNotes,
           customerEmail: quote.customer_email,
           customerName: quote.customer_name,
-          eventType: quote.event_type,
+          eventType: quote.occasion,
           eventDate: quote.event_date,
         }),
       });
@@ -1078,10 +1078,34 @@ export default function DashboardPage() {
 
                         {/* Quote details */}
                         <div className="grid grid-cols-2 gap-4 mb-4">
-                          {quote.event_type && (
+                          {quote.occasion && (
                             <div>
-                              <p className="text-xs text-gray-500 font-medium">Tipo de Evento</p>
-                              <p className="text-sm text-gray-800">{quote.event_type}</p>
+                              <p className="text-xs text-gray-500 font-medium">Ocasión</p>
+                              <p className="text-sm text-gray-800">{quote.occasion}</p>
+                            </div>
+                          )}
+                          {quote.age_group && (
+                            <div>
+                              <p className="text-xs text-gray-500 font-medium">Grupo de Edad</p>
+                              <p className="text-sm text-gray-800">{quote.age_group}</p>
+                            </div>
+                          )}
+                          {quote.theme && (
+                            <div>
+                              <p className="text-xs text-gray-500 font-medium">Tema</p>
+                              <p className="text-sm text-gray-800">{quote.theme}</p>
+                            </div>
+                          )}
+                          {quote.servings && (
+                            <div>
+                              <p className="text-xs text-gray-500 font-medium">Porciones</p>
+                              <p className="text-sm text-gray-800">{quote.servings}</p>
+                            </div>
+                          )}
+                          {quote.budget && (
+                            <div>
+                              <p className="text-xs text-gray-500 font-medium">Presupuesto</p>
+                              <p className="text-sm text-gray-800">{quote.budget}</p>
                             </div>
                           )}
                           {quote.event_date && (
@@ -1092,32 +1116,20 @@ export default function DashboardPage() {
                               </p>
                             </div>
                           )}
-                          {quote.guest_count && (
-                            <div>
-                              <p className="text-xs text-gray-500 font-medium">Número de Invitados</p>
-                              <p className="text-sm text-gray-800">{quote.guest_count}</p>
-                            </div>
-                          )}
-                          {quote.budget_range && (
-                            <div>
-                              <p className="text-xs text-gray-500 font-medium">Presupuesto</p>
-                              <p className="text-sm text-gray-800">{quote.budget_range}</p>
-                            </div>
-                          )}
                         </div>
 
-                        {quote.description && (
+                        {quote.event_details && (
                           <div className="mb-4">
-                            <p className="text-xs text-gray-500 font-medium mb-1">Descripción</p>
-                            <p className="text-sm text-gray-800 bg-gray-50 p-3 rounded-lg">{quote.description}</p>
+                            <p className="text-xs text-gray-500 font-medium mb-1">Detalles del Evento</p>
+                            <p className="text-sm text-gray-800 bg-gray-50 p-3 rounded-lg">{quote.event_details}</p>
                           </div>
                         )}
 
-                        {quote.reference_image && (
+                        {quote.reference_photo_url && (
                           <div className="mb-4">
                             <p className="text-xs text-gray-500 font-medium mb-2">Imagen de Referencia</p>
                             <img
-                              src={quote.reference_image}
+                              src={quote.reference_photo_url}
                               alt="Referencia"
                               className="w-full h-40 object-cover rounded-lg"
                             />
