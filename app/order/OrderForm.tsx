@@ -480,21 +480,21 @@ const initSquareCard = useCallback(async () => {
         specialRequests: formData.specialRequests?.trim() || undefined
       });
 
-      if (result.success) {
-        // Limpiar carrito y formulario
-        localStorage.removeItem('bakery-cart');
-        localStorage.removeItem('bakery-order-form');
-
-        setShowSuccess(true);
-        setShowP2PInstructions(false);
-
-        setTimeout(() => {
-          setShowSuccess(false);
-          router.push('/dashboard');
-        }, 3000);
-      } else {
-        throw new Error(result.error || 'Error creando la orden');
+      if (!result || !result.success) {
+        throw new Error(result?.error || 'Error creando la orden');
       }
+
+      // Limpiar carrito y formulario
+      localStorage.removeItem('bakery-cart');
+      localStorage.removeItem('bakery-order-form');
+
+      setShowSuccess(true);
+      setShowP2PInstructions(false);
+
+      setTimeout(() => {
+        setShowSuccess(false);
+        router.push('/dashboard');
+      }, 3000);
     } catch (err: any) {
       console.error('❌ Error confirmando pago P2P:', err);
       showNotification('error', 'Error en el Pedido', err?.message || 'Por favor intenta de nuevo');

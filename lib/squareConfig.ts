@@ -163,7 +163,24 @@ export async function createP2POrder(orderData: {
       userId: orderData.userId && isValidUUID(orderData.userId) ? orderData.userId : undefined,
     };
 
-    const res = await fetch(functionUrl, {
+    async function fetchWithRetry(url: string, options: RequestInit, retries = 3): Promise<Response> {
+      for (let attempt = 0; attempt < retries; attempt++) {
+        try {
+          const res = await fetch(url, options);
+          if (!res.ok) {
+            const txt = await res.text();
+            throw new Error(`HTTP ${res.status}: ${txt}`);
+          }
+          return res;
+        } catch (err) {
+          if (attempt === retries - 1) throw err;
+          await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+        }
+      }
+      throw new Error('Unexpected fetch retry error');
+    }
+
+    const res = await fetchWithRetry(functionUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -174,11 +191,6 @@ export async function createP2POrder(orderData: {
         orderData: sanitizedOrderData,
       }),
     });
-
-    if (!res.ok) {
-      const txt = await res.text();
-      throw new Error(`HTTP ${res.status}: ${txt}`);
-    }
 
     const result = await res.json();
     if (!result?.success) {
