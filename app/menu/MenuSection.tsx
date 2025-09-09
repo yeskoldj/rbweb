@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { showCartNotification } from '../../lib/cartNotification';
 
 interface MenuItem {
   name: string;
@@ -73,8 +74,8 @@ export default function MenuSection({ category, items }: MenuSectionProps) {
     // Save updated cart
     localStorage.setItem('bakery-cart', JSON.stringify(existingCart));
     
-    // Show success message
-    alert(`¡${item.name} agregado al carrito!`);
+    // Show success message with animation
+    showCartNotification(`${item.name} agregado al carrito`);
   };
 
   return (

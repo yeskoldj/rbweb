@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { createSquarePayment, createP2POrder, p2pPaymentConfig, squareConfig } from '@/lib/squareConfig';
+import { showCartNotification } from '@/lib/cartNotification';
 import Script from 'next/script';
 
 interface CartItem {
@@ -280,7 +281,10 @@ const initSquareCard = useCallback(async () => {
     
     localStorage.setItem('bakery-cart', JSON.stringify(cart));
     setCartItems(cart);
-    
+
+    // Mostrar confirmación visual
+    showCartNotification(`${item.name} agregado al carrito`);
+
     // Efecto visual "Agregado"
     setAddedItems(prev => new Set(prev).add(item.id));
     setTimeout(() => {
@@ -292,7 +296,7 @@ const initSquareCard = useCallback(async () => {
     }, 1500);
   };
 
-  const removeFromCart = (id: string) => {
+  const removeFromCart = (id: string, name: string) => {
     const existingCart = localStorage.getItem('bakery-cart');
     let cart = existingCart ? JSON.parse(existingCart) : [];
     cart = cart.filter((cartItem: any) => cartItem.id !== id);
@@ -303,6 +307,9 @@ const initSquareCard = useCallback(async () => {
       newSet.delete(id);
       return newSet;
     });
+
+    // Mostrar confirmación de eliminación
+    showCartNotification(`${name} eliminado del carrito`, 'remove');
   };
 
   const getItemPrice = (item: CartItem): number => {
@@ -1086,7 +1093,7 @@ const initSquareCard = useCallback(async () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => removeFromCart(item.id)}
+                      onClick={() => removeFromCart(item.id, item.name)}
                       className="px-3 py-1 rounded-full text-xs font-medium bg-red-500 text-white hover:bg-red-600"
                     >
                       Eliminar
