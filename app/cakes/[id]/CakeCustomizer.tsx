@@ -8,6 +8,7 @@ import Header from '../../../components/Header';
 import TabBar from '../../../components/TabBar';
 import { useLanguage } from '../../../lib/languageContext';
 import { supabase } from '../../../lib/supabase';
+import { showCartNotification } from '../../../lib/cartNotification';
 
 interface CakeCustomizerProps {
   cakeId: string;
@@ -662,6 +663,9 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
     let cart = existingCart ? JSON.parse(existingCart) : [];
     cart.push(cartItem);
     localStorage.setItem('bakery-cart', JSON.stringify(cart));
+
+    // Mostrar confirmación visual
+    showCartNotification(`${cartItem.name} agregado al carrito`);
 
     setTimeout(() => {
       setIsAdding(false);

@@ -4,6 +4,7 @@
 import Link from 'next/link';
 import { useLanguage } from '../lib/languageContext';
 import { getUser } from '../lib/authStorage';
+import { showCartNotification } from '../lib/cartNotification';
 
 export default function MenuPreview() {
   const { t } = useLanguage();
@@ -105,18 +106,8 @@ export default function MenuPreview() {
       
       localStorage.setItem('bakery-cart', JSON.stringify(cart));
       
-      // Mostrar confirmación
-      const confirmationElement = document.createElement('div');
-      confirmationElement.innerHTML = `
-        <div style="position: fixed; top: 80px; right: 20px; background: #10B981; color: white; padding: 12px 20px; border-radius: 8px; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-          ✅ ${item.name} agregado al carrito
-        </div>
-      `;
-      document.body.appendChild(confirmationElement);
-      
-      setTimeout(() => {
-        document.body.removeChild(confirmationElement);
-      }, 3000);
+      // Mostrar confirmación con animación consistente
+      showCartNotification(`${item.name} agregado al carrito`);
       
     } catch (error) {
       console.error('Error agregando al carrito:', error);
