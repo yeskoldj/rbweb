@@ -51,11 +51,7 @@ export default function DashboardPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [quoteResponses, setQuoteResponses] = useState<{
-    [key: string]: { price: string; notes: string };
-  }>({});
   const [showSuccessMessage, setShowSuccessMessage] = useState('');
-  const [submittingQuote, setSubmittingQuote] = useState<string | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState<string | null>(null);
   const [deletingQuote, setDeletingQuote] = useState<string | null>(null);
   const [deleteOrderConfirmation, setDeleteOrderConfirmation] = useState<string | null>(null);
@@ -379,86 +375,6 @@ export default function DashboardPage() {
   };
 
   // -------------------------------------------------------------------------
-  // Quote response handling (moved inside the component)
-  // -------------------------------------------------------------------------
-  const handleQuoteResponse = async (
-    quoteId: string,
-    estimatedPrice: string,
-    adminNotes: string
-  ) => {
-    if (!estimatedPrice.trim()) {
-      alert('Por favor ingresa un precio estimado');
-      return;
-    }
-
-    const quote = quotes.find((q) => q.id === quoteId);
-    if (!quote) return;
-
-    setSubmittingQuote(quoteId);
-
-    try {
-      // Call edge function to send response email
-      const response = await fetch('/api/functions/v1/send-quote-response', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          quoteId,
-          estimatedPrice,
-          adminNotes,
-          customerEmail: quote.customer_email,
-          customerName: quote.customer_name,
-          eventType: quote.occasion,
-          eventDate: quote.event_date,
-        }),
-      });
-
-      if (!response.ok) {
-        // If response status is not 2xx, treat it as an error
-        const errorText = await response.text();
-        throw new Error(`Network response was not ok: ${errorText}`);
-      }
-
-      const result = await response.json();
-
-      if (result.success) {
-        // Update local state
-        setQuotes(
-          quotes.map((q) =>
-            q.id === quoteId
-              ? {
-                  ...q,
-                  status: 'responded',
-                  estimated_price: parseFloat(estimatedPrice),
-                  admin_notes: adminNotes,
-                  responded_at: new Date().toISOString(),
-                }
-              : q
-          )
-        );
-
-        // Clear form for this quote
-        setQuoteResponses((prev) => ({
-          ...prev,
-          [quoteId]: { price: '', notes: '' },
-        }));
-
-        // Show temporary success message
-        setShowSuccessMessage(`✅ Respuesta enviada a ${quote.customer_name}`);
-        setTimeout(() => setShowSuccessMessage(''), 3000);
-      } else {
-        throw new Error(result.error || 'Error al enviar respuesta');
-      }
-    } catch (error) {
-      console.error('Error sending quote response:', error);
-      alert('Error al enviar la respuesta. Por favor intenta de nuevo.');
-    }
-
-    setSubmittingQuote(null);
-  };
-
-  // -------------------------------------------------------------------------
   // Quote deletion handling
   // -------------------------------------------------------------------------
   const handleDeleteQuote = async (quoteId: string) => {
@@ -478,13 +394,6 @@ export default function DashboardPage() {
 
       // Update local state
       setQuotes(quotes.filter((quote) => quote.id !== quoteId));
-
-      // Clear any response data for this quote
-      setQuoteResponses((prev) => {
-        const updated = { ...prev };
-        delete updated[quoteId];
-        return updated;
-      });
 
       // Show success message
       setShowSuccessMessage('✅ Cotización eliminada correctamente');
@@ -1188,74 +1097,40 @@ export default function DashboardPage() {
                           </div>
                         )}
 
-                        {/* Respond form for pending quotes */}
+                        {/* Phone confirmation for pending quotes */}
                         {quote.status === 'pending' && (
                           <div className="border-t pt-4 space-y-3">
-                            <h4 className="font-medium text-gray-800 mb-2">Responder Cotización</h4>
+                            <h4 className="font-medium text-gray-800 mb-2">Confirmar Pedido</h4>
                             <div className="space-y-3">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  Precio Estimado ($) *
-                                </label>
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  value={quoteResponses[quote.id]?.price || ''}
-                                  onChange={(e) =>
-                                    setQuoteResponses((prev) => ({
-                                      ...prev,
-                                      [quote.id]: {
-                                        ...prev[quote.id],
-                                        price: e.target.value,
-                                      },
-                                    }))
-                                  }
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"
-                                  placeholder="0.00"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  Notas Adicionales
-                                </label>
-                                <textarea
-                                  value={quoteResponses[quote.id]?.notes || ''}
-                                  onChange={(e) =>
-                                    setQuoteResponses((prev) => ({
-                                      ...prev,
-                                      [quote.id]: {
-                                        ...prev[quote.id],
-                                        notes: e.target.value,
-                                      },
-                                    }))
-                                  }
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm h-20 resize-none"
-                                  placeholder="Detalles adicionales, ingredientes especiales, tiempo de preparación..."
-                                />
-                              </div>
                               <button
-                                onClick={() =>
-                                  handleQuoteResponse(
-                                    quote.id,
-                                    quoteResponses[quote.id]?.price || '',
-                                    quoteResponses[quote.id]?.notes || ''
-                                  )
-                                }
-                                disabled={submittingQuote === quote.id}
-                                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-2 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                onClick={() => window.open(`tel:${quote.customer_phone}`, '_self')}
+                                className="w-full bg-blue-500 text-white py-2 rounded-lg font-medium flex items-center justify-center"
                               >
-                                {submittingQuote === quote.id ? (
-                                  <div className="flex items-center justify-center">
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                    Enviando...
-                                  </div>
-                                ) : (
-                                  <>
-                                    <i className="ri-send-plane-line mr-2"></i>
-                                    Enviar Cotización al Cliente
-                                  </>
-                                )}
+                                <i className="ri-phone-line mr-2"></i>
+                                Llamar Cliente: {quote.customer_phone}
                               </button>
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => {
+                                    updateQuoteStatus(quote.id, 'accepted');
+                                    setShowSuccessMessage('✅ Orden confirmada');
+                                    setTimeout(() => setShowSuccessMessage(''), 3000);
+                                  }}
+                                  className="flex-1 bg-green-500 text-white py-2 rounded-lg font-medium"
+                                >
+                                  Confirmar
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    updateQuoteStatus(quote.id, 'rejected');
+                                    setShowSuccessMessage('❌ Orden cancelada');
+                                    setTimeout(() => setShowSuccessMessage(''), 3000);
+                                  }}
+                                  className="flex-1 bg-red-500 text-white py-2 rounded-lg font-medium"
+                                >
+                                  Cancelar
+                                </button>
+                              </div>
                             </div>
                           </div>
                         )}
