@@ -67,7 +67,8 @@ serve(async (req) => {
         // ✅ Deja que PostgreSQL genere el UUID automáticamente
         
         user_id: (userId && isValidUUID(userId)) ? userId : null,
-        customer_name: orderData.customerInfo?.name?.trim() || null,
+        // Provide default name to satisfy NOT NULL constraint in the DB
+        customer_name: orderData.customerInfo?.name?.trim() || 'Cliente',
         customer_phone: orderData.customerInfo?.phone?.trim() || null,
         customer_email: orderData.customerInfo?.email?.trim() || null,
         items: orderData.items || [],
