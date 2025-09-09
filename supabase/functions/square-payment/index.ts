@@ -148,8 +148,15 @@ serve(async (req) => {
         .single();
 
       if (dbError) {
+        console.error('❌ Database error:', dbError);
         throw new Error(`Payment ok but DB error: ${dbError.message}`);
       }
+
+      console.log('✅ Square payment successful:', {
+        paymentId,
+        orderId: insertedOrder.id,
+        amount: orderData.amount,
+      });
 
       return new Response(JSON.stringify({
         success: true,
