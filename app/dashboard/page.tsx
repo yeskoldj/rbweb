@@ -176,7 +176,7 @@ export default function DashboardPage() {
 
     if (savedOrders.length === 0) {
       const testOrder: Order = {
-        id: `ORDER-${Date.now()}`,
+        id: crypto.randomUUID(),
         p2p_reference: 'P2P-TEST',
         user_id: undefined,
         customer_name: 'Maria Gonzalez',
