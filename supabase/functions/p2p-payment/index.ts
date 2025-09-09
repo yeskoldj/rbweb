@@ -43,13 +43,17 @@ serve(async (req) => {
         throw new Error('Datos de orden incompletos')
       }
 
-      // Referencia legible para P2P (se guarda en p2p_reference)
+      // Referencia legible para P2P (se guarda en p2p_reference como TEXT)
       const p2pRef = `P2P-${Date.now()}`
+      
+      // NO generes orderId manualmente, deja que PostgreSQL lo haga
+      // const orderId = crypto.randomUUID()  ← COMENTAR ESTA LÍNEA
 
-      // Validate userId before constructing order record
+      // Validate userId antes de usar
       const userId = orderData?.userId
       if (userId && !isValidUUID(userId)) {
-        throw new Error('Invalid userId; must be a UUID')
+        console.warn('Invalid userId provided, setting to null:', userId)
+        // No lances error, solo usa null
       }
 
       // Calcular montos (orderData.amount representa el subtotal)
@@ -57,13 +61,16 @@ serve(async (req) => {
       const tax = Number((subtotal * 0.03).toFixed(2))
       const total = Number((subtotal + tax).toFixed(2))
 
-      // Preparar registro con referencia P2P
+      // ✅ CORRECCIÓN: NO incluir 'id' en el objeto
       const orderRecord: any = {
-        user_id: userId || null,
-        customer_name: orderData.customerInfo?.name?.trim() ?? null,
-        customer_phone: orderData.customerInfo?.phone?.trim() ?? null,
-        customer_email: orderData.customerInfo?.email?.trim() ?? null,
-        items: orderData.items ?? [],
+        // ❌ id: orderId,  ← ELIMINAR ESTA LÍNEA
+        // ✅ Deja que PostgreSQL genere el UUID automáticamente
+        
+        user_id: (userId && isValidUUID(userId)) ? userId : null,
+        customer_name: orderData.customerInfo?.name?.trim() || null,
+        customer_phone: orderData.customerInfo?.phone?.trim() || null,
+        customer_email: orderData.customerInfo?.email?.trim() || null,
+        items: orderData.items || [],
         subtotal,
         tax,
         total,
@@ -71,20 +78,28 @@ serve(async (req) => {
         special_requests: orderData.specialRequests
           ? `${orderData.specialRequests}\n[Pagado con Zelle | Ref: ${p2pRef}]`
           : `[Pagado con Zelle | Ref: ${p2pRef}]`,
+        
+        // ✅ Asegurar que p2p_reference sea TEXT, no UUID
         p2p_reference: p2pRef,
-        status: 'pending',                  // esperando confirmación de pago
+        
+        status: 'pending',
         order_date: new Date().toISOString().split('T')[0],
         payment_type: orderData.paymentMethod,
-        // Marcar como pagado vía Zelle sin requerir comprobación adicional
         payment_status: 'completed',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
 
+      console.log('📋 Insertando orden P2P:', {
+        p2p_reference: p2pRef,
+        user_id: orderRecord.user_id,
+        total: orderRecord.total
+      })
+
       const { data: insertedOrder, error: dbError } = await supabaseAdmin
         .from('orders')
         .insert([orderRecord])
-        .select('id')
+        .select('id, p2p_reference')
         .single()
 
       if (dbError) {
@@ -92,12 +107,12 @@ serve(async (req) => {
         throw new Error(`Error guardando orden: ${dbError.message}`)
       }
 
-      console.log('✅ Orden P2P guardada:', insertedOrder.id)
+      console.log('✅ Orden P2P guardada:', insertedOrder)
 
       return new Response(JSON.stringify({
         success: true,
-        orderId: insertedOrder.id,   // UUID real generado por la BD
-        reference: p2pRef,           // referencia P2P legible
+        orderId: insertedOrder.id,           // UUID real generado por PostgreSQL
+        reference: insertedOrder.p2p_reference || p2pRef,  // Referencia P2P legible
         status: 'pending_payment',
         amount: total,
         paymentMethod: orderData.paymentMethod,
