@@ -21,22 +21,32 @@ export default function Header() {
   const { t } = useLanguage();
 
   useEffect(() => {
+    if (!supabase) {
+      checkLocalUser();
+      return;
+    }
+
     checkCurrentUser();
-    
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event: AuthChangeEvent, session: Session | null) => {
-      if (session?.user) {
-        checkUserRole(session.user.id);
-      } else {
-        checkLocalUser();
+        if (session?.user) {
+          checkUserRole(session.user.id);
+        } else {
+          checkLocalUser();
+        }
       }
-    }
     );
-    
+
     return () => subscription.unsubscribe();
   }, []);
 
   const checkCurrentUser = async () => {
+    if (!supabase) {
+      checkLocalUser();
+      return;
+    }
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -65,6 +75,11 @@ export default function Header() {
   };
 
   const checkUserRole = async (userId: string) => {
+    if (!supabase) {
+      checkLocalUser();
+      return;
+    }
+
     try {
       const { data: userData } = await supabase
         .from('profiles')
