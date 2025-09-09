@@ -2,7 +2,9 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+First, create a `.env.local` file by copying `.env.example` and filling in the required environment variables. Supabase and Square credentials can be retrieved from your project settings.
+
+After that, run the development server:
 
 ```bash
 npm run dev
