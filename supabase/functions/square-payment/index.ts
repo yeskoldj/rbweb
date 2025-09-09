@@ -141,7 +141,8 @@ serve(async (req) => {
       const orderRecord: Record<string, any> = {
         // NO establezcas 'id' si tu columna es uuid con default
         user_id: (userId && isValidUUID(userId)) ? userId : null,
-        customer_name: customerName,
+        // Provide default name to satisfy NOT NULL constraint in the DB
+        customer_name: customerName || 'Cliente',
         customer_phone: orderData.customerInfo?.phone?.trim() || null,
         customer_email: customerEmail,
         items: orderData.items,
