@@ -12,6 +12,27 @@ import UserManagement from './UserManagement';
 
 type QuoteStatus = 'pending' | 'responded' | 'accepted' | 'rejected';
 
+interface Quote {
+  id: string;
+  customer_name: string;
+  customer_email?: string | null;
+  customer_phone?: string | null;
+  occasion?: string | null;
+  age_group?: string | null;
+  theme?: string | null;
+  servings?: string | null;
+  budget?: string | null;
+  event_date?: string | null;
+  event_details?: string | null;
+  has_reference_photo?: boolean;
+  photo_description?: string | null;
+  reference_photo_url?: string | null;
+  status: QuoteStatus;
+  created_at: string;
+  estimated_price?: number | null;
+  notes?: string | null;
+}
+
 const quoteStatusColors: Record<QuoteStatus, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
   responded: 'bg-blue-100 text-blue-800',
@@ -24,7 +45,7 @@ export default function DashboardPage() {
   // State declarations (original + new ones needed for quote handling)
   // -------------------------------------------------------------------------
   const [orders, setOrders] = useState<Order[]>([]);
-  const [quotes, setQuotes] = useState<any[]>([]);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
   const [activeTab, setActiveTab] = useState('orders');
   const [showTodayView, setShowTodayView] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -250,7 +271,7 @@ export default function DashboardPage() {
 
   const loadQuotesFromSupabase = async () => {
     try {
-      const { data: quotesData, error } = await supabase
+      const { data: quotesData, error }: { data: Quote[] | null; error: any } = await supabase
         .from('quotes')
         .select('*')
         .order('created_at', { ascending: false });
@@ -260,8 +281,8 @@ export default function DashboardPage() {
         return;
       }
 
-      const quotesWithUrls = await Promise.all(
-        (quotesData || []).map(async (quote) => {
+      const quotesWithUrls: Quote[] = await Promise.all(
+        (quotesData || []).map(async (quote: Quote) => {
           if (quote.reference_photo_url) {
             const { data: signed } = await supabase.storage
               .from('temp-uploads')
@@ -281,7 +302,7 @@ export default function DashboardPage() {
 
   const updateQuoteStatus = async (
     quoteId: string,
-    newStatus: string,
+    newStatus: QuoteStatus,
     estimatedPrice?: number,
     notes?: string
   ) => {
@@ -1271,7 +1292,7 @@ export default function DashboardPage() {
     return orders.filter((order) => order.status === status);
   }
 
-  function getQuotesByStatus(status: string) {
+  function getQuotesByStatus(status: QuoteStatus) {
     return quotes.filter((quote) => quote.status === status);
   }
 
@@ -1292,9 +1313,11 @@ export default function DashboardPage() {
 // -----------------------------------------------------------------------------
 // QuoteCard component (kept for possible reuse)
 // -----------------------------------------------------------------------------
-function QuoteCard({ quote, onStatusUpdate }: { quote: any; onStatusUpdate: Function }) {
+function QuoteCard({ quote, onStatusUpdate }: { quote: Quote; onStatusUpdate: (id: string, status: QuoteStatus, estimatedPrice?: number, notes?: string) => void }) {
   const [showDetails, setShowDetails] = useState(false);
-  const [estimatedPrice, setEstimatedPrice] = useState(quote.estimated_price || '');
+  const [estimatedPrice, setEstimatedPrice] = useState<string>(
+    quote.estimated_price ? String(quote.estimated_price) : ''
+  );
   const [notes, setNotes] = useState(quote.notes || '');
 
   const statusColors = {

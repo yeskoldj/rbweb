@@ -3,6 +3,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../lib/languageContext';
 import LanguageSelector from './LanguageSelector';
@@ -22,13 +23,15 @@ export default function Header() {
   useEffect(() => {
     checkCurrentUser();
     
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event: AuthChangeEvent, session: Session | null) => {
       if (session?.user) {
         checkUserRole(session.user.id);
       } else {
         checkLocalUser();
       }
-    });
+    }
+    );
     
     return () => subscription.unsubscribe();
   }, []);
