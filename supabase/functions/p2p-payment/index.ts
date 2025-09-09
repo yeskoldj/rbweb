@@ -58,24 +58,21 @@ serve(async (req) => {
       const total = Number((subtotal + tax).toFixed(2))
 
       // Preparar registro con referencia P2P
-      const orderRecord: any = {
+      const orderRecord: Record<string, any> = {
         user_id: userId || null,
-        customer_name: orderData.customerInfo?.name?.trim() ?? null,
-        customer_phone: orderData.customerInfo?.phone?.trim() ?? null,
-        customer_email: orderData.customerInfo?.email?.trim() ?? null,
+        customer_name: orderData.customerInfo?.name?.trim() || null,
+        customer_phone: orderData.customerInfo?.phone?.trim() || null,
+        customer_email: orderData.customerInfo?.email?.trim() || null,
         items: orderData.items ?? [],
         subtotal,
         tax,
         total,
         pickup_time: orderData.pickupTime || null,
-        special_requests: orderData.specialRequests
-          ? `${orderData.specialRequests}\n[Pagado con Zelle | Ref: ${p2pRef}]`
-          : `[Pagado con Zelle | Ref: ${p2pRef}]`,
+        special_requests: orderData.specialRequests?.trim() || null,
         p2p_reference: p2pRef,
-        status: 'pending',                  // esperando confirmación de pago
+        status: 'pending',
         order_date: new Date().toISOString().split('T')[0],
         payment_type: orderData.paymentMethod,
-        // Marcar como pagado vía Zelle sin requerir comprobación adicional
         payment_status: 'completed',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

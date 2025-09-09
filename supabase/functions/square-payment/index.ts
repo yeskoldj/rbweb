@@ -120,18 +120,17 @@ serve(async (req) => {
       }
 
         const orderRecord: Record<string, any> = {
-          // NO establezcas 'id' si tu columna es uuid
           user_id: userId || null,
           customer_name: orderData.customerInfo?.name?.trim() || null,
           customer_phone: orderData.customerInfo?.phone?.trim() || null,
           customer_email: orderData.customerInfo?.email?.trim() || null,
-          items: orderData.items,
+          items: orderData.items ?? [],
           subtotal: +(orderData.amount - orderData.amount * 0.03).toFixed(2),
           tax: +(orderData.amount * 0.03).toFixed(2),
           total: +orderData.amount.toFixed(2),
           pickup_time: orderData.pickupTime || null,
           special_requests: orderData.specialRequests?.trim() || null,
-          status: 'pending', // pendiente de producción
+          status: 'pending',
           order_date: new Date().toISOString().split('T')[0],
           payment_id: paymentId,
           payment_reference: paymentId,
