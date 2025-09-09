@@ -120,12 +120,27 @@ serve(async (req) => {
         // No lanzar error, solo usar null
       }
 
+      let customerName = orderData.customerInfo?.name?.trim() || null;
+      let customerEmail = orderData.customerInfo?.email?.trim() || null;
+
+      if ((!customerName || !customerEmail) && userId && isValidUUID(userId)) {
+        const { data: profile } = await supabaseAdmin
+          .from('profiles')
+          .select('full_name, email')
+          .eq('id', userId)
+          .single();
+        if (profile) {
+          if (!customerName) customerName = profile.full_name || null;
+          if (!customerEmail) customerEmail = profile.email || null;
+        }
+      }
+
       const orderRecord: Record<string, any> = {
         // NO establezcas 'id' si tu columna es uuid con default
         user_id: (userId && isValidUUID(userId)) ? userId : null,
-        customer_name: orderData.customerInfo?.name?.trim() || null,
+        customer_name: customerName,
         customer_phone: orderData.customerInfo?.phone?.trim() || null,
-        customer_email: orderData.customerInfo?.email?.trim() || null,
+        customer_email: customerEmail,
         items: orderData.items,
         subtotal: +(orderData.amount - orderData.amount * 0.03).toFixed(2),
         tax: +(orderData.amount * 0.03).toFixed(2),

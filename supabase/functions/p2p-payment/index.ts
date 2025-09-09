@@ -62,14 +62,30 @@ serve(async (req) => {
       const total = Number((subtotal + tax).toFixed(2))
 
       // ✅ CORRECCIÓN: NO incluir 'id' en el objeto
+      // Ensure name/email come from the user account when not provided
+      let customerName = orderData.customerInfo?.name?.trim() || null;
+      let customerEmail = orderData.customerInfo?.email?.trim() || null;
+
+      if ((!customerName || !customerEmail) && userId && isValidUUID(userId)) {
+        const { data: profile } = await supabaseAdmin
+          .from('profiles')
+          .select('full_name, email')
+          .eq('id', userId)
+          .single();
+        if (profile) {
+          if (!customerName) customerName = profile.full_name || null;
+          if (!customerEmail) customerEmail = profile.email || null;
+        }
+      }
+
       const orderRecord: any = {
         // ❌ id: orderId,  ← ELIMINAR ESTA LÍNEA
         // ✅ Deja que PostgreSQL genere el UUID automáticamente
-        
+
         user_id: (userId && isValidUUID(userId)) ? userId : null,
-        customer_name: orderData.customerInfo?.name?.trim() || null,
+        customer_name: customerName,
         customer_phone: orderData.customerInfo?.phone?.trim() || null,
-        customer_email: orderData.customerInfo?.email?.trim() || null,
+        customer_email: customerEmail,
         items: orderData.items || [],
         subtotal,
         tax,
