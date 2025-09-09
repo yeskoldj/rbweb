@@ -45,8 +45,6 @@ serve(async (req) => {
 
       // Referencia legible para P2P (se guarda en p2p_reference)
       const p2pRef = `P2P-${Date.now()}`
-      // UUID para la columna id
-      const orderId = crypto.randomUUID()
 
       // Validate userId before constructing order record
       const userId = orderData?.userId
@@ -59,9 +57,8 @@ serve(async (req) => {
       const tax = Number((subtotal * 0.03).toFixed(2))
       const total = Number((subtotal + tax).toFixed(2))
 
-      // Preparar registro con id generado y referencia P2P
+      // Preparar registro con referencia P2P
       const orderRecord: any = {
-        id: orderId,
         user_id: userId || null,
         customer_name: orderData.customerInfo?.name?.trim() ?? null,
         customer_phone: orderData.customerInfo?.phone?.trim() ?? null,
@@ -84,21 +81,23 @@ serve(async (req) => {
         updated_at: new Date().toISOString(),
       }
 
-      const { error: dbError } = await supabaseAdmin
+      const { data: insertedOrder, error: dbError } = await supabaseAdmin
         .from('orders')
         .insert([orderRecord])
+        .select('id')
+        .single()
 
       if (dbError) {
         console.error('❌ Supabase insert error:', dbError)
         throw new Error(`Error guardando orden: ${dbError.message}`)
       }
 
-      console.log('✅ Orden P2P guardada:', orderId)
+      console.log('✅ Orden P2P guardada:', insertedOrder.id)
 
       return new Response(JSON.stringify({
         success: true,
-        orderId,                     // UUID real
-        reference: p2pRef,           // tu referencia P2P legible
+        orderId: insertedOrder.id,   // UUID real generado por la BD
+        reference: p2pRef,           // referencia P2P legible
         status: 'pending_payment',
         amount: total,
         paymentMethod: orderData.paymentMethod,

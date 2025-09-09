@@ -119,27 +119,27 @@ serve(async (req) => {
         throw new Error('Invalid userId; must be a UUID');
       }
 
-      const orderRecord: Record<string, any> = {
-        // NO establezcas 'id' si tu columna es uuid
-        user_id: userId || null,
-        customer_name: orderData.customerInfo?.name?.trim() || null,
-        customer_phone: orderData.customerInfo?.phone?.trim() || null,
-        customer_email: orderData.customerInfo?.email?.trim() || null,
-        items: orderData.items,
-        subtotal: +(orderData.amount - orderData.amount * 0.03).toFixed(2),
-        tax: +(orderData.amount * 0.03).toFixed(2),
-        total: +orderData.amount.toFixed(2),
-        pickup_time: orderData.pickupTime || null,
-        special_requests: orderData.specialRequests?.trim() || null,
-        status: 'pending', // pendiente de producción
-        order_date: new Date().toISOString().split('T')[0],
-        payment_id: isValidUUID(paymentId) ? paymentId : null,
-        payment_reference: paymentId,
-        payment_type: orderData.paymentMethod || 'square',
-        payment_status: 'completed',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
+        const orderRecord: Record<string, any> = {
+          // NO establezcas 'id' si tu columna es uuid
+          user_id: userId || null,
+          customer_name: orderData.customerInfo?.name?.trim() || null,
+          customer_phone: orderData.customerInfo?.phone?.trim() || null,
+          customer_email: orderData.customerInfo?.email?.trim() || null,
+          items: orderData.items,
+          subtotal: +(orderData.amount - orderData.amount * 0.03).toFixed(2),
+          tax: +(orderData.amount * 0.03).toFixed(2),
+          total: +orderData.amount.toFixed(2),
+          pickup_time: orderData.pickupTime || null,
+          special_requests: orderData.specialRequests?.trim() || null,
+          status: 'pending', // pendiente de producción
+          order_date: new Date().toISOString().split('T')[0],
+          payment_id: paymentId,
+          payment_reference: paymentId,
+          payment_type: orderData.paymentMethod || 'square',
+          payment_status: 'completed',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
 
       const { data: insertedOrder, error: dbError } = await supabaseAdmin
         .from('orders')
