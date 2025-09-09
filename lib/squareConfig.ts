@@ -18,6 +18,12 @@ export const squareConfig = {
   },
 };
 
+// ---- Supabase Edge Function names ----
+export const EDGE_FUNCTIONS = {
+  p2p: 'p2p-payment',
+  square: 'square-payment',
+} as const;
+
 // ---- P2P config with proper typing to avoid union errors ----
 type ZelleConfig = {
   email: string;
@@ -83,7 +89,7 @@ export async function createSquarePayment(orderData: SquareOrderData) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (!supabaseUrl) throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL');
 
-    const functionUrl = `${supabaseUrl}/functions/v1/square-payment`;
+    const functionUrl = `${supabaseUrl}/functions/v1/${EDGE_FUNCTIONS.square}`;
 
     const sanitizedOrderData = {
       ...orderData,
@@ -150,7 +156,7 @@ export async function createP2POrder(orderData: {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (!supabaseUrl) throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL');
 
-    const functionUrl = `${supabaseUrl}/functions/v1/p2p-payment`;
+    const functionUrl = `${supabaseUrl}/functions/v1/${EDGE_FUNCTIONS.p2p}`;
 
     const sanitizedOrderData = {
       ...orderData,
@@ -211,7 +217,7 @@ export async function processRefund(paymentId: string, amount?: number) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (!supabaseUrl) throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL');
 
-    const functionUrl = `${supabaseUrl}/functions/v1/square-payment`;
+    const functionUrl = `${supabaseUrl}/functions/v1/${EDGE_FUNCTIONS.square}`;
 
     const res = await fetch(functionUrl, {
       method: 'POST',
@@ -249,7 +255,7 @@ export async function getPaymentStatus(paymentId: string) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (!supabaseUrl) throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL');
 
-    const functionUrl = `${supabaseUrl}/functions/v1/square-payment`;
+    const functionUrl = `${supabaseUrl}/functions/v1/${EDGE_FUNCTIONS.square}`;
 
     const res = await fetch(functionUrl, {
       method: 'POST',
