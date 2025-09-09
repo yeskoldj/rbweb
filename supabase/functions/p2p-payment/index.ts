@@ -44,7 +44,7 @@ serve(async (req) => {
       }
 
       // Referencia legible para P2P (se guarda en p2p_reference)
-      const p2pRef = `P2P-${Date.now()}-${crypto.randomUUID()}`
+      const p2pRef = `P2P-${Date.now()}`
       // UUID para la columna id
       const orderId = crypto.randomUUID()
 
