@@ -149,8 +149,9 @@ export default function DashboardPage() {
 
       const ordersWithUrls = await Promise.all(
         (orders || []).map(async (order: any) => {
+          const itemsArray = Array.isArray(order.items) ? order.items : [];
           const itemsWithUrls = await Promise.all(
-            (order.items || []).map(async (item: any) => {
+            itemsArray.map(async (item: any) => {
               if (item.photoUrl) {
                 const { data: signed } = await supabase.storage
                   .from('temp-uploads')
