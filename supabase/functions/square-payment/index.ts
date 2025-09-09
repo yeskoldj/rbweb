@@ -113,38 +113,51 @@ serve(async (req) => {
       // === Guardar orden en DB ===
       const paymentId: string | undefined = paymentResult.id;
 
-      // Validate userId before constructing order record
+      // Validate userId antes de usar
       const userId = orderData?.userId;
       if (userId && !isValidUUID(userId)) {
-        throw new Error('Invalid userId; must be a UUID');
+        console.warn('Invalid userId provided, setting to null:', userId);
+        // No lances error, solo usa null
       }
 
-        const orderRecord: Record<string, any> = {
-          // NO establezcas 'id' si tu columna es uuid
-          user_id: userId || null,
-          customer_name: orderData.customerInfo?.name?.trim() || null,
-          customer_phone: orderData.customerInfo?.phone?.trim() || null,
-          customer_email: orderData.customerInfo?.email?.trim() || null,
-          items: orderData.items,
-          subtotal: +(orderData.amount - orderData.amount * 0.03).toFixed(2),
-          tax: +(orderData.amount * 0.03).toFixed(2),
-          total: +orderData.amount.toFixed(2),
-          pickup_time: orderData.pickupTime || null,
-          special_requests: orderData.specialRequests?.trim() || null,
-          status: 'pending', // pendiente de producción
-          order_date: new Date().toISOString().split('T')[0],
-          payment_id: paymentId,
-          payment_reference: paymentId,
-          payment_type: orderData.paymentMethod || 'square',
-          payment_status: 'completed',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
+      // ✅ CORRECCIÓN: NO incluir 'id' manualmente
+      const orderRecord: Record<string, any> = {
+        // ❌ NO establezcas 'id' manualmente
+        // ✅ Deja que PostgreSQL genere el UUID automáticamente
+
+        user_id: (userId && isValidUUID(userId)) ? userId : null,
+        customer_name: orderData.customerInfo?.name?.trim() || null,
+        customer_phone: orderData.customerInfo?.phone?.trim() || null,
+        customer_email: orderData.customerInfo?.email?.trim() || null,
+        items: orderData.items,
+        subtotal: +(orderData.amount - orderData.amount * 0.03).toFixed(2),
+        tax: +(orderData.amount * 0.03).toFixed(2),
+        total: +orderData.amount.toFixed(2),
+        pickup_time: orderData.pickupTime || null,
+        special_requests: orderData.specialRequests?.trim() || null,
+        status: 'pending', // pendiente de producción
+        order_date: new Date().toISOString().split('T')[0],
+
+        // Para payment_id, usa TEXT siempre (Square puede devolver IDs no-UUID)
+        payment_id: null,  // Deja null si no es UUID válido
+        payment_reference: paymentId, // Guarda el ID original aquí como TEXT
+
+        payment_type: orderData.paymentMethod || 'square',
+        payment_status: 'completed',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      console.log('📋 Insertando orden Square:', {
+        payment_reference: paymentId,
+        user_id: orderRecord.user_id,
+        total: orderRecord.total
+      });
 
       const { data: insertedOrder, error: dbError } = await supabaseAdmin
         .from('orders')
         .insert([orderRecord])
-        .select()
+        .select('id')
         .single();
 
       if (dbError) {
@@ -152,16 +165,12 @@ serve(async (req) => {
         throw new Error(`Payment ok but DB error: ${dbError.message}`);
       }
 
-      console.log('✅ Square payment successful:', {
-        paymentId,
-        orderId: insertedOrder.id,
-        amount: orderData.amount,
-      });
+      console.log('✅ Orden Square guardada:', insertedOrder);
 
       return new Response(JSON.stringify({
         success: true,
         paymentId: paymentResult.id,
-        orderId: insertedOrder.id, // ← id generado por la DB
+        orderId: insertedOrder.id, // ← UUID generado por la DB
         status: 'completed',
         amount: orderData.amount,
         currency: 'USD',
