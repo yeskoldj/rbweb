@@ -120,19 +120,22 @@ serve(async (req) => {
         // No lanzar error, solo usar null
       }
 
-      let customerName = orderData.customerInfo?.name?.trim() || null;
-      let customerEmail = orderData.customerInfo?.email?.trim() || null;
+      let customerName: string | null = null;
+      let customerEmail: string | null = null;
 
-      if ((!customerName || !customerEmail) && userId && isValidUUID(userId)) {
+      if (userId && isValidUUID(userId)) {
         const { data: profile } = await supabaseAdmin
           .from('profiles')
           .select('full_name, email')
           .eq('id', userId)
           .single();
         if (profile) {
-          if (!customerName) customerName = profile.full_name || null;
-          if (!customerEmail) customerEmail = profile.email || null;
+          customerName = profile.full_name || null;
+          customerEmail = profile.email || null;
         }
+      } else {
+        customerName = orderData.customerInfo?.name?.trim() || null;
+        customerEmail = orderData.customerInfo?.email?.trim() || null;
       }
 
       const orderRecord: Record<string, any> = {

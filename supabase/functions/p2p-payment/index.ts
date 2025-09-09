@@ -62,20 +62,23 @@ serve(async (req) => {
       const total = Number((subtotal + tax).toFixed(2))
 
       // ✅ CORRECCIÓN: NO incluir 'id' en el objeto
-      // Ensure name/email come from the user account when not provided
-      let customerName = orderData.customerInfo?.name?.trim() || null;
-      let customerEmail = orderData.customerInfo?.email?.trim() || null;
+      // Always use the profile's name and email when a valid userId exists
+      let customerName: string | null = null
+      let customerEmail: string | null = null
 
-      if ((!customerName || !customerEmail) && userId && isValidUUID(userId)) {
+      if (userId && isValidUUID(userId)) {
         const { data: profile } = await supabaseAdmin
           .from('profiles')
           .select('full_name, email')
           .eq('id', userId)
-          .single();
+          .single()
         if (profile) {
-          if (!customerName) customerName = profile.full_name || null;
-          if (!customerEmail) customerEmail = profile.email || null;
+          customerName = profile.full_name || null
+          customerEmail = profile.email || null
         }
+      } else {
+        customerName = orderData.customerInfo?.name?.trim() || null
+        customerEmail = orderData.customerInfo?.email?.trim() || null
       }
 
       const orderRecord: any = {
