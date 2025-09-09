@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { createSquarePayment, createP2POrder, p2pPaymentConfig, squareConfig } from '@/lib/squareConfig';
 import Script from 'next/script';
-import { getEnvVar } from '@/lib/env';
 
 interface CartItem {
   id: string;
@@ -61,8 +60,20 @@ useEffect(() => {
     pickupTime: ''
   });
 
-  const appId = getEnvVar('NEXT_PUBLIC_SQUARE_APPLICATION_ID');
-  const locationId = getEnvVar('NEXT_PUBLIC_SQUARE_LOCATION_ID');
+  const appId = process.env.NEXT_PUBLIC_SQUARE_APPLICATION_ID;
+  const locationId = process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID;
+  const missingEnv = !appId || !locationId;
+
+  useEffect(() => {
+    if (missingEnv) {
+      showNotification('error', 'Configuración faltante', 'Falta APP_ID o LOCATION_ID');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [missingEnv]);
+
+  if (missingEnv) {
+    return <NotificationSystem />;
+  }
 
   // Inicializar Square después de mostrar el formulario de tarjeta
 const initSquareCard = useCallback(async () => {
@@ -186,22 +197,22 @@ const initSquareCard = useCallback(async () => {
   }, [showCardForm, card, initSquareCard]);
 
   // Función para mostrar notificaciones modernas
-  const showNotification = (type: 'success' | 'error' | 'warning' | 'info', title: string, message: string) => {
+  function showNotification(type: 'success' | 'error' | 'warning' | 'info', title: string, message: string) {
     const id = Date.now().toString();
     const notification: Notification = { id, type, title, message };
-    
+
     setNotifications(prev => [...prev, notification]);
-    
+
     // Auto-remove después de 5 segundos
     setTimeout(() => {
       setNotifications(prev => prev.filter(n => n.id !== id));
     }, 5000);
-  };
+  }
 
   // Función para cerrar notificación manualmente
-  const dismissNotification = (id: string) => {
+  function dismissNotification(id: string) {
     setNotifications(prev => prev.filter(n => n.id !== id));
-  };
+  }
 
   useEffect(() => {
     const savedCart = localStorage.getItem('bakery-cart');
@@ -541,47 +552,49 @@ const initSquareCard = useCallback(async () => {
   };
 
   // Componente de notificaciones modernas
-  const NotificationSystem = () => (
-    <div className="fixed top-4 right-4 z-50 space-y-2">
-      {notifications.map((notification) => (
-        <div
-          key={notification.id}
-          className={`p-4 rounded-lg shadow-lg border-l-4 bg-white max-w-sm animate-slide-in-right ${
-            notification.type === 'success' ? 'border-green-500' :
-            notification.type === 'error' ? 'border-red-500' :
-            notification.type === 'warning' ? 'border-amber-500' :
-            'border-blue-500'
-          }`}
-        >
-          <div className="flex items-start">
-            <div className={`w-6 h-6 flex items-center justify-center rounded-full mr-3 flex-shrink-0 ${
-              notification.type === 'success' ? 'bg-green-100 text-green-600' :
-              notification.type === 'error' ? 'bg-red-100 text-red-600' :
-              notification.type === 'warning' ? 'bg-amber-100 text-amber-600' :
-              'bg-blue-100 text-blue-600'
-            }`}>
-              <i className={`text-sm ${
-                notification.type === 'success' ? 'ri-check-line' :
-                notification.type === 'error' ? 'ri-close-line' :
-                notification.type === 'warning' ? 'ri-alert-line' :
-                'ri-information-line'
-              }`}></i>
+  function NotificationSystem() {
+    return (
+      <div className="fixed top-4 right-4 z-50 space-y-2">
+        {notifications.map((notification) => (
+          <div
+            key={notification.id}
+            className={`p-4 rounded-lg shadow-lg border-l-4 bg-white max-w-sm animate-slide-in-right ${
+              notification.type === 'success' ? 'border-green-500' :
+              notification.type === 'error' ? 'border-red-500' :
+              notification.type === 'warning' ? 'border-amber-500' :
+              'border-blue-500'
+            }`}
+          >
+            <div className="flex items-start">
+              <div className={`w-6 h-6 flex items-center justify-center rounded-full mr-3 flex-shrink-0 ${
+                notification.type === 'success' ? 'bg-green-100 text-green-600' :
+                notification.type === 'error' ? 'bg-red-100 text-red-600' :
+                notification.type === 'warning' ? 'bg-amber-100 text-amber-600' :
+                'bg-blue-100 text-blue-600'
+              }`}>
+                <i className={`text-sm ${
+                  notification.type === 'success' ? 'ri-check-line' :
+                  notification.type === 'error' ? 'ri-close-line' :
+                  notification.type === 'warning' ? 'ri-alert-line' :
+                  'ri-information-line'
+                }`}></i>
+              </div>
+              <div className="flex-1">
+                <h4 className="font-semibold text-gray-800 text-sm">{notification.title}</h4>
+                <p className="text-gray-600 text-xs mt-1">{notification.message}</p>
+              </div>
+              <button
+                onClick={() => dismissNotification(notification.id)}
+                className="ml-2 text-gray-400 hover:text-gray-600 flex-shrink-0"
+              >
+                <i className="ri-close-line text-sm"></i>
+              </button>
             </div>
-            <div className="flex-1">
-              <h4 className="font-semibold text-gray-800 text-sm">{notification.title}</h4>
-              <p className="text-gray-600 text-xs mt-1">{notification.message}</p>
-            </div>
-            <button
-              onClick={() => dismissNotification(notification.id)}
-              className="ml-2 text-gray-400 hover:text-gray-600 flex-shrink-0"
-            >
-              <i className="ri-close-line text-sm"></i>
-            </button>
           </div>
-        </div>
-      ))}
-    </div>
-  );
+        ))}
+      </div>
+    );
+  }
 
   // Componente de instrucciones P2P para Zelle
   const P2PInstructionsModal = () => {
