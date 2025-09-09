@@ -5,7 +5,8 @@ import { getEnvVar } from './env'
 const supabaseUrl = getEnvVar('NEXT_PUBLIC_SUPABASE_URL')
 const supabaseAnonKey = getEnvVar('NEXT_PUBLIC_SUPABASE_ANON_KEY')
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase: any =
+  supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null
 
 export type OrderStatus = 'pending' | 'baking' | 'decorating' | 'ready' | 'completed' | 'cancelled'
 

@@ -163,7 +163,7 @@ export default function UserManagement() {
         return;
       }
 
-      const cleanedUsers = data.map(user => ({
+      const cleanedUsers = (data as User[]).map((user) => ({
         ...user,
         full_name: user.full_name || user.email.split('@')[0],
         role: user.role || 'customer'
