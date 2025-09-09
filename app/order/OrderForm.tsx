@@ -83,7 +83,7 @@ const initSquareCard = useCallback(async () => {
     }
 
     // Square.payments es síncrono
-    // Explicitly specify the Square environment to match the sandbox credentials
+    // Explicitly specify the Square environment to match the configured credentials
     const p = Square.payments(appId, locationId, {
       environment: squareConfig.environment,
     });
