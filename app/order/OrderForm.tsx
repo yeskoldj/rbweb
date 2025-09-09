@@ -55,6 +55,7 @@ useEffect(() => {
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [formData, setFormData] = useState({
+    fullName: '',
     phone: '',
     specialRequests: '',
     pickupTime: ''
@@ -212,6 +213,7 @@ const initSquareCard = useCallback(async () => {
     if (savedForm) {
       const parsed = JSON.parse(savedForm);
       setFormData({
+        fullName: parsed.fullName || '',
         phone: parsed.phone || '',
         specialRequests: parsed.specialRequests || '',
         pickupTime: parsed.pickupTime || ''
@@ -239,7 +241,8 @@ const initSquareCard = useCallback(async () => {
           setCurrentUser(profile);
           setFormData(prev => ({
             ...prev,
-            phone: prev.phone || profile.phone || ''
+            phone: prev.phone || profile.phone || '',
+            fullName: prev.fullName || profile.full_name || ''
           }));
         }
       } else {
@@ -249,7 +252,8 @@ const initSquareCard = useCallback(async () => {
           setCurrentUser(userData);
           setFormData(prev => ({
             ...prev,
-            phone: prev.phone || userData.phone || ''
+            phone: prev.phone || userData.phone || '',
+            fullName: prev.fullName || userData.fullName || ''
           }));
         }
       }
@@ -414,7 +418,7 @@ const initSquareCard = useCallback(async () => {
           photoUrl: item.photoUrl
         })),
         customerInfo: {
-          name: (currentUser?.full_name || currentUser?.fullName || '').trim(),
+          name: (formData.fullName || currentUser?.full_name || currentUser?.fullName || '').trim(),
           phone: formData.phone.trim(),
           email: currentUser?.email || ''
         },
@@ -469,7 +473,7 @@ const initSquareCard = useCallback(async () => {
           photoUrl: item.photoUrl
         })),
         customerInfo: {
-          name: (currentUser?.full_name || currentUser?.fullName || '').trim(),
+          name: (formData.fullName || currentUser?.full_name || currentUser?.fullName || '').trim(),
           phone: formData.phone.trim(),
           email: currentUser?.email || ''
         },
@@ -511,9 +515,11 @@ const initSquareCard = useCallback(async () => {
 
   const saveCustomerInfo = async () => {
     try {
+      const fullName = formData.fullName.trim();
       const updatedUser = {
         ...(currentUser || {}),
-        fullName: currentUser?.full_name || currentUser?.fullName || '',
+        fullName,
+        full_name: fullName,
         phone: formData.phone,
         email: currentUser?.email || ''
       };
@@ -525,7 +531,7 @@ const initSquareCard = useCallback(async () => {
           .from('profiles')
           .upsert({
             id: currentUser.id,
-            full_name: currentUser?.full_name || currentUser?.fullName || '',
+            full_name: fullName,
             phone: formData.phone,
             updated_at: new Date().toISOString()
           });
@@ -1115,9 +1121,15 @@ const initSquareCard = useCallback(async () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Nombre
             </label>
-            <div className="w-full px-4 py-3 bg-gray-100 rounded-lg text-sm">
-              {currentUser?.full_name || currentUser?.fullName || ''}
-            </div>
+            <input
+              type="text"
+              name="fullName"
+              value={formData.fullName}
+              onChange={handleInputChange}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"
+              placeholder="Tu nombre"
+            />
           </div>
 
           <div>
