@@ -77,6 +77,7 @@ export interface SquareOrderData {
     name: string;
     phone: string;
     email?: string;
+    billingAddress?: string;
   };
   paymentMethod: SquarePaymentMethod;
 
@@ -154,7 +155,7 @@ export async function createSquarePayment(orderData: SquareOrderData) {
 export async function createP2POrder(orderData: {
   amount: number; // dollars
   items: SquareOrderItem[];
-  customerInfo: { name: string; phone: string; email?: string };
+  customerInfo: { name: string; phone: string; email?: string; billingAddress?: string };
   paymentMethod: 'zelle';
   userId: string;
   pickupTime?: string;
