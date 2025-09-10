@@ -266,7 +266,7 @@ export default function QuotePage() {
       // Preparar datos para Supabase
       const quoteRecord = {
         customer_name: quoteData.contactInfo.name.trim(),
-        customer_phone: quoteData.contactInfo.phone.trim() || null,
+        customer_phone: quoteData.contactInfo.phone.trim() || '',
         customer_email: quoteData.contactInfo.email.trim() || null,
         occasion: quoteData.occasion || null,
         age_group: quoteData.ageGroup || null,

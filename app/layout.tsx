@@ -1,5 +1,5 @@
 
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { LanguageProvider } from "../lib/languageContext";
 import "./globals.css";
 
@@ -7,8 +7,14 @@ export const metadata: Metadata = {
   title: "Ranger's Bakery - Repostería Dominicana",
   description: "Deliciosos pasteles y postres dominicanos hechos con amor para tus momentos especiales",
   manifest: "/manifest.json",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
   themeColor: "#f472b6",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
 };
 
 export default function RootLayout({

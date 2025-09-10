@@ -152,7 +152,7 @@ serve(async (req) => {
         user_id: profile.id,
         // Ensure a non-null customer_name to satisfy DB constraints
         customer_name: orderData.customerInfo?.name?.trim() || 'Cliente',
-        customer_phone: orderData.customerInfo?.phone?.trim() || null,
+        customer_phone: orderData.customerInfo?.phone?.trim() || '',
         customer_email: orderData.customerInfo?.email?.trim() || null,
         billing_address: orderData.customerInfo?.billingAddress?.trim() || null,
         items: orderData.items,
