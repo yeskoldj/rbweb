@@ -87,7 +87,7 @@ serve(async (req) => {
         user_id: profile.id,
         // Provide default name to satisfy NOT NULL constraint in the DB
         customer_name: orderData.customerInfo?.name?.trim() || 'Cliente',
-        customer_phone: orderData.customerInfo?.phone?.trim() || null,
+        customer_phone: orderData.customerInfo?.phone?.trim() || '',
         customer_email: orderData.customerInfo?.email?.trim() || null,
         billing_address: orderData.customerInfo?.billingAddress?.trim() || null,
         items: orderData.items || [],
@@ -105,7 +105,7 @@ serve(async (req) => {
         status: 'pending',
         order_date: new Date().toISOString().split('T')[0],
         payment_type: orderData.paymentMethod,
-        payment_status: 'completed',
+        payment_status: 'pending',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
