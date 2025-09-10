@@ -119,44 +119,48 @@ export default function TrackOrderPage() {
     setOrders(phoneOrders);
   };
 
+  const normalizeStatus = (status: string) =>
+    status === 'baking' || status === 'decorating' ? 'pending' : status;
+
   const getStatusColor = (status: string) => {
+    const normalized = normalizeStatus(status);
     const colors = {
       pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      baking: 'bg-orange-100 text-orange-800 border-orange-200',
-      decorating: 'bg-purple-100 text-purple-800 border-purple-200',
       ready: 'bg-green-100 text-green-800 border-green-200',
       completed: 'bg-blue-100 text-blue-800 border-blue-200',
       cancelled: 'bg-red-100 text-red-800 border-red-200'
     };
-    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800 border-gray-200';
+    return (
+      colors[normalized as keyof typeof colors] ||
+      'bg-gray-100 text-gray-800 border-gray-200'
+    );
   };
 
   const getStatusIcon = (status: string) => {
+    const normalized = normalizeStatus(status);
     const icons = {
       pending: 'ri-timer-line',
-      baking: 'ri-fire-line',
-      decorating: 'ri-brush-line',
       ready: 'ri-check-line',
       completed: 'ri-check-double-line',
       cancelled: 'ri-close-line'
     };
-    return icons[status as keyof typeof icons] || 'ri-question-line';
+    return icons[normalized as keyof typeof icons] || 'ri-question-line';
   };
 
   const getStatusLabel = (status: string) => {
+    const normalized = normalizeStatus(status);
     const labels = {
       pending: 'Pending',
-      baking: 'Baking',
-      decorating: 'Decorating',
       ready: 'Ready for Pickup',
       completed: 'Completed',
       cancelled: 'Cancelled'
     };
-    return labels[status as keyof typeof labels] || status;
+    return labels[normalized as keyof typeof labels] || normalized;
   };
 
   const getWorkflowSteps = (currentStatus: string) => {
-    if (currentStatus === 'cancelled') {
+    const status = normalizeStatus(currentStatus);
+    if (status === 'cancelled') {
       return [
         {
           key: 'cancelled',
@@ -171,18 +175,16 @@ export default function TrackOrderPage() {
 
     const steps = [
       { key: 'pending', label: 'Received', icon: 'ri-file-list-line' },
-      { key: 'baking', label: 'Baking', icon: 'ri-fire-line' },
-      { key: 'decorating', label: 'Decorating', icon: 'ri-brush-line' },
       { key: 'ready', label: 'Ready', icon: 'ri-check-line' },
       { key: 'completed', label: 'Delivered', icon: 'ri-check-double-line' }
     ];
 
-    const currentIndex = steps.findIndex(step => step.key === currentStatus);
+    const currentIndex = steps.findIndex(step => step.key === status);
 
     return steps.map((step, index) => ({
       ...step,
       isActive: index <= currentIndex,
-      isCurrent: step.key === currentStatus,
+      isCurrent: step.key === status,
       isCompleted: index < currentIndex
     }));
   };
