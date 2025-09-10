@@ -4,25 +4,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { createSquarePayment, createP2POrder, p2pPaymentConfig, squareConfig } from '@/lib/squareConfig';
-import { showCartNotification } from '@/lib/cartNotification';
 import Script from 'next/script';
-
-interface CartItem {
-  id: string;
-  name: string;
-  price: string | number;
-  quantity: number;
-  image?: string;
-  photoUrl?: string;
-  customization?: any;
-}
-
-interface Notification {
-  id: string;
-  type: 'success' | 'error' | 'warning' | 'info';
-  title: string;
-  message: string;
-}
+import { useCart, CartItem } from '@/lib/hooks/useCart';
+import { useNotifications } from '@/lib/hooks/useNotifications';
+import NotificationSystem from '@/components/NotificationSystem';
 
 export default function OrderForm() {
   const router = useRouter();
@@ -52,10 +37,19 @@ useEffect(() => {
   const [showP2PInstructions, setShowP2PInstructions] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'card' | 'zelle'>('card');
   const [p2pInstructions, setP2PInstructions] = useState<any>(null);
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const {
+    cartItems,
+    addedItems,
+    addToCart,
+    removeFromCart,
+    getItemPrice,
+    formatPrice,
+    calculateSubtotal,
+    calculateTax,
+    calculateTotal,
+  } = useCart(selectedPaymentMethod);
+  const { notifications, showNotification, dismissNotification } = useNotifications();
   const [formData, setFormData] = useState({
     specialRequests: '',
     pickupTime: ''
@@ -162,30 +156,7 @@ const initSquareCard = useCallback(async () => {
     }
   }, [showCardForm, card, initSquareCard]);
 
-  // Función para mostrar notificaciones modernas
-  const showNotification = (type: 'success' | 'error' | 'warning' | 'info', title: string, message: string) => {
-    const id = Date.now().toString();
-    const notification: Notification = { id, type, title, message };
-    
-    setNotifications(prev => [...prev, notification]);
-    
-    // Auto-remove después de 5 segundos
-    setTimeout(() => {
-      setNotifications(prev => prev.filter(n => n.id !== id));
-    }, 5000);
-  };
-
-  // Función para cerrar notificación manualmente
-  const dismissNotification = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  };
-
   useEffect(() => {
-    const savedCart = localStorage.getItem('bakery-cart');
-    if (savedCart) {
-      setCartItems(JSON.parse(savedCart));
-    }
-
     const savedForm = localStorage.getItem('bakery-order-form');
     if (savedForm) {
       const parsed = JSON.parse(savedForm);
@@ -240,91 +211,6 @@ const initSquareCard = useCallback(async () => {
     } catch (error) {
       console.log('Error checking user:', error);
     }
-  };
-
-  const addToCart = (item: CartItem) => {
-    const cartItem = {
-      id: `${item.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
-      name: item.name,
-      price: item.price,
-      quantity: 1,
-      image: item.image
-    };
-
-    const existingCart = localStorage.getItem('bakery-cart');
-    const cart = existingCart ? JSON.parse(existingCart) : [];
-    
-    const existingItemIndex = cart.findIndex((cartItem: any) => cartItem.name === item.name);
-    
-    if (existingItemIndex > -1) {
-      cart[existingItemIndex].quantity += 1;
-    } else {
-      cart.push(cartItem);
-    }
-    
-    localStorage.setItem('bakery-cart', JSON.stringify(cart));
-    setCartItems(cart);
-
-    // Mostrar confirmación visual
-    showCartNotification(`${item.name} agregado al carrito`);
-
-    // Efecto visual "Agregado"
-    setAddedItems(prev => new Set(prev).add(item.id));
-    setTimeout(() => {
-      setAddedItems(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(item.id);
-        return newSet;
-      });
-    }, 1500);
-  };
-
-  const removeFromCart = (id: string, name: string) => {
-    const existingCart = localStorage.getItem('bakery-cart');
-    let cart = existingCart ? JSON.parse(existingCart) : [];
-    cart = cart.filter((cartItem: any) => cartItem.id !== id);
-    localStorage.setItem('bakery-cart', JSON.stringify(cart));
-    setCartItems(cart);
-    setAddedItems(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(id);
-      return newSet;
-    });
-
-    // Mostrar confirmación de eliminación
-    showCartNotification(`${name} eliminado del carrito`, 'remove');
-  };
-
-  const getItemPrice = (item: CartItem): number => {
-    if (typeof item.price === 'number') {
-      return item.price;
-    }
-    if (typeof item.price === 'string') {
-      return parseFloat(item.price.replace('$', '').split(' ')[0]);
-    }
-    return 0;
-  };
-
-  const formatPrice = (item: CartItem): string => {
-    if (typeof item.price === 'number') {
-      return `$${item.price.toFixed(2)}`;
-    }
-    return item.price.toString();
-  };
-
-  const calculateSubtotal = () => {
-    return cartItems.reduce((total, item) => {
-      const price = getItemPrice(item);
-      return total + (price * item.quantity);
-    }, 0);
-  };
-
-  const calculateTax = () => {
-    return selectedPaymentMethod === 'zelle' ? 0 : calculateSubtotal() * 0.03;
-  };
-
-  const calculateTotal = () => {
-    return (calculateSubtotal() + calculateTax()).toFixed(2);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -535,49 +421,6 @@ const initSquareCard = useCallback(async () => {
     });
   };
 
-  // Componente de notificaciones modernas
-  const NotificationSystem = () => (
-    <div className="fixed top-4 right-4 z-50 space-y-2">
-      {notifications.map((notification) => (
-        <div
-          key={notification.id}
-          className={`p-4 rounded-lg shadow-lg border-l-4 bg-white max-w-sm animate-slide-in-right ${
-            notification.type === 'success' ? 'border-green-500' :
-            notification.type === 'error' ? 'border-red-500' :
-            notification.type === 'warning' ? 'border-amber-500' :
-            'border-blue-500'
-          }`}
-        >
-          <div className="flex items-start">
-            <div className={`w-6 h-6 flex items-center justify-center rounded-full mr-3 flex-shrink-0 ${
-              notification.type === 'success' ? 'bg-green-100 text-green-600' :
-              notification.type === 'error' ? 'bg-red-100 text-red-600' :
-              notification.type === 'warning' ? 'bg-amber-100 text-amber-600' :
-              'bg-blue-100 text-blue-600'
-            }`}>
-              <i className={`text-sm ${
-                notification.type === 'success' ? 'ri-check-line' :
-                notification.type === 'error' ? 'ri-close-line' :
-                notification.type === 'warning' ? 'ri-alert-line' :
-                'ri-information-line'
-              }`}></i>
-            </div>
-            <div className="flex-1">
-              <h4 className="font-semibold text-gray-800 text-sm">{notification.title}</h4>
-              <p className="text-gray-600 text-xs mt-1">{notification.message}</p>
-            </div>
-            <button
-              onClick={() => dismissNotification(notification.id)}
-              className="ml-2 text-gray-400 hover:text-gray-600 flex-shrink-0"
-            >
-              <i className="ri-close-line text-sm"></i>
-            </button>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-
   // Componente de instrucciones P2P para Zelle
   const P2PInstructionsModal = () => {
     if (!showP2PInstructions || !p2pInstructions) return null;
@@ -699,7 +542,7 @@ const initSquareCard = useCallback(async () => {
   if (showCardForm) {
     return (
       <>
-        <NotificationSystem />
+        <NotificationSystem notifications={notifications} onDismiss={dismissNotification} />
         <Script
             src="https://web.squarecdn.com/v1/square.js"
             strategy="afterInteractive"
@@ -862,7 +705,7 @@ const initSquareCard = useCallback(async () => {
   if (showP2PInstructions) {
     return (
       <>
-        <NotificationSystem />
+        <NotificationSystem notifications={notifications} onDismiss={dismissNotification} />
         <P2PInstructionsModal />
       </>
     );
@@ -871,7 +714,7 @@ const initSquareCard = useCallback(async () => {
   if (showPayment) {
     return (
       <>
-        <NotificationSystem />
+        <NotificationSystem notifications={notifications} onDismiss={dismissNotification} />
         <div className="bg-white rounded-xl shadow-lg p-8">
           <div className="text-center mb-6">
             <div className="w-16 h-16 flex items-center justify-center bg-gradient-to-br from-pink-100 to-purple-100 rounded-full mx-auto mb-4">
@@ -1018,7 +861,7 @@ const initSquareCard = useCallback(async () => {
   if (cartItems.length === 0) {
     return (
       <>
-        <NotificationSystem />
+        <NotificationSystem notifications={notifications} onDismiss={dismissNotification} />
         <div className="bg-white rounded-xl shadow-lg p-8 text-center">
           <div className="w-16 h-16 flex items-center justify-center bg-gray-100 rounded-full mx-auto mb-4">
             <i className="ri-shopping-cart-line text-gray-400 text-2xl"></i>
@@ -1040,7 +883,7 @@ const initSquareCard = useCallback(async () => {
         strategy="afterInteractive"
         onLoad={() => initSquareCardPayments()}
       />
-      <NotificationSystem />
+      <NotificationSystem notifications={notifications} onDismiss={dismissNotification} />
       <form id="bakery-order" onSubmit={handleSubmit} className="bg-white rounded-xl shadow-lg p-6">
         <div className="space-y-4">
           <div>
