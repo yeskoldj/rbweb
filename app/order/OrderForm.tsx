@@ -60,7 +60,19 @@ useEffect(() => {
     specialRequests: '',
     pickupTime: ''
   });
-  const [billingAddress, setBillingAddress] = useState('');
+  const [billingStreet, setBillingStreet] = useState('');
+  const [billingCity, setBillingCity] = useState('');
+  const [billingState, setBillingState] = useState('');
+  const [billingPostalCode, setBillingPostalCode] = useState('');
+  const billingAddress = [
+    billingStreet,
+    billingCity,
+    billingState,
+    billingPostalCode
+  ]
+    .map(part => part.trim())
+    .filter(Boolean)
+    .join(', ');
   const [saveBillingAddress, setSaveBillingAddress] = useState(true);
 
   const appId = process.env.NEXT_PUBLIC_SQUARE_APPLICATION_ID || '';
@@ -191,7 +203,19 @@ const initSquareCard = useCallback(async () => {
 
     const savedBilling = localStorage.getItem('bakery-billing-address');
     if (savedBilling) {
-      setBillingAddress(savedBilling);
+      try {
+        const parsed = JSON.parse(savedBilling);
+        setBillingStreet(parsed.street || '');
+        setBillingCity(parsed.city || '');
+        setBillingState(parsed.state || '');
+        setBillingPostalCode(parsed.postalCode || '');
+      } catch {
+        const parts = savedBilling.split(',').map(p => p.trim());
+        setBillingStreet(parts[0] || '');
+        setBillingCity(parts[1] || '');
+        setBillingState(parts[2] || '');
+        setBillingPostalCode(parts[3] || '');
+      }
     }
 
     checkCurrentUser();
@@ -332,8 +356,22 @@ const initSquareCard = useCallback(async () => {
     try {
       console.log('🔥 Iniciando proceso de pago:', selectedPaymentMethod);
 
-      if (saveBillingAddress && billingAddress.trim()) {
-        localStorage.setItem('bakery-billing-address', billingAddress.trim());
+      if (
+        saveBillingAddress &&
+        billingStreet.trim() &&
+        billingCity.trim() &&
+        billingState.trim() &&
+        billingPostalCode.trim()
+      ) {
+        localStorage.setItem(
+          'bakery-billing-address',
+          JSON.stringify({
+            street: billingStreet.trim(),
+            city: billingCity.trim(),
+            state: billingState.trim(),
+            postalCode: billingPostalCode.trim()
+          })
+        );
       } else {
         localStorage.removeItem('bakery-billing-address');
       }
@@ -389,7 +427,7 @@ const initSquareCard = useCallback(async () => {
           name: (currentUser?.full_name || currentUser?.fullName || '').trim(),
           phone: (currentUser?.phone || '').trim(),
           email: currentUser?.email || '',
-          billingAddress: billingAddress.trim()
+          billingAddress
         },
         paymentMethod: 'card',
         sourceId,
@@ -433,8 +471,22 @@ const initSquareCard = useCallback(async () => {
     setIsSubmitting(true);
 
     try {
-      if (saveBillingAddress && billingAddress.trim()) {
-        localStorage.setItem('bakery-billing-address', billingAddress.trim());
+      if (
+        saveBillingAddress &&
+        billingStreet.trim() &&
+        billingCity.trim() &&
+        billingState.trim() &&
+        billingPostalCode.trim()
+      ) {
+        localStorage.setItem(
+          'bakery-billing-address',
+          JSON.stringify({
+            street: billingStreet.trim(),
+            city: billingCity.trim(),
+            state: billingState.trim(),
+            postalCode: billingPostalCode.trim()
+          })
+        );
       } else {
         localStorage.removeItem('bakery-billing-address');
       }
@@ -457,7 +509,7 @@ const initSquareCard = useCallback(async () => {
           name: (currentUser?.full_name || currentUser?.fullName || '').trim(),
           phone: (currentUser?.phone || '').trim(),
           email: currentUser?.email || '',
-          billingAddress: billingAddress.trim()
+          billingAddress
         },
         paymentMethod: 'zelle',
         userId,
@@ -714,12 +766,32 @@ const initSquareCard = useCallback(async () => {
         </div>
         <div className="bg-white rounded-xl p-4 mb-6">
           <h4 className="font-semibold text-gray-800 mb-3">Dirección de Facturación</h4>
-          <textarea
-            className="w-full border rounded-lg p-3"
-            placeholder="Calle, ciudad, código postal"
-            value={billingAddress}
-            onChange={(e) => setBillingAddress(e.target.value)}
-          />
+          <div className="space-y-2">
+            <input
+              className="w-full border rounded-lg p-3"
+              placeholder="Calle"
+              value={billingStreet}
+              onChange={(e) => setBillingStreet(e.target.value)}
+            />
+            <input
+              className="w-full border rounded-lg p-3"
+              placeholder="Ciudad"
+              value={billingCity}
+              onChange={(e) => setBillingCity(e.target.value)}
+            />
+            <input
+              className="w-full border rounded-lg p-3"
+              placeholder="Estado"
+              value={billingState}
+              onChange={(e) => setBillingState(e.target.value)}
+            />
+            <input
+              className="w-full border rounded-lg p-3"
+              placeholder="Código postal"
+              value={billingPostalCode}
+              onChange={(e) => setBillingPostalCode(e.target.value)}
+            />
+          </div>
           <label className="flex items-center mt-2 text-sm text-gray-600">
             <input
               type="checkbox"
