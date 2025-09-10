@@ -1041,6 +1041,7 @@ export default function DashboardPage() {
                         quote={quote}
                         onStatusUpdate={updateQuoteStatus}
                         onFinalize={finalizeQuote}
+                        onDelete={(id: string) => setDeleteConfirmation(id)}
                       />
                     ))
                   )}
@@ -1095,19 +1096,12 @@ export default function DashboardPage() {
 // -----------------------------------------------------------------------------
 // QuoteCard component (kept for possible reuse)
 // -----------------------------------------------------------------------------
-function QuoteCard({ quote, onStatusUpdate, onFinalize }: { quote: Quote; onStatusUpdate: (id: string, status: QuoteStatus, estimatedPrice?: number, adminNotes?: string) => void; onFinalize: (quote: Quote) => void }) {
+function QuoteCard({ quote, onStatusUpdate, onFinalize, onDelete }: { quote: Quote; onStatusUpdate: (id: string, status: QuoteStatus, estimatedPrice?: number, adminNotes?: string) => void; onFinalize: (quote: Quote) => void; onDelete: (id: string) => void }) {
   const [showDetails, setShowDetails] = useState(false);
   const [estimatedPrice, setEstimatedPrice] = useState<string>(
     quote.estimated_price ? String(quote.estimated_price) : ''
   );
   const [adminNotes, setAdminNotes] = useState(quote.admin_notes || '');
-
-  const statusColors = {
-    pending: 'bg-yellow-100 text-yellow-800',
-    responded: 'bg-blue-100 text-blue-800',
-    accepted: 'bg-green-100 text-green-800',
-    rejected: 'bg-red-100 text-red-800',
-  };
 
   const getStatusText = (status: string) => {
     const statusMap: { [key: string]: string } = {
@@ -1129,7 +1123,7 @@ function QuoteCard({ quote, onStatusUpdate, onFinalize }: { quote: Quote; onStat
 
   return (
     <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-400">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-start justify-between mb-4">
         <div>
           <h3 className="font-bold text-gray-800 text-lg">{quote.customer_name}</h3>
           <div className="flex items-center space-x-4 text-sm text-gray-600">
@@ -1145,11 +1139,18 @@ function QuoteCard({ quote, onStatusUpdate, onFinalize }: { quote: Quote; onStat
             )}
           </div>
         </div>
-        <div className="text-right">
+        <div className="flex flex-col items-end text-right space-y-1">
+          <button
+            onClick={() => onDelete(quote.id)}
+            className="text-gray-400 hover:text-red-500"
+            title="Eliminar cotización"
+          >
+            <i className="ri-delete-bin-line"></i>
+          </button>
           <span className={`px-3 py-1 rounded-full text-xs font-bold ${quoteStatusColors[quote.status as QuoteStatus]} shadow-sm`}>
             {getStatusText(quote.status)}
           </span>
-          <p className="text-xs text-gray-500 mt-1">{new Date(quote.created_at).toLocaleDateString('es-ES')}</p>
+          <p className="text-xs text-gray-500">{new Date(quote.created_at).toLocaleDateString('es-ES')}</p>
         </div>
       </div>
 
