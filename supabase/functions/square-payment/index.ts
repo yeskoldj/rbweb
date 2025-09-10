@@ -100,7 +100,15 @@ serve(async (req) => {
 
         const data = await resp.json();
         if (!resp.ok) {
-          throw new Error(`Square API Error: ${JSON.stringify(data)}`);
+          console.error('Square API error:', data);
+          const code = data?.errors?.[0]?.code;
+          let message = data?.errors?.[0]?.detail || 'Error al procesar el pago con Square';
+          if (code === 'VERIFY_CVV_FAILURE') {
+            message = 'El código de seguridad (CVV) es incorrecto. Verifica los datos de tu tarjeta.';
+          } else if (code === 'INVALID_CARD_DATA') {
+            message = 'Los datos de la tarjeta son inválidos. Revisa el número, fecha y CVV.';
+          }
+          throw new Error(message);
         }
 
         paymentResult = data.payment;
