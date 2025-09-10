@@ -156,6 +156,19 @@ export default function TrackOrderPage() {
   };
 
   const getWorkflowSteps = (currentStatus: string) => {
+    if (currentStatus === 'cancelled') {
+      return [
+        {
+          key: 'cancelled',
+          label: 'Cancelled',
+          icon: 'ri-close-line',
+          isActive: true,
+          isCurrent: true,
+          isCompleted: false
+        }
+      ];
+    }
+
     const steps = [
       { key: 'pending', label: 'Received', icon: 'ri-file-list-line' },
       { key: 'baking', label: 'Baking', icon: 'ri-fire-line' },
@@ -165,7 +178,7 @@ export default function TrackOrderPage() {
     ];
 
     const currentIndex = steps.findIndex(step => step.key === currentStatus);
-    
+
     return steps.map((step, index) => ({
       ...step,
       isActive: index <= currentIndex,
@@ -278,41 +291,57 @@ export default function TrackOrderPage() {
                         Order Progress
                       </h4>
                       <div className="relative">
-                        <div className="flex items-center justify-between">
-                          {getWorkflowSteps(order.status).map((step, index) => (
-                            <div key={step.key} className="flex flex-col items-center relative z-10">
-                              <div className={`w-12 h-12 rounded-full flex items-center justify-center border-4 ${
-                                step.isCompleted 
-                                  ? 'bg-green-500 border-green-500 text-white' 
-                                  : step.isCurrent 
-                                    ? 'bg-pink-500 border-pink-500 text-white animate-pulse'
-                                    : step.isActive
-                                      ? 'bg-pink-100 border-pink-300 text-pink-600'
-                                      : 'bg-gray-100 border-gray-300 text-gray-400'
-                              }`}>
-                                <i className={`${step.icon} text-lg`}></i>
+                        {(() => {
+                          const steps = getWorkflowSteps(order.status);
+                          const currentIndex = steps.findIndex(s => s.isCurrent);
+                          const progressWidth =
+                            steps.length > 1 && currentIndex >= 0
+                              ? (currentIndex / (steps.length - 1)) * 100
+                              : 0;
+                          return (
+                            <>
+                              <div className="flex items-center justify-between">
+                                {steps.map(step => (
+                                  <div key={step.key} className="flex flex-col items-center relative z-10">
+                                    <div
+                                      className={`w-12 h-12 rounded-full flex items-center justify-center border-4 ${
+                                        step.isCompleted
+                                          ? 'bg-green-500 border-green-500 text-white'
+                                          : step.isCurrent
+                                            ? 'bg-pink-500 border-pink-500 text-white animate-pulse'
+                                            : step.isActive
+                                              ? 'bg-pink-100 border-pink-300 text-pink-600'
+                                              : 'bg-gray-100 border-gray-300 text-gray-400'
+                                      }`}
+                                    >
+                                      <i className={`${step.icon} text-lg`}></i>
+                                    </div>
+                                    <p
+                                      className={`text-xs font-medium mt-2 text-center ${
+                                        step.isActive ? 'text-gray-800' : 'text-gray-400'
+                                      }`}
+                                    >
+                                      {step.label}
+                                    </p>
+                                    {step.isCurrent && (
+                                      <div className="absolute -bottom-8 bg-pink-500 text-white px-2 py-1 rounded text-xs whitespace-nowrap">
+                                        In progress
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
                               </div>
-                              <p className={`text-xs font-medium mt-2 text-center ${
-                                step.isActive ? 'text-gray-800' : 'text-gray-400'
-                              }`}>
-                                {step.label}
-                              </p>
-                              {step.isCurrent && (
-                                <div className="absolute -bottom-8 bg-pink-500 text-white px-2 py-1 rounded text-xs whitespace-nowrap">
-                                  In progress
+                              {steps.length > 1 && (
+                                <div className="absolute top-6 left-6 right-6 h-1 bg-gray-200 -z-10">
+                                  <div
+                                    className="h-full bg-gradient-to-r from-pink-400 to-green-400 transition-all duration-1000"
+                                    style={{ width: `${progressWidth}%` }}
+                                  ></div>
                                 </div>
                               )}
-                            </div>
-                          ))}
-                        </div>
-                        <div className="absolute top-6 left-6 right-6 h-1 bg-gray-200 -z-10">
-                          <div 
-                            className="h-full bg-gradient-to-r from-pink-400 to-green-400 transition-all duration-1000"
-                            style={{ 
-                              width: `${(getWorkflowSteps(order.status).findIndex(s => s.isCurrent) / (getWorkflowSteps(order.status).length - 1)) * 100}%` 
-                            }}
-                          ></div>
-                        </div>
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
 
