@@ -115,14 +115,13 @@ serve(async (req) => {
 
       // Validate userId before constructing order record
       const userId = orderData?.userId;
-      if (userId && !isValidUUID(userId)) {
-        console.warn('Invalid userId provided, setting to null:', userId);
-        // No lanzar error, solo usar null
+      if (!userId || !isValidUUID(userId)) {
+        throw new Error('Invalid or missing userId');
       }
 
       const orderRecord: Record<string, any> = {
         // NO establezcas 'id' si tu columna es uuid con default
-        user_id: (userId && isValidUUID(userId)) ? userId : null,
+        user_id: userId,
         // Ensure a non-null customer_name to satisfy DB constraints
         customer_name: orderData.customerInfo?.name?.trim() || 'Cliente',
         customer_phone: orderData.customerInfo?.phone?.trim() || null,
