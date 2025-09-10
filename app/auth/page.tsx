@@ -22,10 +22,6 @@ export default function AuthPage() {
   const router = useRouter();
   const { t } = useLanguage();
 
-  const ownerEmails = [
-    'yskmem@pm.me','yeskoldj@gmail.com','rangerbakery@gmail.com',
-  ];
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -76,9 +72,9 @@ export default function AuthPage() {
             console.warn('⚠️ Error al obtener perfil (puede ser normal):', profileError);
           }
 
-          // Determinar rol y permisos
-          const isOwner = ownerEmails.includes(normalizedEmail);
-          const userRole = profile?.role || (isOwner ? 'owner' : 'customer');
+          // Determinar rol y permisos desde el servidor
+          const userRole = profile?.role || 'customer';
+          const isOwner = userRole === 'owner';
 
           const userData = {
             id: data.user.id,
@@ -95,7 +91,7 @@ export default function AuthPage() {
           console.log('👤 Usuario autenticado:', userData);
 
           // Redirigir según el rol
-          if (isOwner || userRole === 'owner' || userRole === 'employee') {
+          if (userRole === 'owner' || userRole === 'employee') {
             router.push('/dashboard');
           } else {
             router.push('/');
@@ -159,10 +155,10 @@ export default function AuthPage() {
         if (data.user) {
           console.log('✅ Registro exitoso para usuario:', data.user.id);
           
-          // Determinar rol automáticamente
-          const isOwner = ownerEmails.includes(normalizedEmail);
-          const userRole = isOwner ? 'owner' : 'customer';
-          
+          // Asignar rol por defecto para nuevos usuarios
+          const userRole = 'customer';
+          const isOwner = false;
+
           // Crear perfil en la tabla profiles
           const { error: profileError } = await supabase
             .from('profiles')

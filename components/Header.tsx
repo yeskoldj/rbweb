@@ -66,7 +66,7 @@ export default function Header() {
       setCurrentUser({
         email: user.email,
         full_name: user.fullName || user.email.split('@')[0],
-        role: user.isOwner ? 'owner' : 'customer',
+        role: user.role || (user.isOwner ? 'owner' : 'customer'),
         isLocal: true
       });
     } else {

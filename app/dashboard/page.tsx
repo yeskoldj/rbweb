@@ -100,13 +100,13 @@ export default function DashboardPage() {
       }
 
       const user_data = JSON.parse(userData);
-      if (!user_data.isOwner) {
+      if (!['owner', 'employee'].includes(user_data.role)) {
         router.push('/');
         return;
       }
 
       setCurrentUser({
-        role: 'owner',
+        role: user_data.role,
         email: user_data.email,
         full_name: user_data.fullName || user_data.email.split('@')[0],
       });
@@ -117,9 +117,9 @@ export default function DashboardPage() {
       const userData = localStorage.getItem('bakery-user');
       if (userData) {
         const user_data = JSON.parse(userData);
-        if (user_data.isOwner) {
+        if (['owner', 'employee'].includes(user_data.role)) {
           setCurrentUser({
-            role: 'owner',
+            role: user_data.role,
             email: user_data.email,
             full_name: user_data.fullName || user_data.email.split('@')[0],
           });
