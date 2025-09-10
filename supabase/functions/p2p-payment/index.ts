@@ -131,6 +131,7 @@ serve(async (req) => {
         success: true,
         orderId: insertedOrder.id,           // UUID real generado por PostgreSQL
         reference: insertedOrder.p2p_reference || p2pRef,  // Referencia P2P legible
+        userId: insertedOrder.user_id,
         status: 'pending_payment',
         amount: total,
         paymentMethod: orderData.paymentMethod,

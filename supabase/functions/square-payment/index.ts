@@ -183,6 +183,7 @@ serve(async (req) => {
         success: true,
         paymentId: paymentResult.id,
         orderId: insertedOrder.id, // ← id generado por la DB
+        userId: insertedOrder.user_id,
         status: 'completed',
         amount: orderData.amount,
         currency: 'USD',
