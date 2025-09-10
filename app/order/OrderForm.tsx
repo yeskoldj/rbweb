@@ -60,6 +60,8 @@ useEffect(() => {
     specialRequests: '',
     pickupTime: ''
   });
+  const [billingAddress, setBillingAddress] = useState('');
+  const [saveBillingAddress, setSaveBillingAddress] = useState(true);
 
   const appId = process.env.NEXT_PUBLIC_SQUARE_APPLICATION_ID || '';
   const locationId = process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID || '';
@@ -185,6 +187,11 @@ const initSquareCard = useCallback(async () => {
         specialRequests: parsed.specialRequests || '',
         pickupTime: parsed.pickupTime || ''
       });
+    }
+
+    const savedBilling = localStorage.getItem('bakery-billing-address');
+    if (savedBilling) {
+      setBillingAddress(savedBilling);
     }
 
     checkCurrentUser();
@@ -325,6 +332,12 @@ const initSquareCard = useCallback(async () => {
     try {
       console.log('🔥 Iniciando proceso de pago:', selectedPaymentMethod);
 
+      if (saveBillingAddress && billingAddress.trim()) {
+        localStorage.setItem('bakery-billing-address', billingAddress.trim());
+      } else {
+        localStorage.removeItem('bakery-billing-address');
+      }
+
       if (selectedPaymentMethod === 'zelle') {
         setP2PInstructions({
           method: 'zelle',
@@ -376,7 +389,8 @@ const initSquareCard = useCallback(async () => {
         customerInfo: {
           name: (currentUser?.full_name || currentUser?.fullName || '').trim(),
           phone: (currentUser?.phone || '').trim(),
-          email: currentUser?.email || ''
+          email: currentUser?.email || '',
+          billingAddress: billingAddress.trim()
         },
         paymentMethod: 'card',
         sourceId,
@@ -420,6 +434,12 @@ const initSquareCard = useCallback(async () => {
     setIsSubmitting(true);
 
     try {
+      if (saveBillingAddress && billingAddress.trim()) {
+        localStorage.setItem('bakery-billing-address', billingAddress.trim());
+      } else {
+        localStorage.removeItem('bakery-billing-address');
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id;
       if (!userId) {
@@ -437,7 +457,8 @@ const initSquareCard = useCallback(async () => {
         customerInfo: {
           name: (currentUser?.full_name || currentUser?.fullName || '').trim(),
           phone: (currentUser?.phone || '').trim(),
-          email: currentUser?.email || ''
+          email: currentUser?.email || '',
+          billingAddress: billingAddress.trim()
         },
         paymentMethod: 'zelle',
         userId,
@@ -692,10 +713,27 @@ const initSquareCard = useCallback(async () => {
             Los datos de tu tarjeta son procesados de forma segura por Square
           </p>
         </div>
+        <div className="bg-white rounded-xl p-4 mb-6">
+          <h4 className="font-semibold text-gray-800 mb-3">Dirección de Facturación</h4>
+          <textarea
+            className="w-full border rounded-lg p-3"
+            placeholder="Calle, ciudad, código postal"
+            value={billingAddress}
+            onChange={(e) => setBillingAddress(e.target.value)}
+          />
+          <label className="flex items-center mt-2 text-sm text-gray-600">
+            <input
+              type="checkbox"
+              className="mr-2"
+              checked={saveBillingAddress}
+              onChange={(e) => setSaveBillingAddress(e.target.checked)}
+            />
+            Guardar esta dirección para futuras compras
+          </label>
+        </div>
 
-
-            <div className="bg-gray-50 rounded-xl p-4">
-              <h4 className="font-semibold text-gray-800 mb-3">Resumen del Pago</h4>
+        <div className="bg-gray-50 rounded-xl p-4">
+          <h4 className="font-semibold text-gray-800 mb-3">Resumen del Pago</h4>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Subtotal:</span>

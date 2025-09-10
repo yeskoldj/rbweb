@@ -30,6 +30,7 @@ export interface Order {
   customer_name: string
   customer_phone: string
   customer_email?: string
+  billing_address?: string
   items: any[]
   subtotal: number
   tax: number

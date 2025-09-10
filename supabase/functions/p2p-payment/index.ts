@@ -80,6 +80,7 @@ serve(async (req) => {
         customer_name: orderData.customerInfo?.name?.trim() || 'Cliente',
         customer_phone: orderData.customerInfo?.phone?.trim() || null,
         customer_email: orderData.customerInfo?.email?.trim() || null,
+        billing_address: orderData.customerInfo?.billingAddress?.trim() || null,
         items: orderData.items || [],
         subtotal,
         tax,
