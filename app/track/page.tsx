@@ -17,7 +17,7 @@ interface Order {
   subtotal: number;
   tax: number;
   total: number;
-  status: 'pending' | 'baking' | 'decorating' | 'ready' | 'completed' | 'cancelled';
+  status: 'pending' | 'ready' | 'completed' | 'cancelled';
   payment_status: 'pending' | 'completed' | 'failed' | 'paid';
   pickup_time?: string;
   special_requests?: string;
