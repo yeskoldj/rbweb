@@ -9,6 +9,7 @@ import TabBar from '../../components/TabBar';
 import OrderCard from './OrderCard';
 import CalendarView from './CalendarView';
 import UserManagement from './UserManagement';
+import QuoteFinalizeModal from './QuoteFinalizeModal';
 
 type QuoteStatus = 'pending' | 'responded' | 'accepted' | 'rejected';
 
@@ -30,7 +31,9 @@ interface Quote {
   status: QuoteStatus;
   created_at: string;
   estimated_price?: number | null;
-  notes?: string | null;
+  admin_notes?: string | null;
+  responded_at?: string | null;
+  updated_at?: string | null;
 }
 
 const quoteStatusColors: Record<QuoteStatus, string> = {
@@ -56,6 +59,7 @@ export default function DashboardPage() {
   const [deletingQuote, setDeletingQuote] = useState<string | null>(null);
   const [deleteOrderConfirmation, setDeleteOrderConfirmation] = useState<string | null>(null);
   const [deletingOrder, setDeletingOrder] = useState<string | null>(null);
+  const [quoteToFinalize, setQuoteToFinalize] = useState<Quote | null>(null);
   const [employeeCancelRequest, setEmployeeCancelRequest] = useState<string | null>(null);
   const [pendingCancelRequests, setPendingCancelRequests] = useState<{[key: string]: any}>({});
   const router = useRouter();
@@ -301,7 +305,7 @@ export default function DashboardPage() {
     quoteId: string,
     newStatus: QuoteStatus,
     estimatedPrice?: number,
-    notes?: string
+    adminNotes?: string
   ) => {
     try {
       const updateData: any = {
@@ -313,8 +317,8 @@ export default function DashboardPage() {
         updateData.estimated_price = estimatedPrice;
       }
 
-      if (notes !== undefined) {
-        updateData.notes = notes;
+      if (adminNotes !== undefined) {
+        updateData.admin_notes = adminNotes;
       }
 
       const { error } = await supabase.from('quotes').update(updateData).eq('id', quoteId);
@@ -332,6 +336,65 @@ export default function DashboardPage() {
       console.log(`Quote ${quoteId} updated to ${newStatus}`);
     } catch (error) {
       console.error('Supabase quote update error:', error);
+    }
+  };
+
+  const finalizeQuote = async (
+    quote: Quote,
+    items: any[],
+    subtotal: number,
+    total: number,
+    pickupTime: string,
+    specialRequests: string
+  ) => {
+    try {
+      const now = new Date().toISOString();
+      const orderItems = items.map((item, idx) => ({
+        id: `item-${idx}`,
+        name: item.name,
+        quantity: item.quantity,
+        price: `$${item.price.toFixed(2)}`,
+      }));
+      const orderData = {
+        customer_name: quote.customer_name,
+        customer_phone: quote.customer_phone || '',
+        customer_email: quote.customer_email || '',
+        items: orderItems,
+        subtotal,
+        tax: 0,
+        total,
+        status: 'pending',
+        payment_status: 'pending',
+        pickup_time: pickupTime,
+        special_requests: specialRequests,
+        order_date: now,
+        created_at: now,
+        updated_at: now,
+      } as any;
+
+      const { data: insertedOrder, error: orderError } = await supabase
+        .from('orders')
+        .insert(orderData)
+        .select()
+        .single();
+
+      if (orderError) {
+        console.error('Error creating order from quote:', orderError);
+        return;
+      }
+
+      await supabase
+        .from('quotes')
+        .update({ status: 'accepted', updated_at: now })
+        .eq('id', quote.id);
+
+      setQuotes((prev) => prev.filter((q) => q.id !== quote.id));
+      setOrders((prev) => [insertedOrder as Order, ...prev]);
+      setQuoteToFinalize(null);
+      setShowSuccessMessage('✅ Cotización finalizada, orden creada');
+      setTimeout(() => setShowSuccessMessage(''), 3000);
+    } catch (error) {
+      console.error('Error finalizing quote:', error);
     }
   };
 
@@ -991,151 +1054,12 @@ export default function DashboardPage() {
                     </div>
                   ) : (
                     quotes.map((quote) => (
-                      <div key={quote.id} className="bg-white rounded-xl shadow-lg p-6">
-                        <div className="flex items-start justify-between mb-4">
-                          <div>
-                            <h3 className="text-lg font-bold text-gray-800">{quote.customer_name}</h3>
-                            <p className="text-sm text-gray-600">{quote.customer_email}</p>
-                            <div className="flex items-center mt-1">
-                              <i className="ri-phone-line text-blue-500 text-sm mr-1"></i>
-                              <a href={`tel:${quote.customer_phone}`} className="text-blue-600 font-medium text-sm">
-                                {quote.customer_phone}
-                              </a>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <div className="text-right">
-                              <span
-                                className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                  quote.status === 'pending'
-                                    ? 'bg-yellow-100 text-yellow-800'
-                                    : quote.status === 'responded'
-                                    ? 'bg-green-100 text-green-800'
-                                    : quote.status === 'accepted'
-                                    ? 'bg-blue-100 text-blue-800'
-                                    : 'bg-gray-100 text-gray-800'
-                                }`}
-                              >
-                                {quote.status === 'pending'
-                                  ? 'Pendiente'
-                                  : quote.status === 'responded'
-                                  ? 'Respondida'
-                                  : quote.status === 'accepted'
-                                  ? 'Aceptada'
-                                  : quote.status}
-                              </span>
-                              <p className="text-xs text-gray-500 mt-1">
-                                {new Date(quote.created_at).toLocaleDateString('es-ES')}
-                              </p>
-                            </div>
-                            <button
-                              onClick={() => setDeleteConfirmation(quote.id)}
-                              className="w-8 h-8 flex items-center justify-center bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors"
-                              title="Eliminar cotización"
-                            >
-                              <i className="ri-delete-bin-line text-sm"></i>
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Quote details */}
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                          {quote.occasion && (
-                            <div>
-                              <p className="text-xs text-gray-500 font-medium">Ocasión</p>
-                              <p className="text-sm text-gray-800">{quote.occasion}</p>
-                            </div>
-                          )}
-                          {quote.age_group && (
-                            <div>
-                              <p className="text-xs text-gray-500 font-medium">Grupo de Edad</p>
-                              <p className="text-sm text-gray-800">{quote.age_group}</p>
-                            </div>
-                          )}
-                          {quote.theme && (
-                            <div>
-                              <p className="text-xs text-gray-500 font-medium">Tema</p>
-                              <p className="text-sm text-gray-800">{quote.theme}</p>
-                            </div>
-                          )}
-                          {quote.servings && (
-                            <div>
-                              <p className="text-xs text-gray-500 font-medium">Porciones</p>
-                              <p className="text-sm text-gray-800">{quote.servings}</p>
-                            </div>
-                          )}
-                          {quote.budget && (
-                            <div>
-                              <p className="text-xs text-gray-500 font-medium">Presupuesto</p>
-                              <p className="text-sm text-gray-800">{quote.budget}</p>
-                            </div>
-                          )}
-                          {quote.event_date && (
-                            <div>
-                              <p className="text-xs text-gray-500 font-medium">Fecha del Evento</p>
-                              <p className="text-sm text-gray-800">
-                                {new Date(quote.event_date).toLocaleDateString('es-ES')}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-
-                        {quote.event_details && (
-                          <div className="mb-4">
-                            <p className="text-xs text-gray-500 font-medium mb-1">Detalles del Evento</p>
-                            <p className="text-sm text-gray-800 bg-gray-50 p-3 rounded-lg">{quote.event_details}</p>
-                          </div>
-                        )}
-
-                        {quote.reference_photo_url && (
-                          <div className="mb-4">
-                            <p className="text-xs text-gray-500 font-medium mb-2">Imagen de Referencia</p>
-                            <img
-                              src={quote.reference_photo_url}
-                              alt="Referencia"
-                              className="w-full h-40 object-cover rounded-lg"
-                            />
-                          </div>
-                        )}
-
-                        {/* Phone confirmation for pending quotes */}
-                        {quote.status === 'pending' && (
-                          <div className="border-t pt-4 space-y-3">
-                            <h4 className="font-medium text-gray-800 mb-2">Confirmar Pedido</h4>
-                            <div className="space-y-3">
-                              <button
-                                onClick={() => window.open(`tel:${quote.customer_phone}`, '_self')}
-                                className="w-full bg-blue-500 text-white py-2 rounded-lg font-medium flex items-center justify-center"
-                              >
-                                <i className="ri-phone-line mr-2"></i>
-                                Llamar Cliente: {quote.customer_phone}
-                              </button>
-                              <div className="flex space-x-2">
-                                <button
-                                  onClick={() => {
-                                    updateQuoteStatus(quote.id, 'accepted');
-                                    setShowSuccessMessage('✅ Orden confirmada');
-                                    setTimeout(() => setShowSuccessMessage(''), 3000);
-                                  }}
-                                  className="flex-1 bg-green-500 text-white py-2 rounded-lg font-medium"
-                                >
-                                  Confirmar
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    updateQuoteStatus(quote.id, 'rejected');
-                                    setShowSuccessMessage('❌ Orden cancelada');
-                                    setTimeout(() => setShowSuccessMessage(''), 3000);
-                                  }}
-                                  className="flex-1 bg-red-500 text-white py-2 rounded-lg font-medium"
-                                >
-                                  Cancelar
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                      <QuoteCard
+                        key={quote.id}
+                        quote={quote}
+                        onStatusUpdate={updateQuoteStatus}
+                        onFinalize={setQuoteToFinalize}
+                      />
                     ))
                   )}
                 </div>
@@ -1152,6 +1076,22 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+      {quoteToFinalize && (
+        <QuoteFinalizeModal
+          quote={quoteToFinalize}
+          onClose={() => setQuoteToFinalize(null)}
+          onFinalize={(items, subtotal, total, pickupTime, specialRequests) =>
+            finalizeQuote(
+              quoteToFinalize,
+              items,
+              subtotal,
+              total,
+              pickupTime,
+              specialRequests
+            )
+          }
+        />
+      )}
       <TabBar />
     </div>
   );
@@ -1189,12 +1129,12 @@ export default function DashboardPage() {
 // -----------------------------------------------------------------------------
 // QuoteCard component (kept for possible reuse)
 // -----------------------------------------------------------------------------
-function QuoteCard({ quote, onStatusUpdate }: { quote: Quote; onStatusUpdate: (id: string, status: QuoteStatus, estimatedPrice?: number, notes?: string) => void }) {
+function QuoteCard({ quote, onStatusUpdate, onFinalize }: { quote: Quote; onStatusUpdate: (id: string, status: QuoteStatus, estimatedPrice?: number, adminNotes?: string) => void; onFinalize: (quote: Quote) => void }) {
   const [showDetails, setShowDetails] = useState(false);
   const [estimatedPrice, setEstimatedPrice] = useState<string>(
     quote.estimated_price ? String(quote.estimated_price) : ''
   );
-  const [notes, setNotes] = useState(quote.notes || '');
+  const [adminNotes, setAdminNotes] = useState(quote.admin_notes || '');
 
   const statusColors = {
     pending: 'bg-yellow-100 text-yellow-800',
@@ -1218,7 +1158,7 @@ function QuoteCard({ quote, onStatusUpdate }: { quote: Quote; onStatusUpdate: (i
       alert('Por favor ingresa un precio estimado');
       return;
     }
-    onStatusUpdate(quote.id, 'responded', parseFloat(estimatedPrice), notes);
+    onStatusUpdate(quote.id, 'responded', parseFloat(estimatedPrice), adminNotes);
   };
 
   return (
@@ -1323,8 +1263,8 @@ function QuoteCard({ quote, onStatusUpdate }: { quote: Quote; onStatusUpdate: (i
               <label className="block text-sm font-medium text-gray-700 mb-1">Notas Internas</label>
               <input
                 type="text"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                value={adminNotes}
+                onChange={(e) => setAdminNotes(e.target.value)}
                 placeholder="Notas adicionales..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
               />
@@ -1363,13 +1303,22 @@ function QuoteCard({ quote, onStatusUpdate }: { quote: Quote; onStatusUpdate: (i
               <p className="text-sm font-medium text-green-800">Precio Cotizado:</p>
               <p className="text-lg font-bold text-green-700">${quote.estimated_price}</p>
             </div>
-            {quote.notes && (
+            {quote.admin_notes && (
               <div className="text-right">
-                <p className="text-xs text-green-600">Notas: {quote.notes}</p>
+                <p className="text-xs text-green-600">Notas: {quote.admin_notes}</p>
               </div>
             )}
           </div>
         </div>
+      )}
+
+      {quote.status === 'responded' && (
+        <button
+          onClick={() => onFinalize(quote)}
+          className="mt-4 w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-2 px-4 rounded-lg text-sm font-bold hover:from-pink-600 hover:to-purple-600 transition-all"
+        >
+          Finalizar y Crear Orden
+        </button>
       )}
     </div>
   );
