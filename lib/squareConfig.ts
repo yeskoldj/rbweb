@@ -106,7 +106,18 @@ export async function createSquarePayment(orderData: SquareOrderData) {
       // DO NOT send raw card data; we use sourceId from the SDK
     };
 
-    const res = await fetch(functionUrl, {
+    // Abort the request if the Edge Function takes too long to respond
+    async function fetchWithTimeout(url: string, options: RequestInit, timeout = 15000) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeout);
+      try {
+        return await fetch(url, { ...options, signal: controller.signal });
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    const res = await fetchWithTimeout(functionUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -143,7 +154,10 @@ export async function createSquarePayment(orderData: SquareOrderData) {
     console.error('createSquarePayment error:', err);
     return {
       success: false,
-      error: err?.message || 'Error processing Square payment',
+      error:
+        err?.name === 'AbortError'
+          ? 'Payment request timed out'
+          : err?.message || 'Error processing Square payment',
       paymentId: null,
       orderId: null,
     };

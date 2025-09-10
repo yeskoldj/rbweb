@@ -360,7 +360,6 @@ const initSquareCard = useCallback(async () => {
         setShowP2PInstructions(true);
         setShowPayment(false);
         setShowCardForm(false);
-        setIsSubmitting(false);
         return;
       }
 
@@ -453,9 +452,9 @@ const initSquareCard = useCallback(async () => {
     } catch (error: any) {
       console.error('❌ Error en el proceso de pago:', error);
       showNotification('error', 'Error en el Pago', error?.message || 'Por favor intenta de nuevo');
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsSubmitting(false);
   };
 
   const confirmP2POrder = async () => {
