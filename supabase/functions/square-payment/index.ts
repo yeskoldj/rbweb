@@ -119,9 +119,19 @@ serve(async (req) => {
         throw new Error('Invalid or missing userId');
       }
 
+      const { data: profile, error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .select('id')
+        .eq('id', userId)
+        .single();
+
+      if (profileError || !profile?.id) {
+        throw new Error('User profile not found');
+      }
+
       const orderRecord: Record<string, any> = {
         // NO establezcas 'id' si tu columna es uuid con default
-        user_id: userId,
+        user_id: profile.id,
         // Ensure a non-null customer_name to satisfy DB constraints
         customer_name: orderData.customerInfo?.name?.trim() || 'Cliente',
         customer_phone: orderData.customerInfo?.phone?.trim() || null,
