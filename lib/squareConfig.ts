@@ -77,7 +77,7 @@ export interface SquareOrderData {
   // Token returned by Square Web Payments SDK (card / Apple Pay / Google Pay)
   sourceId?: string;
 
-  userId?: string;
+  userId: string;
   pickupTime?: string | null;
   specialRequests?: string | null;
   currency?: 'USD';
@@ -90,10 +90,12 @@ export async function createSquarePayment(orderData: SquareOrderData) {
     if (!supabaseUrl) throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL');
 
     const functionUrl = `${supabaseUrl}/functions/v1/${EDGE_FUNCTIONS.square}`;
+    if (!isValidUUID(orderData.userId)) {
+      throw new Error('Invalid userId');
+    }
 
     const sanitizedOrderData = {
       ...orderData,
-      userId: orderData.userId && isValidUUID(orderData.userId) ? orderData.userId : undefined,
       currency: orderData.currency ?? 'USD',
       // DO NOT send raw card data; we use sourceId from the SDK
     };
@@ -148,7 +150,7 @@ export async function createP2POrder(orderData: {
   items: SquareOrderItem[];
   customerInfo: { name: string; phone: string; email?: string };
   paymentMethod: 'zelle';
-  userId?: string;
+  userId: string;
   pickupTime?: string;
   specialRequests?: string;
 }) {
@@ -157,10 +159,12 @@ export async function createP2POrder(orderData: {
     if (!supabaseUrl) throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL');
 
     const functionUrl = `${supabaseUrl}/functions/v1/${EDGE_FUNCTIONS.p2p}`;
+    if (!isValidUUID(orderData.userId)) {
+      throw new Error('Invalid userId');
+    }
 
     const sanitizedOrderData = {
       ...orderData,
-      userId: orderData.userId && isValidUUID(orderData.userId) ? orderData.userId : undefined,
     };
 
     async function fetchWithRetry(url: string, options: RequestInit, retries = 3): Promise<Response> {

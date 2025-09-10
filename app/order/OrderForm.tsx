@@ -415,6 +415,12 @@ const initSquareCard = useCallback(async () => {
         throw new Error('Método de pago no válido');
       }
 
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
       // Crear pago con Square usando el token
       const paymentResult = await createSquarePayment({
         amount: parseFloat(calculateTotal()),
@@ -432,7 +438,7 @@ const initSquareCard = useCallback(async () => {
         paymentMethod: selectedPaymentMethod as 'card' | 'apple_pay' | 'google_pay',
         sourceId,
         currency: 'USD',
-        userId: currentUser?.id,
+        userId,
         pickupTime: formData.pickupTime || undefined,
         specialRequests: formData.specialRequests?.trim() || undefined
       });
@@ -471,6 +477,12 @@ const initSquareCard = useCallback(async () => {
     setIsSubmitting(true);
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) {
+        throw new Error('User not authenticated');
+      }
+
       const result = await createP2POrder({
         amount: calculateSubtotal(),
         items: cartItems.map(item => ({
@@ -485,7 +497,7 @@ const initSquareCard = useCallback(async () => {
           email: currentUser?.email || ''
         },
         paymentMethod: 'zelle',
-        userId: currentUser?.id,
+        userId,
         pickupTime: formData.pickupTime || undefined,
         specialRequests: formData.specialRequests?.trim() || undefined
       });
