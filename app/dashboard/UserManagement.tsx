@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useLanguage } from '../../lib/languageContext';
+import { useAuth } from '../../lib/authContext';
 
 interface User {
   id: string;
@@ -37,31 +38,32 @@ export default function UserManagement() {
     securityAnswer: ''
   });
   const { t } = useLanguage();
+  const { user: storedUser, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    checkUserRole();
-  }, []);
+    if (!authLoading) {
+      checkUserRole();
+    }
+  }, [authLoading]);
 
   const checkUserRole = async () => {
     try {
-      const localUser = localStorage.getItem('bakery-user');
-      if (localUser) {
-        const userData = JSON.parse(localUser);
-        setCurrentUser({ 
-          role: userData.isOwner ? 'owner' : 'customer',
-          email: userData.email,
-          full_name: userData.fullName || userData.email.split('@')[0],
-          phone: userData.phone || ''
+      if (storedUser) {
+        setCurrentUser({
+          role: storedUser.isOwner ? 'owner' : storedUser.role || 'customer',
+          email: storedUser.email,
+          full_name: storedUser.fullName || storedUser.email.split('@')[0],
+          phone: storedUser.phone || ''
         });
         setProfileData({
-          full_name: userData.fullName || userData.email.split('@')[0],
-          phone: userData.phone || '',
+          full_name: storedUser.fullName || storedUser.email.split('@')[0],
+          phone: storedUser.phone || '',
           currentPassword: '',
           newPassword: '',
           confirmPassword: ''
         });
-        
-        if (userData.isOwner || userData.email === 'yskmem@pm.me') {
+
+        if (storedUser.isOwner || storedUser.role === 'owner' || storedUser.email === 'yskmem@pm.me') {
           await loadUsersFromDatabase();
         }
         setLoading(false);

@@ -3,11 +3,12 @@
 
 import Link from 'next/link';
 import { useLanguage } from '../lib/languageContext';
-import { getUser } from '../lib/authStorage';
 import { showCartNotification } from '../lib/cartNotification';
+import { useAuth } from '../lib/authContext';
 
 export default function MenuPreview() {
   const { t } = useLanguage();
+  const { user } = useAuth();
 
   // Productos destacados usando SOLO las imágenes reales del menú
   const featuredItems = [
@@ -70,7 +71,6 @@ export default function MenuPreview() {
 
   const handleAddToCart = (item: any) => {
     // Verificar autenticación primero
-    const user = getUser();
     if (!user) {
       alert('Necesitas crear una cuenta para agregar productos al carrito');
       return;

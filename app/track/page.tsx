@@ -2,9 +2,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import Header from '../../components/Header';
 import TabBar from '../../components/TabBar';
+import { useAuth } from '../../lib/authContext';
 
 interface Order {
   id: string;
@@ -31,10 +33,14 @@ export default function TrackOrderPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [searchPhone, setSearchPhone] = useState('');
+  const { user: storedUser, loading: authLoading } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
-    checkUserAndLoadOrders();
-  }, []);
+    if (!authLoading) {
+      checkUserAndLoadOrders();
+    }
+  }, [authLoading]);
 
   const checkUserAndLoadOrders = async () => {
     try {
@@ -54,11 +60,11 @@ export default function TrackOrderPage() {
         }
       }
 
-      const localUser = localStorage.getItem('bakery-user');
-      if (localUser) {
-        const userData = JSON.parse(localUser);
-        setCurrentUser(userData);
-        await loadUserOrders(userData.email);
+      if (storedUser) {
+        setCurrentUser(storedUser);
+        await loadUserOrders(storedUser.email);
+      } else {
+        router.push('/auth');
       }
     } catch (error) {
       console.error('Error checking user:', error);

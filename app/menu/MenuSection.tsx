@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { showCartNotification } from '../../lib/cartNotification';
+import { useAuth } from '../../lib/authContext';
 
 interface MenuItem {
   name: string;
@@ -18,11 +19,9 @@ interface MenuSectionProps {
 
 export default function MenuSection({ category, items }: MenuSectionProps) {
   const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
-    checkAuthentication();
-    
     // Initialize quantities for all items
     const initialQuantities: { [key: string]: number } = {};
     items.forEach(item => {
@@ -30,11 +29,6 @@ export default function MenuSection({ category, items }: MenuSectionProps) {
     });
     setQuantities(initialQuantities);
   }, [items]);
-
-  const checkAuthentication = () => {
-    const userData = localStorage.getItem('bakery-user');
-    setIsAuthenticated(!!userData);
-  };
 
   const updateQuantity = (itemName: string, change: number) => {
     setQuantities(prev => ({
@@ -44,7 +38,7 @@ export default function MenuSection({ category, items }: MenuSectionProps) {
   };
 
   const addToCart = (item: MenuItem) => {
-    if (!isAuthenticated) {
+    if (!user) {
       alert('Necesitas crear una cuenta para agregar productos al carrito');
       return;
     }

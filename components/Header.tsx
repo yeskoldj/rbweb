@@ -2,111 +2,20 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
-import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
 import { useLanguage } from '../lib/languageContext';
 import LanguageSelector from './LanguageSelector';
-import { getUser } from '../lib/authStorage';
+import { useAuth } from '../lib/authContext';
 
 export default function Header() {
-  interface CurrentUser {
-    email: string;
-    full_name: string;
-    role: string;
-    isLocal?: boolean;
-  }
-
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const { user } = useAuth();
   const { t } = useLanguage();
 
-  useEffect(() => {
-    if (!supabase) {
-      checkLocalUser();
-      return;
-    }
-
-    checkCurrentUser();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event: AuthChangeEvent, session: Session | null) => {
-        if (session?.user) {
-          checkUserRole(session.user.id);
-        } else {
-          checkLocalUser();
-        }
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const checkCurrentUser = async () => {
-    if (!supabase) {
-      checkLocalUser();
-      return;
-    }
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await checkUserRole(user.id);
-      } else {
-        checkLocalUser();
-      }
-    } catch (error) {
-      console.log('Usando almacenamiento local');
-      checkLocalUser();
-    }
-  };
-
-  const checkLocalUser = () => {
-    const user = getUser();
-    if (user) {
-      setCurrentUser({
-        email: user.email,
-        full_name: user.fullName || user.email.split('@')[0],
-        role: user.isOwner ? 'owner' : 'customer',
-        isLocal: true
-      });
-    } else {
-      setCurrentUser(null);
-    }
-  };
-
-  const checkUserRole = async (userId: string) => {
-    if (!supabase) {
-      checkLocalUser();
-      return;
-    }
-
-    try {
-      const { data: userData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (userData) {
-        setCurrentUser({
-          ...userData,
-          isLocal: false
-        });
-      } else {
-        checkLocalUser();
-      }
-    } catch (error) {
-      console.log('Error fetching user role, usando local');
-      checkLocalUser();
-    }
-  };
-
   const isOwnerOrEmployee = () => {
-    return currentUser && (currentUser.role === 'employee' || currentUser.role === 'owner');
+    return user && (user.role === 'employee' || user.role === 'owner' || user.isOwner);
   };
 
   const isAuthenticated = () => {
-    return currentUser !== null;
+    return !!user;
   };
 
   return (

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../lib/authContext';
 import { useLanguage } from '../../lib/languageContext';
 import Header from '../../components/Header';
 import TabBar from '../../components/TabBar';
@@ -28,10 +29,13 @@ export default function ProfilePage() {
   });
   const router = useRouter();
   const { t } = useLanguage();
+  const { user: storedUser, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    checkUser();
-  }, []);
+    if (!authLoading) {
+      checkUser();
+    }
+  }, [authLoading]);
 
   const checkUser = async () => {
     try {
@@ -57,44 +61,39 @@ export default function ProfilePage() {
         }
       }
 
-      // Si no hay usuario en Supabase, verificar localStorage
-      const localUser = localStorage.getItem('bakery-user');
-      if (!localUser) {
+      // Si no hay usuario en Supabase, usar usuario almacenado validado
+      if (storedUser) {
+        setUser({
+          email: storedUser.email,
+          full_name: storedUser.fullName || storedUser.email.split('@')[0],
+          phone: storedUser.phone || '',
+          role: storedUser.isOwner ? 'owner' : storedUser.role || 'customer'
+        });
+
+        setProfileData({
+          full_name: storedUser.fullName || storedUser.email.split('@')[0],
+          phone: storedUser.phone || '',
+          email: storedUser.email
+        });
+      } else {
         router.push('/auth');
         return;
       }
 
-      const userData = JSON.parse(localUser);
-      setUser({
-        email: userData.email,
-        full_name: userData.fullName || userData.email.split('@')[0],
-        phone: userData.phone || '',
-        role: userData.isOwner ? 'owner' : 'customer'
-      });
-
-      setProfileData({
-        full_name: userData.fullName || userData.email.split('@')[0],
-        phone: userData.phone || '',
-        email: userData.email
-      });
-
     } catch (error) {
       console.log('Error verificando usuario:', error);
-      // Verificar localStorage como fallback
-      const localUser = localStorage.getItem('bakery-user');
-      if (localUser) {
-        const userData = JSON.parse(localUser);
+      if (storedUser) {
         setUser({
-          email: userData.email,
-          full_name: userData.fullName || userData.email.split('@')[0],
-          phone: userData.phone || '',
-          role: userData.isOwner ? 'owner' : 'customer'
+          email: storedUser.email,
+          full_name: storedUser.fullName || storedUser.email.split('@')[0],
+          phone: storedUser.phone || '',
+          role: storedUser.isOwner ? 'owner' : storedUser.role || 'customer'
         });
 
         setProfileData({
-          full_name: userData.fullName || userData.email.split('@')[0],
-          phone: userData.phone || '',
-          email: userData.email
+          full_name: storedUser.fullName || storedUser.email.split('@')[0],
+          phone: storedUser.phone || '',
+          email: storedUser.email
         });
       } else {
         router.push('/auth');

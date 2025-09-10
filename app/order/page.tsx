@@ -1,22 +1,13 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import TabBar from '@/components/TabBar';
 import OrderForm from './OrderForm';
-import { getUser } from '@/lib/authStorage';
+import { useAuth } from '@/lib/authContext';
 
 export default function OrderPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
-  
-
-  useEffect(() => {
-    const user = getUser();
-    setIsAuthenticated(Boolean(user));
-    setLoading(false);
-  }, []);
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -30,7 +21,7 @@ export default function OrderPage() {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-pink-50 to-purple-50">
         <Header />

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/authContext';
 import { createSquarePayment, createP2POrder, p2pPaymentConfig, squareConfig } from '@/lib/squareConfig';
 import { showCartNotification } from '@/lib/cartNotification';
 import Script from 'next/script';
@@ -180,6 +181,8 @@ const initSquareCard = useCallback(async () => {
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
+  const { user: storedUser, loading: authLoading } = useAuth();
+
   useEffect(() => {
     const savedCart = localStorage.getItem('bakery-cart');
     if (savedCart) {
@@ -210,8 +213,10 @@ const initSquareCard = useCallback(async () => {
       }
     }
 
-    checkCurrentUser();
-  }, []);
+    if (!authLoading) {
+      checkCurrentUser();
+    }
+  }, [authLoading]);
 
   useEffect(() => {
     localStorage.setItem('bakery-order-form', JSON.stringify(formData));
@@ -230,12 +235,10 @@ const initSquareCard = useCallback(async () => {
         if (profile) {
           setCurrentUser(profile);
         }
+      } else if (storedUser) {
+        setCurrentUser(storedUser);
       } else {
-        const localUser = localStorage.getItem('bakery-user');
-        if (localUser) {
-          const userData = JSON.parse(localUser);
-          setCurrentUser(userData);
-        }
+        router.push('/auth');
       }
     } catch (error) {
       console.log('Error checking user:', error);

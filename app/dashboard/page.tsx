@@ -9,6 +9,7 @@ import TabBar from '../../components/TabBar';
 import OrderCard from './OrderCard';
 import CalendarView from './CalendarView';
 import UserManagement from './UserManagement';
+import { useAuth } from '../../lib/authContext';
 
 type QuoteStatus = 'pending' | 'responded' | 'accepted' | 'rejected';
 
@@ -61,14 +62,17 @@ export default function DashboardPage() {
   const [employeeCancelRequest, setEmployeeCancelRequest] = useState<string | null>(null);
   const [pendingCancelRequests, setPendingCancelRequests] = useState<{[key: string]: any}>({});
   const router = useRouter();
+  const { user: storedUser, loading: authLoading } = useAuth();
 
   // -------------------------------------------------------------------------
   // Authentication & data loading
   // -------------------------------------------------------------------------
   useEffect(() => {
-    checkAuthAndLoadData();
+    if (!authLoading) {
+      checkAuthAndLoadData();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [authLoading]);
 
   const checkAuthAndLoadData = async () => {
     try {
@@ -93,39 +97,28 @@ export default function DashboardPage() {
         }
       }
 
-      const userData = localStorage.getItem('bakery-user');
-      if (!userData) {
+      if (storedUser && storedUser.isOwner) {
+        setCurrentUser({
+          role: 'owner',
+          email: storedUser.email,
+          full_name: storedUser.fullName || storedUser.email.split('@')[0],
+        });
+        setIsAuthenticated(true);
+        await Promise.all([loadOrdersFromSupabase(), loadQuotesFromSupabase()]);
+      } else {
         router.push('/auth');
         return;
       }
-
-      const user_data = JSON.parse(userData);
-      if (!user_data.isOwner) {
-        router.push('/');
-        return;
-      }
-
-      setCurrentUser({
-        role: 'owner',
-        email: user_data.email,
-        full_name: user_data.fullName || user_data.email.split('@')[0],
-      });
-      setIsAuthenticated(true);
-      await Promise.all([loadOrdersFromSupabase(), loadQuotesFromSupabase()]);
     } catch (error) {
       console.error('Auth error:', error);
-      const userData = localStorage.getItem('bakery-user');
-      if (userData) {
-        const user_data = JSON.parse(userData);
-        if (user_data.isOwner) {
-          setCurrentUser({
-            role: 'owner',
-            email: user_data.email,
-            full_name: user_data.fullName || user_data.email.split('@')[0],
-          });
-          setIsAuthenticated(true);
-          await Promise.all([loadOrdersFromSupabase(), loadQuotesFromSupabase()]);
-        }
+      if (storedUser && storedUser.isOwner) {
+        setCurrentUser({
+          role: 'owner',
+          email: storedUser.email,
+          full_name: storedUser.fullName || storedUser.email.split('@')[0],
+        });
+        setIsAuthenticated(true);
+        await Promise.all([loadOrdersFromSupabase(), loadQuotesFromSupabase()]);
       }
     }
     setLoading(false);
