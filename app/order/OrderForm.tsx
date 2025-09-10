@@ -341,7 +341,7 @@ const initSquareCard = useCallback(async () => {
   };
 
   const calculateTax = () => {
-    return calculateSubtotal() * 0.03;
+    return selectedPaymentMethod === 'zelle' ? 0 : calculateSubtotal() * 0.03;
   };
 
   const calculateTotal = () => {
@@ -790,10 +790,12 @@ const initSquareCard = useCallback(async () => {
                   <span className="text-gray-600">Subtotal:</span>
                   <span>${calculateSubtotal().toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Impuesto (3%):</span>
-                  <span>${calculateTax().toFixed(2)}</span>
-                </div>
+                {calculateTax() > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Impuesto (3%):</span>
+                    <span>${calculateTax().toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between font-bold text-lg border-t pt-2">
                   <span>Total:</span>
                   <span className="text-blue-600">${calculateTotal()}</span>
@@ -886,10 +888,12 @@ const initSquareCard = useCallback(async () => {
                   <span className="text-gray-600">Subtotal:</span>
                   <span>${calculateSubtotal().toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Impuesto (3%):</span>
-                  <span>${calculateTax().toFixed(2)}</span>
-                </div>
+                {calculateTax() > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Impuesto (3%):</span>
+                    <span>${calculateTax().toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between font-bold text-lg border-t pt-2">
                   <span>Total:</span>
                   <span className="text-pink-600">${calculateTotal()}</span>
@@ -1125,10 +1129,12 @@ const initSquareCard = useCallback(async () => {
                 <span className="text-gray-600">Subtotal:</span>
                 <span>${calculateSubtotal().toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Impuesto (3%):</span>
-                <span>${calculateTax().toFixed(2)}</span>
-              </div>
+              {calculateTax() > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Impuesto (3%):</span>
+                  <span>${calculateTax().toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-lg font-bold text-gray-800">Total:</span>
                 <span className="text-lg font-bold text-pink-600">${calculateTotal()}</span>
