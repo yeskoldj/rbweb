@@ -3,7 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { createSquarePayment, createP2POrder, p2pPaymentConfig, squareConfig } from '@/lib/squareConfig';
+import { squareConfig } from '@/lib/square/config';
+import { createSquarePayment } from '@/lib/square/payments';
+import { createP2POrder, p2pPaymentConfig } from '@/lib/square/p2p';
 import { showCartNotification } from '@/lib/cartNotification';
 import Script from 'next/script';
 
