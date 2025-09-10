@@ -93,7 +93,7 @@ export const translations = {
     // Product details
     from: "Desde",
     sizes: "Tamaños",
-    flavors: "Sabores",
+    flavors: "Masas",
     customize: "Personalizar",
     
     // Menu & Cakes
