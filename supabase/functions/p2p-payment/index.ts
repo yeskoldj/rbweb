@@ -56,30 +56,18 @@ serve(async (req) => {
       }
 
       // Ensure the user profile exists to satisfy foreign key constraint
-      const { data: existingProfile, error: profileError } = await supabaseAdmin
+      const { error: profileUpsertError } = await supabaseAdmin
         .from('profiles')
-        .select('id')
-        .eq('id', userId)
-        .maybeSingle()
+        .upsert({
+          id: userId,
+          email: orderData.customerInfo?.email?.trim() || null,
+          full_name: orderData.customerInfo?.name?.trim() || null,
+          phone: orderData.customerInfo?.phone?.trim() || null,
+          role: 'customer',
+        }, { onConflict: 'id' })
 
-      if (profileError) {
-        throw new Error(`Error verifying user profile: ${profileError.message}`)
-      }
-
-      if (!existingProfile) {
-        const { error: createProfileError } = await supabaseAdmin
-          .from('profiles')
-          .insert({
-            id: userId,
-            email: orderData.customerInfo?.email?.trim() || null,
-            full_name: orderData.customerInfo?.name?.trim() || null,
-            phone: orderData.customerInfo?.phone?.trim() || null,
-            role: 'customer',
-          })
-
-        if (createProfileError) {
-          throw new Error(`Error creating user profile: ${createProfileError.message}`)
-        }
+      if (profileUpsertError) {
+        throw new Error(`Error ensuring user profile: ${profileUpsertError.message}`)
       }
 
       // Calcular montos (orderData.amount representa el subtotal)
