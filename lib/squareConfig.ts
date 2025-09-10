@@ -18,11 +18,7 @@ export const squareConfig = {
   },
 };
 
-// Default wallet options for Apple Pay and Google Pay
-export const walletOptions = {
-  countryCode: 'US',
-  currencyCode: 'USD',
-};
+// Apple Pay y Google Pay deshabilitados; walletOptions removido
 
 // ---- Supabase Edge Function names ----
 export const EDGE_FUNCTIONS = {
@@ -62,7 +58,7 @@ export const isValidUUID = (value?: string | null): boolean => {
 };
 
 // ---- Types for Square payments ----
-export type SquarePaymentMethod = 'card' | 'apple_pay' | 'google_pay';
+export type SquarePaymentMethod = 'card';
 
 export type SquareOrderItem = {
   name: string;
@@ -80,7 +76,7 @@ export interface SquareOrderData {
   };
   paymentMethod: SquarePaymentMethod;
 
-  // Token returned by Square Web Payments SDK (card / Apple Pay / Google Pay)
+  // Token returned by Square Web Payments SDK (card)
   sourceId?: string;
 
   userId: string;
