@@ -149,7 +149,6 @@ export default function DashboardPage() {
         return;
       }
 
-      console.log('Orders loaded from Supabase:', orders);
 
       const ordersWithUrls = await Promise.all(
         (orders || []).map(async (order: any) => {
@@ -251,7 +250,6 @@ export default function DashboardPage() {
       );
       setOrders(updatedOrders);
 
-      console.log(`Order ${orderId} updated to ${newStatus}`);
     } catch (error) {
       console.error('Supabase update error:', error);
       updateOrderStatusLocal(orderId, newStatus);
@@ -294,7 +292,6 @@ export default function DashboardPage() {
         })
       );
 
-      console.log('Quotes loaded from Supabase:', quotesWithUrls);
       setQuotes(quotesWithUrls);
     } catch (error) {
       console.error('Supabase quotes connection error:', error);
@@ -333,7 +330,6 @@ export default function DashboardPage() {
       );
       setQuotes(updatedQuotes);
 
-      console.log(`Quote ${quoteId} updated to ${newStatus}`);
     } catch (error) {
       console.error('Supabase quote update error:', error);
     }
@@ -356,6 +352,7 @@ export default function DashboardPage() {
         price: `$${item.price.toFixed(2)}`,
       }));
       const orderData = {
+        quote_id: quote.id,
         customer_name: quote.customer_name,
         customer_phone: quote.customer_phone || '',
         customer_email: quote.customer_email || '',

@@ -40,6 +40,7 @@ export interface Order {
   payment_type?: string
   payment_status: 'pending' | 'completed' | 'failed' | 'paid'
   order_date: string
+  quote_id?: string
   payment_id?: string | null
   payment_reference?: string | null
   created_at: string

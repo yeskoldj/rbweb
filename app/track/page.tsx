@@ -22,6 +22,7 @@ interface Order {
   pickup_time?: string;
   special_requests?: string;
   order_date: string;
+  quote_id?: string;
   created_at: string;
   updated_at?: string;
 }
