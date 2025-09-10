@@ -1,17 +1,25 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
+const ENVIRONMENT = Deno.env.get('NODE_ENV') || 'development'
+const ALLOWED_ORIGIN =
+  Deno.env.get('ALLOWED_ORIGIN') || (ENVIRONMENT === 'development' ? '*' : '')
+const corsHeaders = {
+  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
 
 serve(async (req) => {
+  const origin = req.headers.get('origin') || ''
+  if (ALLOWED_ORIGIN !== '*' && origin && origin !== ALLOWED_ORIGIN) {
+    console.warn(`Blocked request from origin: ${origin}`)
+    return new Response('Forbidden', { status: 403, headers: corsHeaders })
+  }
+
   // Handle CORS
   if (req.method === 'OPTIONS') {
-    return new Response('ok', {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-      }
-    })
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
@@ -31,11 +39,8 @@ serve(async (req) => {
           message: 'Email simulation - RESEND_API_KEY not configured',
           data: { to, subject, type }
         }),
-        { 
-          headers: { 
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          } 
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }
@@ -161,12 +166,9 @@ serve(async (req) => {
     if (!template) {
       return new Response(
         JSON.stringify({ error: 'Template not found' }),
-        { 
+        {
           status: 400,
-          headers: { 
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          } 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }
@@ -191,47 +193,36 @@ serve(async (req) => {
     if (!emailResponse.ok) {
       console.error('Resend API error:', result)
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: 'Failed to send email',
           details: result
         }),
-        { 
+        {
           status: 500,
-          headers: { 
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          } 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         message: 'Email sent successfully',
         id: result.id
       }),
-      { 
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        } 
-      }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
   } catch (error) {
     console.error('Error:', error)
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: 'Internal server error',
         message: error.message
       }),
-      { 
+      {
         status: 500,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        } 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
   }
