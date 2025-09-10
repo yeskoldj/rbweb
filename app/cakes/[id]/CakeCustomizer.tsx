@@ -105,9 +105,9 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
   // Formas disponibles
   const shapeOptions: CakeOption[] = [
     { id: 'round', name: 'Redondo', price: 0, icon: 'ri-circle-line' },
-    { id: 'square', name: 'Cuadrado', price: 5, icon: 'ri-stop-line' },
-    { id: 'rectangle', name: 'Rectangular', price: 8, icon: 'ri-rectangle-line' },
-    { id: 'heart', name: 'Corazón', price: 7, icon: 'ri-heart-line' }
+    { id: 'square', name: 'Cuadrado', price: 0, icon: 'ri-stop-line' },
+    { id: 'rectangle', name: 'Rectangular', price: 0, icon: 'ri-rectangle-line' },
+    { id: 'heart', name: 'Corazón', price: 5, icon: 'ri-heart-line' }
   ];
 
   // TAMAÑOS ACTUALIZADOS SEGÚN TABLA OFICIAL
@@ -119,7 +119,7 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
     { id: '14', name: '14 pulgadas', price: 80, serves: '35-40 personas' }
   ];
 
-  // Sabores disponibles
+  // Masas disponibles
   const flavorOptions: CakeOption[] = [
     { id: 'red-velvet', name: 'Red Velvet', price: 5, color: '#DC143C' },
     { id: 'carrot', name: 'Zanahoria', price: 6, color: '#DEB887' },
@@ -278,7 +278,7 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
   const basicSteps = [
     { id: 1, title: 'Forma', icon: 'ri-shape-line' },
     { id: 2, title: 'Tamaño', icon: 'ri-stack-line' },
-    { id: 3, title: 'Sabor', icon: 'ri-cake-3-line' },
+    { id: 3, title: 'Masa', icon: 'ri-cake-3-line' },
     { id: 4, title: 'Colores', icon: 'ri-palette-line' },
     { id: 5, title: 'Detalles', icon: 'ri-edit-line' }
   ];
@@ -287,7 +287,7 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
   const advancedSteps = [
     { id: 1, title: 'Forma', icon: 'ri-shape-line' },
     { id: 2, title: 'Niveles', icon: 'ri-stack-line' },
-    { id: 3, title: 'Sabores', icon: 'ri-cake-3-line' },
+    { id: 3, title: 'Masas', icon: 'ri-cake-3-line' },
     { id: 4, title: 'Colores', icon: 'ri-palette-line' },
     { id: 5, title: 'Rellenos', icon: 'ri-contrast-drop-line' },
     { id: 6, title: 'Decoraciones', icon: 'ri-star-line' },
@@ -836,14 +836,14 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
           </div>
         );
 
-      case 3: // Sabores (Avanzado)
+      case 3: // Masas (Avanzado)
         return (
           <div className="p-6">
             <h3 className="text-xl font-bold text-amber-800 mb-4 flex items-center">
               <i className="ri-cake-3-line mr-3 text-purple-500 text-2xl"></i>
-              Sabores por Capa
+              Masas por Capa
             </h3>
-            <p className="text-gray-600 mb-6">Selecciona sabores diferentes para cada capa (opcional)</p>
+            <p className="text-gray-600 mb-6">Selecciona masas diferentes para cada capa (opcional)</p>
 
             <div className="grid grid-cols-2 gap-4">
               {flavorOptions.map(flavor => (
@@ -876,7 +876,7 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
             </div>
 
             <div className="mt-4 text-center text-sm text-gray-500">
-              {selectedOptions.flavors.length} sabor{selectedOptions.flavors.length !== 1 ? 'es' : ''} seleccionado{selectedOptions.flavors.length !== 1 ? 's' : ''}
+              {selectedOptions.flavors.length} masa{selectedOptions.flavors.length !== 1 ? 's' : ''} seleccionada{selectedOptions.flavors.length !== 1 ? 's' : ''}
             </div>
           </div>
         );
@@ -1110,9 +1110,9 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                   </div>
                   {selectedOptions.flavors.length > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-gray-700">Sabores:</span>
+                      <span className="text-gray-700">Masas:</span>
                       <span className="font-medium text-gray-800">
-                        {selectedOptions.flavors.length} sabor{selectedOptions.flavors.length > 1 ? 'es' : ''}
+                        {selectedOptions.flavors.length} masa{selectedOptions.flavors.length > 1 ? 's' : ''}
                       </span>
                     </div>
                   )}
@@ -1254,7 +1254,7 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                   {selectedOptions.flavors.length > 0 && (
                     <div className="flex items-center text-sm text-gray-600">
                       <i className="ri-cake-3-line text-purple-500 mr-2"></i>
-                      <span>{selectedOptions.flavors.length} sabor{selectedOptions.flavors.length > 1 ? 'es' : ''}</span>
+                      <span>{selectedOptions.flavors.length} masa{selectedOptions.flavors.length > 1 ? 's' : ''}</span>
                     </div>
                   )}
                   
@@ -1437,8 +1437,8 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                         <div>
                           <h4 className="font-semibold text-orange-800 mb-1">Consejo</h4>
                           <p className="text-orange-700 text-sm">
-                            Los pasteles de múltiples niveles son perfectos para celebraciones grandes. 
-                            Cada nivel puede tener sabores diferentes.
+                            Los pasteles de múltiples niveles son perfectos para celebraciones grandes.
+                            Cada nivel puede tener masas diferentes.
                           </p>
                         </div>
                       </div>
@@ -1450,9 +1450,9 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                   <div className="p-6">
                     <h3 className="text-xl font-bold text-amber-800 mb-4 flex items-center">
                       <i className="ri-cake-3-line mr-3 text-purple-500 text-2xl"></i>
-                      Sabor Principal
+                      Sabor de la Masa del Cake
                     </h3>
-                    <p className="text-gray-600 mb-6">Elige el sabor principal para tu pastel</p>
+                    <p className="text-gray-600 mb-6">Elige el sabor de la masa del cake para tu pastel</p>
 
                     <div className="grid grid-cols-2 gap-4">
                       {flavorOptions.slice(0, 6).map(flavor => (
@@ -1650,7 +1650,7 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                           </div>
                           {selectedOptions.flavors.length > 0 && (
                             <div className="flex justify-between">
-                              <span className="text-gray-700">Sabor:</span>
+                              <span className="text-gray-700">Masa:</span>
                               <span className="font-medium text-gray-800">
                                 {flavorOptions.find(f => f.id === selectedOptions.flavors[0])?.name}
                               </span>
@@ -1792,8 +1792,8 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                       <span>{layer.size}"</span>
                     </div>
                     <div>
-                      <span className="block font-medium text-gray-700">Sabor</span>
-                      <span>{selectedOptions.flavors.length > 0 ? flavorOptions.find(f => f.id === selectedOptions.flavors[0])?.name || 'Vainilla' : 'Sin sabor'}</span>
+                      <span className="block font-medium text-gray-700">Masa</span>
+                      <span>{selectedOptions.flavors.length > 0 ? flavorOptions.find(f => f.id === selectedOptions.flavors[0])?.name || 'Vainilla' : 'Sin masa'}</span>
                     </div>
                   </div>
                 </div>
@@ -1817,7 +1817,7 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                 {[
                   { id: 'form', label: 'Forma', icon: 'ri-checkbox-blank-circle-line' },
                   { id: 'size', label: 'Tamaño', icon: 'ri-expand-diagonal-line' },
-                  { id: 'flavor', label: 'Sabor', icon: 'ri-cake-3-line' },
+                  { id: 'flavor', label: 'Masa', icon: 'ri-cake-3-line' },
                   { id: 'colors', label: 'Colores', icon: 'ri-palette-line' },
                   { id: 'details', label: 'Detalles', icon: 'ri-settings-3-line' }
                 ].map((tab) => (
@@ -1903,10 +1903,10 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                 </div>
               )}
 
-              {/* Pestaña Sabor */}
+              {/* Pestaña Masa */}
               {activeTab === 'flavor' && (
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Sabor del Pastel</h3>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Masa del Cake</h3>
                   <div className="space-y-3">
                     {flavorOptions.map((flavor) => (
                       <button
@@ -1926,7 +1926,7 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                             ></div>
                             <div>
                               <div className="font-medium text-gray-800">{flavor.name}</div>
-                              <div className="text-sm text-gray-600">Sabor tradicional</div>
+                              <div className="text-sm text-gray-600">Masa tradicional</div>
                             </div>
                           </div>
                           {flavor.price > 0 && (

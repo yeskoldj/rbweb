@@ -194,7 +194,7 @@ export default function CakesPage() {
                   <span className="text-blue-600 font-bold text-xs">2</span>
                 </div>
                 <p className="text-gray-700">
-                  <strong>Personaliza</strong> forma, sabores, colores y decoraciones
+                  <strong>Personaliza</strong> forma, masas, colores y decoraciones
                 </p>
               </div>
               <div className="flex items-start">
