@@ -46,7 +46,9 @@ export default function TabBar() {
     <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-30">
       <div className="grid grid-cols-5 h-16">
         {tabs.map((tab) => {
-          const isActive = pathname === tab.href || (tab.href === '/cakes' && pathname.startsWith('/cakes'));
+          const isActive =
+            pathname === tab.href ||
+            (tab.href === '/cakes' && pathname?.startsWith('/cakes'));
           return (
             <Link
               key={tab.href}
