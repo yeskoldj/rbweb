@@ -51,9 +51,8 @@ serve(async (req) => {
 
       // Validate userId antes de usar
       const userId = orderData?.userId
-      if (userId && !isValidUUID(userId)) {
-        console.warn('Invalid userId provided, setting to null:', userId)
-        // No lances error, solo usa null
+      if (!userId || !isValidUUID(userId)) {
+        throw new Error('Invalid or missing userId')
       }
 
       // Calcular montos (orderData.amount representa el subtotal)
@@ -66,7 +65,7 @@ serve(async (req) => {
         // ❌ id: orderId,  ← ELIMINAR ESTA LÍNEA
         // ✅ Deja que PostgreSQL genere el UUID automáticamente
         
-        user_id: (userId && isValidUUID(userId)) ? userId : null,
+        user_id: userId,
         // Provide default name to satisfy NOT NULL constraint in the DB
         customer_name: orderData.customerInfo?.name?.trim() || 'Cliente',
         customer_phone: orderData.customerInfo?.phone?.trim() || null,
