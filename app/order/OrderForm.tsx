@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { createSquarePayment, createP2POrder, p2pPaymentConfig, squareConfig } from '@/lib/squareConfig';
+import { createSquarePayment, createP2POrder, p2pPaymentConfig, squareConfig, walletOptions } from '@/lib/squareConfig';
 import { showCartNotification } from '@/lib/cartNotification';
 import Script from 'next/script';
 
@@ -94,10 +94,10 @@ const initSquareCard = useCallback(async () => {
     (window as any).__sq_card = c;
 
     // (Opcional) Apple/Google Pay
-    const ap = p.applePay ? await p.applePay() : null;
+    const ap = p.applePay ? await p.applePay(walletOptions) : null;
     if (ap && (await ap.canMakePayment())) setApplePay(ap);
 
-    const gp = p.googlePay ? await p.googlePay() : null;
+    const gp = p.googlePay ? await p.googlePay(walletOptions) : null;
     if (gp && (await gp.canMakePayment())) setGooglePay(gp);
 
     setCardMountState('ready');
@@ -125,10 +125,7 @@ const initSquareCard = useCallback(async () => {
 
       // Apple Pay
       try {
-        const ap = await p.applePay({
-          countryCode: 'US',
-          currencyCode: 'USD'
-        });
+        const ap = await p.applePay(walletOptions);
         const canMakePayment = await ap.canMakePayment();
         if (canMakePayment) {
           setApplePay(ap);
@@ -139,10 +136,7 @@ const initSquareCard = useCallback(async () => {
 
       // Google Pay
       try {
-        const gp = await p.googlePay({
-          countryCode: 'US',
-          currencyCode: 'USD'
-        });
+        const gp = await p.googlePay(walletOptions);
         const canMakePayment = await gp.canMakePayment();
         if (canMakePayment) {
           setGooglePay(gp);

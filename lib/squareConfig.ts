@@ -18,6 +18,12 @@ export const squareConfig = {
   },
 };
 
+// Default wallet options for Apple Pay and Google Pay
+export const walletOptions = {
+  countryCode: 'US',
+  currencyCode: 'USD',
+};
+
 // ---- Supabase Edge Function names ----
 export const EDGE_FUNCTIONS = {
   p2p: 'p2p-payment',
