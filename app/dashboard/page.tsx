@@ -11,7 +11,12 @@ import CalendarView from './CalendarView';
 import UserManagement from './UserManagement';
 import QuoteFinalizeModal from './QuoteFinalizeModal';
 
-type QuoteStatus = 'pending' | 'responded' | 'accepted' | 'rejected';
+type QuoteStatus =
+  | 'pending'
+  | 'responded'
+  | 'requires_payment'
+  | 'accepted'
+  | 'rejected';
 
 interface Quote {
   id: string;
@@ -39,6 +44,7 @@ interface Quote {
 const quoteStatusColors: Record<QuoteStatus, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
   responded: 'bg-blue-100 text-blue-800',
+  requires_payment: 'bg-purple-100 text-purple-800',
   accepted: 'bg-green-100 text-green-800',
   rejected: 'bg-red-100 text-red-800',
 };
@@ -382,7 +388,7 @@ export default function DashboardPage() {
 
       await supabase
         .from('quotes')
-        .update({ status: 'accepted', updated_at: now })
+        .update({ status: 'requires_payment', updated_at: now })
         .eq('id', quote.id);
 
       setQuotes((prev) => prev.filter((q) => q.id !== quote.id));
@@ -1144,6 +1150,7 @@ function QuoteCard({ quote, onStatusUpdate, onFinalize }: { quote: Quote; onStat
     const statusMap: { [key: string]: string } = {
       pending: 'Pendiente',
       responded: 'Respondida',
+      requires_payment: 'Requiere pago',
       accepted: 'Aceptada',
       rejected: 'Rechazada',
     };
