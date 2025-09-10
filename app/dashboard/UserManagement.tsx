@@ -47,8 +47,8 @@ export default function UserManagement() {
       const localUser = localStorage.getItem('bakery-user');
       if (localUser) {
         const userData = JSON.parse(localUser);
-        setCurrentUser({ 
-          role: userData.isOwner ? 'owner' : 'customer',
+        setCurrentUser({
+          role: userData.role || (userData.isOwner ? 'owner' : 'customer'),
           email: userData.email,
           full_name: userData.fullName || userData.email.split('@')[0],
           phone: userData.phone || ''
@@ -61,7 +61,7 @@ export default function UserManagement() {
           confirmPassword: ''
         });
         
-        if (userData.isOwner || userData.email === 'yskmem@pm.me') {
+        if (userData.role === 'owner' || userData.role === 'employee') {
           await loadUsersFromDatabase();
         }
         setLoading(false);

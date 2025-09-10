@@ -69,7 +69,7 @@ export default function ProfilePage() {
         email: userData.email,
         full_name: userData.fullName || userData.email.split('@')[0],
         phone: userData.phone || '',
-        role: userData.isOwner ? 'owner' : 'customer'
+        role: userData.role || (userData.isOwner ? 'owner' : 'customer')
       });
 
       setProfileData({
@@ -88,7 +88,7 @@ export default function ProfilePage() {
           email: userData.email,
           full_name: userData.fullName || userData.email.split('@')[0],
           phone: userData.phone || '',
-          role: userData.isOwner ? 'owner' : 'customer'
+          role: userData.role || (userData.isOwner ? 'owner' : 'customer')
         });
 
         setProfileData({
