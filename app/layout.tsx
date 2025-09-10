@@ -1,6 +1,7 @@
 
 import type { Metadata, Viewport } from "next";
 import { LanguageProvider } from "../lib/languageContext";
+import InstallPrompt from "../components/InstallPrompt";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -32,14 +33,15 @@ export default function RootLayout({
           rel="stylesheet" 
         />
         <link rel="manifest" href="/manifest.json" />
+        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <meta name="theme-color" content="#f472b6" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Ranger's Bakery" />
-        <link rel="apple-touch-icon" href="/icon-192x192.png" />
       </head>
       <body className="font-sans antialiased">
         <LanguageProvider>
+          <InstallPrompt />
           {children}
         </LanguageProvider>
       </body>
