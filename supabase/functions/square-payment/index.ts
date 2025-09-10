@@ -122,13 +122,16 @@ serve(async (req) => {
       // Ensure the user profile exists to satisfy foreign key constraint
       const { error: profileUpsertError } = await supabaseAdmin
         .from('profiles')
-        .upsert({
-          id: userId,
-          email: orderData.customerInfo?.email?.trim() || null,
-          full_name: orderData.customerInfo?.name?.trim() || null,
-          phone: orderData.customerInfo?.phone?.trim() || null,
-          role: 'customer',
-        }, { onConflict: 'id' });
+        .upsert(
+          {
+            id: userId,
+            email: orderData.customerInfo?.email?.trim() || null,
+            full_name: orderData.customerInfo?.name?.trim() || null,
+            phone: orderData.customerInfo?.phone?.trim() || null,
+            role: 'customer',
+          },
+          { onConflict: 'id', returning: 'minimal' }
+        );
 
       if (profileUpsertError) {
         throw new Error(`Error ensuring user profile: ${profileUpsertError.message}`);
