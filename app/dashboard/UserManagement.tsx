@@ -108,7 +108,12 @@ export default function UserManagement() {
 
   const loadUsersFromDatabase = async () => {
     try {
-      const response = await fetch('/api/users');
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+      const response = await fetch('/api/users', { headers });
 
       if (!response.ok) {
         console.error('Error al cargar usuarios:', await response.text());
@@ -165,9 +170,16 @@ export default function UserManagement() {
 
   const updateUserRole = async (userId: string, newRole: string) => {
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
       const response = await fetch('/api/users', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ userId, newRole }),
       });
 
