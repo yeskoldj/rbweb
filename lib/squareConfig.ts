@@ -70,6 +70,14 @@ export type SquareOrderItem = {
   quantity: number;
 };
 
+export interface BillingAddress {
+  address1: string;
+  address2?: string;
+  city: string;
+  state: string;
+  zipcode: string;
+}
+
 export interface SquareOrderData {
   amount: number; // in dollars (NOT cents)
   items: SquareOrderItem[];
@@ -77,6 +85,7 @@ export interface SquareOrderData {
     name: string;
     phone: string;
     email?: string;
+    billingAddress?: BillingAddress;
   };
   paymentMethod: SquarePaymentMethod;
 
@@ -154,7 +163,7 @@ export async function createSquarePayment(orderData: SquareOrderData) {
 export async function createP2POrder(orderData: {
   amount: number; // dollars
   items: SquareOrderItem[];
-  customerInfo: { name: string; phone: string; email?: string };
+  customerInfo: { name: string; phone: string; email?: string; billingAddress?: BillingAddress };
   paymentMethod: 'zelle';
   userId: string;
   pickupTime?: string;

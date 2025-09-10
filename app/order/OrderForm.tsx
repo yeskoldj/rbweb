@@ -59,6 +59,14 @@ useEffect(() => {
     specialRequests: '',
     pickupTime: ''
   });
+  const [billingAddress, setBillingAddress] = useState({
+    address1: '',
+    address2: '',
+    city: '',
+    state: '',
+    zipcode: ''
+  });
+  const [saveBillingAddress, setSaveBillingAddress] = useState(true);
 
   const appId = process.env.NEXT_PUBLIC_SQUARE_APPLICATION_ID || '';
   const locationId = process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID || '';
@@ -211,6 +219,15 @@ const initSquareCard = useCallback(async () => {
       });
     }
 
+    const savedBilling = localStorage.getItem('bakery-billing-address');
+    if (savedBilling) {
+      try {
+        setBillingAddress(JSON.parse(savedBilling));
+      } catch {
+        localStorage.removeItem('bakery-billing-address');
+      }
+    }
+
     checkCurrentUser();
   }, []);
 
@@ -349,6 +366,18 @@ const initSquareCard = useCallback(async () => {
     try {
       console.log('🔥 Iniciando proceso de pago:', selectedPaymentMethod);
 
+      if (
+        saveBillingAddress &&
+        billingAddress.address1.trim() &&
+        billingAddress.city.trim() &&
+        billingAddress.state.trim() &&
+        billingAddress.zipcode.trim()
+      ) {
+        localStorage.setItem('bakery-billing-address', JSON.stringify(billingAddress));
+      } else {
+        localStorage.removeItem('bakery-billing-address');
+      }
+
       if (selectedPaymentMethod === 'zelle') {
         setP2PInstructions({
           method: 'zelle',
@@ -418,7 +447,14 @@ const initSquareCard = useCallback(async () => {
         customerInfo: {
           name: (currentUser?.full_name || currentUser?.fullName || '').trim(),
           phone: (currentUser?.phone || '').trim(),
-          email: currentUser?.email || ''
+          email: currentUser?.email || '',
+          billingAddress: {
+            address1: billingAddress.address1.trim(),
+            address2: billingAddress.address2.trim(),
+            city: billingAddress.city.trim(),
+            state: billingAddress.state.trim(),
+            zipcode: billingAddress.zipcode.trim()
+          }
         },
         paymentMethod: selectedPaymentMethod as 'card' | 'apple_pay' | 'google_pay',
         sourceId,
@@ -462,6 +498,18 @@ const initSquareCard = useCallback(async () => {
     setIsSubmitting(true);
 
     try {
+      if (
+        saveBillingAddress &&
+        billingAddress.address1.trim() &&
+        billingAddress.city.trim() &&
+        billingAddress.state.trim() &&
+        billingAddress.zipcode.trim()
+      ) {
+        localStorage.setItem('bakery-billing-address', JSON.stringify(billingAddress));
+      } else {
+        localStorage.removeItem('bakery-billing-address');
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id;
       if (!userId) {
@@ -479,7 +527,14 @@ const initSquareCard = useCallback(async () => {
         customerInfo: {
           name: (currentUser?.full_name || currentUser?.fullName || '').trim(),
           phone: (currentUser?.phone || '').trim(),
-          email: currentUser?.email || ''
+          email: currentUser?.email || '',
+          billingAddress: {
+            address1: billingAddress.address1.trim(),
+            address2: billingAddress.address2.trim(),
+            city: billingAddress.city.trim(),
+            state: billingAddress.state.trim(),
+            zipcode: billingAddress.zipcode.trim()
+          }
         },
         paymentMethod: 'zelle',
         userId,
@@ -734,10 +789,58 @@ const initSquareCard = useCallback(async () => {
             Los datos de tu tarjeta son procesados de forma segura por Square
           </p>
         </div>
+        <div className="bg-white rounded-xl p-4 mb-6">
+          <h4 className="font-semibold text-gray-800 mb-3">Dirección de Facturación</h4>
+          <input
+            type="text"
+            className="w-full border rounded-lg p-3 mb-2"
+            placeholder="Dirección 1"
+            value={billingAddress.address1}
+            onChange={(e) => setBillingAddress({ ...billingAddress, address1: e.target.value })}
+          />
+          <input
+            type="text"
+            className="w-full border rounded-lg p-3 mb-2"
+            placeholder="Dirección 2 (opcional)"
+            value={billingAddress.address2}
+            onChange={(e) => setBillingAddress({ ...billingAddress, address2: e.target.value })}
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
+            <input
+              type="text"
+              className="w-full border rounded-lg p-3"
+              placeholder="Ciudad"
+              value={billingAddress.city}
+              onChange={(e) => setBillingAddress({ ...billingAddress, city: e.target.value })}
+            />
+            <input
+              type="text"
+              className="w-full border rounded-lg p-3"
+              placeholder="Estado"
+              value={billingAddress.state}
+              onChange={(e) => setBillingAddress({ ...billingAddress, state: e.target.value })}
+            />
+          </div>
+          <input
+            type="text"
+            className="w-full border rounded-lg p-3 mb-2"
+            placeholder="Código Postal"
+            value={billingAddress.zipcode}
+            onChange={(e) => setBillingAddress({ ...billingAddress, zipcode: e.target.value })}
+          />
+          <label className="flex items-center mt-2 text-sm text-gray-600">
+            <input
+              type="checkbox"
+              className="mr-2"
+              checked={saveBillingAddress}
+              onChange={(e) => setSaveBillingAddress(e.target.checked)}
+            />
+            Guardar esta dirección para futuras compras
+          </label>
+        </div>
 
-
-            <div className="bg-gray-50 rounded-xl p-4">
-              <h4 className="font-semibold text-gray-800 mb-3">Resumen del Pago</h4>
+        <div className="bg-gray-50 rounded-xl p-4">
+          <h4 className="font-semibold text-gray-800 mb-3">Resumen del Pago</h4>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Subtotal:</span>
