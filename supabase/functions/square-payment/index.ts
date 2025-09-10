@@ -168,8 +168,8 @@ serve(async (req) => {
 
       const { data: insertedOrder, error: dbError } = await supabaseAdmin
         .from('orders')
-        .insert([orderRecord])
-        .select('id')
+        .insert(orderRecord)
+        .select('id, user_id')
         .single();
 
       if (dbError) {
