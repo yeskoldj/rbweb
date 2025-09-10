@@ -46,6 +46,9 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
+  const [activeTab, setActiveTab] = useState('form');
+  const [selectedLayerIndex, setSelectedLayerIndex] = useState(0);
+  const [customMessage, setCustomMessage] = useState('');
 
   const isPhotoCake = cakeId === 'photo-cake-basic' || cakeId === 'photo-cake-premium';
   const [uploadedPhoto, setUploadedPhoto] = useState<string | null>(null);
@@ -695,10 +698,6 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
       </div>
     );
   }
-
-  const [activeTab, setActiveTab] = useState('form');
-  const [selectedLayerIndex, setSelectedLayerIndex] = useState(0);
-  const [customMessage, setCustomMessage] = useState('');
 
   const totalPrice = calculateTotal();
 

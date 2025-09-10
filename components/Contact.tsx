@@ -9,7 +9,7 @@ export default function Contact() {
           Contact Us
         </h2>
         <p className="text-gray-600 mb-8">
-          We'd love to hear from you! Get in touch for custom orders or questions.
+          We&apos;d love to hear from you! Get in touch for custom orders or questions.
         </p>
         
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
@@ -62,7 +62,7 @@ export default function Contact() {
                   <div className="w-8 h-8 flex items-center justify-center">
                     <i className="ri-facebook-line text-pink-500"></i>
                   </div>
-                  <span className="ml-3 text-gray-600">Ranger's Bakery</span>
+                  <span className="ml-3 text-gray-600">Ranger&apos;s Bakery</span>
                 </div>
               </div>
             </div>

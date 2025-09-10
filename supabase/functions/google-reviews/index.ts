@@ -23,7 +23,7 @@ serve(async (req) => {
     // This Edge Function is ready for when you get Google Places API access
     // For now, it returns a structure showing what's needed
     
-    const { placeId, apiKey } = await req.json()
+    const { apiKey } = await req.json()
     
     if (!apiKey) {
       return new Response(
