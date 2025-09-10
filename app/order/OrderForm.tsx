@@ -335,6 +335,11 @@ const initSquareCard = useCallback(async () => {
       return;
     }
 
+    if (!formData.pickupTime) {
+      showNotification('warning', 'Hora de Recogida', 'Por favor selecciona una hora de recogida antes de continuar.');
+      return;
+    }
+
     setShowPayment(true);
   };
 
@@ -1098,6 +1103,7 @@ const initSquareCard = useCallback(async () => {
               name="pickupTime"
               value={formData.pickupTime}
               onChange={handleInputChange}
+              required
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"
             >
               <option value="">Seleccionar hora de recogida</option>
