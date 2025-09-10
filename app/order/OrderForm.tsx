@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { createSquarePayment, createP2POrder, p2pPaymentConfig, squareConfig, walletOptions } from '@/lib/squareConfig';
+import { createSquarePayment, createP2POrder, p2pPaymentConfig, squareConfig } from '@/lib/squareConfig';
 import { showCartNotification } from '@/lib/cartNotification';
 import Script from 'next/script';
 
@@ -33,8 +33,9 @@ export default function OrderForm() {
 
   const [payments, setPayments] = useState<any>(null);
   const [card, setCard] = useState<any>(null);
-  const [applePay, setApplePay] = useState<any>(null);
-  const [googlePay, setGooglePay] = useState<any>(null);
+  // Apple Pay y Google Pay deshabilitados temporalmente
+  // const [applePay, setApplePay] = useState<any>(null);
+  // const [googlePay, setGooglePay] = useState<any>(null);
 
   const [cardMountState, setCardMountState] =
   useState<'loading' | 'ready' | 'error'>('loading');
@@ -49,7 +50,7 @@ useEffect(() => {
 
 
   const [showP2PInstructions, setShowP2PInstructions] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'card' | 'apple_pay' | 'google_pay' | 'zelle'>('card');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'card' | 'zelle'>('card');
   const [p2pInstructions, setP2PInstructions] = useState<any>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -93,12 +94,7 @@ const initSquareCard = useCallback(async () => {
     setCard(c);
     (window as any).__sq_card = c;
 
-    // (Opcional) Apple/Google Pay
-    const ap = p.applePay ? await p.applePay(walletOptions) : null;
-    if (ap && (await ap.canMakePayment())) setApplePay(ap);
-
-    const gp = p.googlePay ? await p.googlePay(walletOptions) : null;
-    if (gp && (await gp.canMakePayment())) setGooglePay(gp);
+    // Apple Pay y Google Pay deshabilitados
 
     setCardMountState('ready');
     console.log('✅ Square SDK initialized');
@@ -123,27 +119,7 @@ const initSquareCard = useCallback(async () => {
       });
       setPayments(p);
 
-      // Apple Pay
-      try {
-        const ap = await p.applePay(walletOptions);
-        const canMakePayment = await ap.canMakePayment();
-        if (canMakePayment) {
-          setApplePay(ap);
-        }
-      } catch {
-        console.log('Apple Pay not available');
-      }
-
-      // Google Pay
-      try {
-        const gp = await p.googlePay(walletOptions);
-        const canMakePayment = await gp.canMakePayment();
-        if (canMakePayment) {
-          setGooglePay(gp);
-        }
-      } catch {
-        console.log('Google Pay not available');
-      }
+      // Apple Pay y Google Pay deshabilitados
       console.log('✅ Square Payments SDK initialized');
     } catch (e) {
       console.error('Square init failed:', e);
@@ -378,24 +354,6 @@ const initSquareCard = useCallback(async () => {
           throw new Error(res?.errors?.[0]?.detail || 'Error al procesar la tarjeta');
         }
         sourceId = res.token;
-      } else if (selectedPaymentMethod === 'apple_pay') {
-        if (!applePay) {
-          throw new Error('Apple Pay no está disponible en este dispositivo');
-        }
-        const res = await applePay.tokenize();
-        if (!res || res.status !== 'OK') {
-          throw new Error('Error al procesar Apple Pay');
-        }
-        sourceId = res.token;
-      } else if (selectedPaymentMethod === 'google_pay') {
-        if (!googlePay) {
-          throw new Error('Google Pay no está disponible en este dispositivo');
-        }
-        const res = await googlePay.tokenize();
-        if (!res || res.status !== 'OK') {
-          throw new Error('Error al procesar Google Pay');
-        }
-        sourceId = res.token;
       } else {
         throw new Error('Método de pago no válido');
       }
@@ -420,7 +378,7 @@ const initSquareCard = useCallback(async () => {
           phone: (currentUser?.phone || '').trim(),
           email: currentUser?.email || ''
         },
-        paymentMethod: selectedPaymentMethod as 'card' | 'apple_pay' | 'google_pay',
+        paymentMethod: 'card',
         sourceId,
         currency: 'USD',
         userId,
@@ -881,55 +839,7 @@ const initSquareCard = useCallback(async () => {
                 </div>
               </button>
 
-              {/* Apple Pay - Solo mostrar si está disponible */}
-              {applePay && (
-                <button
-                  onClick={() => setSelectedPaymentMethod('apple_pay')}
-                  className={`w-full p-4 rounded-xl border-2 transition-all ${
-                    selectedPaymentMethod === 'apple_pay' 
-                      ? 'border-gray-800 bg-gray-50' 
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center">
-                    <div className="w-12 h-12 flex items-center justify-center bg-gray-100 rounded-full mr-4">
-                      <i className="ri-apple-line text-gray-800 text-xl"></i>
-                    </div>
-                    <div className="text-left">
-                      <h5 className="font-medium text-gray-800">Apple Pay</h5>
-                      <p className="text-sm text-gray-600">Pago rápido y seguro</p>
-                    </div>
-                    {selectedPaymentMethod === 'apple_pay' && (
-                      <i className="ri-check-line text-gray-800 text-xl ml-auto"></i>
-                    )}
-                  </div>
-                </button>
-              )}
-
-              {/* Google Pay - Solo mostrar si está disponible */}
-              {googlePay && (
-                <button
-                  onClick={() => setSelectedPaymentMethod('google_pay')}
-                  className={`w-full p-4 rounded-xl border-2 transition-all ${
-                    selectedPaymentMethod === 'google_pay' 
-                      ? 'border-green-500 bg-green-50' 
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center">
-                    <div className="w-12 h-12 flex items-center justify-center bg-green-100 rounded-full mr-4">
-                      <i className="ri-google-line text-green-600 text-xl"></i>
-                    </div>
-                    <div className="text-left">
-                      <h5 className="font-medium text-gray-800">Google Pay</h5>
-                      <p className="text-sm text-gray-600">Pago rápido y seguro</p>
-                    </div>
-                    {selectedPaymentMethod === 'google_pay' && (
-                      <i className="ri-check-line text-green-600 text-xl ml-auto"></i>
-                    )}
-                  </div>
-                </button>
-              )}
+              {/* Apple Pay y Google Pay deshabilitados */}
 
               <div className="border-t pt-4">
                 <h5 className="font-medium text-gray-800 mb-3">Transferencias P2P</h5>
@@ -982,8 +892,6 @@ const initSquareCard = useCallback(async () => {
                 <div className="flex items-center justify-center">
                   <i className="ri-arrow-right-line text-xl mr-2"></i>
                   {selectedPaymentMethod === 'card' ? 'Ingresar Datos de Tarjeta' :
-                   selectedPaymentMethod === 'apple_pay' ? 'Pagar con Apple Pay' :
-                   selectedPaymentMethod === 'google_pay' ? 'Pagar con Google Pay' :
                    'Continuar con Zelle'}
                 </div>
               )}
