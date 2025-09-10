@@ -29,6 +29,7 @@ The project integrates [Square Web Payments SDK](https://developer.squareup.com/
 1. **Environment variables** – create a `.env.local` file based on `.env.example` and set:
    - `NEXT_PUBLIC_SQUARE_APPLICATION_ID`
    - `NEXT_PUBLIC_SQUARE_LOCATION_ID`
+   - `NEXT_PUBLIC_SQUARE_ENV` (`production` or `sandbox`, defaults to `production`)
    - server-side keys `SQUARE_APPLICATION_ID`, `SQUARE_LOCATION_ID`, and `SQUARE_ACCESS_TOKEN` for the Supabase function.
 
 ## Learn More

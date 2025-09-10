@@ -1,13 +1,23 @@
 // lib/square/config.ts
 
 // ---- Public (front-end) Square config (non-secret) ----
+// Allow switching between production and sandbox environments at build time.
+// If NEXT_PUBLIC_SQUARE_ENV is not defined or set to any value other than
+// 'sandbox', the app will default to the production environment.
+const env = process.env.NEXT_PUBLIC_SQUARE_ENV === 'sandbox'
+  ? 'sandbox'
+  : 'production';
+
 export const squareConfig = {
-  // Use production by default; switch to sandbox only for testing
-  environment: 'production',
+  environment: env,
   bakeryEmail: 'rangerbakery@gmail.com',
 
-  baseUrl: 'https://connect.squareup.com', // Production
-  sandboxUrl: 'https://connect.squareupsandbox.com', // Sandbox
+  // Choose the correct Square base URL depending on the environment
+  baseUrl:
+    env === 'sandbox'
+      ? 'https://connect.squareupsandbox.com'
+      : 'https://connect.squareup.com',
+  sandboxUrl: 'https://connect.squareupsandbox.com',
 
   paymentOptions: {
     currency: 'USD',
