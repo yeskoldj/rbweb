@@ -664,7 +664,7 @@ export default function DashboardPage() {
             <div className="bg-white rounded-lg p-3 text-center shadow-sm">
               <p className="text-xs text-gray-600">Ingresos</p>
               <p className="text-lg font-bold text-blue-600">
-                ${getTotalRevenue().toFixed(0)}
+                ${getTotalRevenue().toFixed(2)}
               </p>
             </div>
           </div>
