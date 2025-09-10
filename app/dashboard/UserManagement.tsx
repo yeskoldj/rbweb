@@ -17,6 +17,7 @@ interface User {
 export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -115,51 +116,15 @@ export default function UserManagement() {
         .limit(100);
 
       if (error) {
-        // Si hay error, usar datos mock sin mostrar error en console
-        const mockUsers: User[] = [
-          {
-            id: '1',
-            email: 'yskmem@pm.me',
-            full_name: 'Propietario de la Panadería',
-            phone: '809-123-4567',
-            role: 'owner',
-            created_at: new Date().toISOString()
-          },
-          {
-            id: '2',
-            email: 'cliente@example.com',
-            full_name: 'María García',
-            phone: '809-234-5678',
-            role: 'customer',
-            created_at: new Date(Date.now() - 86400000).toISOString()
-          },
-          {
-            id: '3',
-            email: 'empleado@example.com',
-            full_name: 'Juan Pérez',
-            phone: '809-345-6789',
-            role: 'employee',
-            created_at: new Date(Date.now() - 172800000).toISOString()
-          }
-        ];
-        
-        setUsers(mockUsers);
+        console.error('Error al cargar usuarios:', error);
+        setErrorMessage('No se pudieron cargar los usuarios. Revisa la consola para más detalles.');
         return;
       }
 
       if (!data || data.length === 0) {
-        // Si no hay datos, usar datos mock
-        const mockUsers: User[] = [
-          {
-            id: '1',
-            email: 'yskmem@pm.me',
-            full_name: 'Propietario de la Panadería',
-            phone: '809-123-4567',
-            role: 'owner',
-            created_at: new Date().toISOString()
-          }
-        ];
-        setUsers(mockUsers);
+        console.warn('No se encontraron usuarios en la base de datos');
+        setErrorMessage('No se encontraron usuarios en la base de datos.');
+        setUsers([]);
         return;
       }
 
@@ -172,18 +137,8 @@ export default function UserManagement() {
       setUsers(cleanedUsers);
       
     } catch (error) {
-      // En caso de error de conexión, usar datos por defecto
-      const mockUsers: User[] = [
-        {
-          id: '1',
-          email: 'yskmem@pm.me',
-          full_name: 'Propietario de la Panadería',
-          phone: '809-123-4567',
-          role: 'owner',
-          created_at: new Date().toISOString()
-        }
-      ];
-      setUsers(mockUsers);
+      console.error('Error de conexión al cargar usuarios:', error);
+      setErrorMessage('Error de conexión al cargar usuarios.');
     }
   };
 
@@ -426,6 +381,14 @@ Esta información te permitirá recuperar el acceso si olvidas tu contraseña.`)
       <div className="text-center py-8">
         <div className="w-8 h-8 border-2 border-pink-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
         <p className="text-gray-600 mt-2">{t('loading')}</p>
+      </div>
+    );
+  }
+
+  if (errorMessage) {
+    return (
+      <div className="text-center py-8 text-red-600">
+        {errorMessage}
       </div>
     );
   }
