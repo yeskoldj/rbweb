@@ -18,6 +18,7 @@ interface Order {
   tax: number;
   total: number;
   status: 'pending' | 'baking' | 'decorating' | 'ready' | 'completed' | 'cancelled';
+  payment_status: 'pending' | 'completed' | 'failed' | 'paid';
   pickup_time?: string;
   special_requests?: string;
   order_date: string;
@@ -409,6 +410,17 @@ export default function TrackOrderPage() {
                         <span className="text-pink-600">${order.total.toFixed(2)}</span>
                       </div>
                     </div>
+
+                    {order.payment_status === 'pending' && (
+                      <div className="mt-4">
+                        <a
+                          href={`/order?orderId=${order.id}`}
+                          className="block w-full text-center bg-gradient-to-r from-pink-500 to-purple-500 text-white py-2 rounded-lg font-bold"
+                        >
+                          Pagar ${order.total.toFixed(2)}
+                        </a>
+                      </div>
+                    )}
 
                     {order.status === 'ready' && (
                       <div className="mt-4 p-4 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl text-white text-center">
