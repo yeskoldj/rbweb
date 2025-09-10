@@ -467,28 +467,30 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
     }
 
     setIsUploadingPhoto(true);
-    const filePath = `photo-cakes/${Date.now()}-${file.name}`;
-    const { error } = await supabase.storage
-      .from('temp-uploads')
-      .upload(filePath, file);
-    if (error) {
+    try {
+      const filePath = `photo-cakes/${Date.now()}-${file.name}`;
+      const { error } = await supabase.storage
+        .from('temp-uploads')
+        .upload(filePath, file);
+      if (error) {
+        throw error;
+      }
+
+      // Guardamos solo la ruta del archivo; el staff obtendrá un URL firmado
+      setSelectedOptions(prev => ({ ...prev, photoUrl: filePath }));
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setUploadedPhoto(result);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
       console.error('Error uploading photo:', error);
       alert('No se pudo subir la foto. Intenta nuevamente.');
+    } finally {
       setIsUploadingPhoto(false);
-      return;
     }
-
-    // Guardamos solo la ruta del archivo; el staff obtendrá un URL firmado
-    setSelectedOptions(prev => ({ ...prev, photoUrl: filePath }));
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = e.target?.result as string;
-      setUploadedPhoto(result);
-    };
-    reader.readAsDataURL(file);
-
-    setIsUploadingPhoto(false);
   };
 
   const removePhoto = () => {

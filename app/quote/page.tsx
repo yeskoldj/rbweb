@@ -13,6 +13,7 @@ export default function QuotePage() {
   const [uploadedPhoto, setUploadedPhoto] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPath, setPhotoPath] = useState<string | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [quoteData, setQuoteData] = useState({
     hasReferencePhoto: false,
@@ -204,19 +205,25 @@ export default function QuotePage() {
       return;
     }
 
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}.${fileExt}`;
+    setIsUploadingPhoto(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
 
-    const { data, error } = await supabase.storage.from('temp-uploads').upload(fileName, file);
-    if (error) {
+      const { data, error } = await supabase.storage.from('temp-uploads').upload(fileName, file);
+      if (error) {
+        throw error;
+      }
+
+      setPhotoPath(data.path);
+      setUploadedPhoto(URL.createObjectURL(file));
+      setPhotoFile(file);
+    } catch (error) {
       console.error('Error uploading photo:', error);
       alert(language === 'es' ? 'Error al subir la foto' : 'Error uploading photo');
-      return;
+    } finally {
+      setIsUploadingPhoto(false);
     }
-
-    setPhotoPath(data.path);
-    setUploadedPhoto(URL.createObjectURL(file));
-    setPhotoFile(file);
   };
 
   const removePhoto = () => {
@@ -534,6 +541,11 @@ export default function QuotePage() {
                         <i className="ri-image-add-line mr-2"></i>
                         {language === 'es' ? 'Elegir Archivo' : 'Choose File'}
                       </label>
+                      {isUploadingPhoto && (
+                        <p className="text-sm text-gray-500 mt-2">
+                          {language === 'es' ? 'Subiendo foto...' : 'Uploading photo...'}
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <div className="space-y-4">
