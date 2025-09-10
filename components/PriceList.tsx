@@ -1,10 +1,7 @@
 
 'use client';
 
-import { useLanguage } from '../lib/languageContext';
-
 export default function PriceList() {
-  const { language, t } = useLanguage();
 
   // PRECIOS ACTUALIZADOS SEGÚN TABLA OFICIAL
   const singleTierPrices = [
@@ -56,7 +53,7 @@ export default function PriceList() {
     <div className="bg-white rounded-xl shadow-lg p-6 max-w-4xl mx-auto">
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-amber-800 mb-2">
-          Precios de Pasteles - Ranger's Bakery
+          Precios de Pasteles - Ranger&apos;s Bakery
         </h1>
         <p className="text-gray-600">Lista oficial de precios actualizada</p>
       </div>
@@ -131,7 +128,7 @@ export default function PriceList() {
         </h2>
         <div className="bg-amber-50 rounded-xl p-4 mb-4 border border-amber-200">
           <p className="text-sm text-amber-800 font-medium">
-            📋 <strong>Nota "Camuflaje":</strong> En la lámina 2 aparece un precio alternativo si el pastel es Camuflaje: 
+            📋 <strong>Nota &quot;Camuflaje&quot;:</strong> En la lámina 2 aparece un precio alternativo si el pastel es Camuflaje:
             1. $150+ | 2) $195+ | 3) $250+ | 4) $350+ | 5) $450
           </p>
         </div>
@@ -144,7 +141,7 @@ export default function PriceList() {
                   <div className="text-sm text-gray-600">
                     {item.description}
                     <span className="text-xs text-gray-500 block">
-                      Cada tamaño se indica como un piso de "2 layers".
+                      Cada tamaño se indica como un piso de &quot;2 layers&quot;.
                     </span>
                   </div>
                 </div>
@@ -175,11 +172,11 @@ export default function PriceList() {
           <div className="flex items-start">
             <i className="ri-information-line text-blue-600 mr-2 mt-0.5"></i>
             <div className="text-sm text-blue-800">
-              <p className="font-semibold mb-1">Nota "Camuflaje":</p>
+              <p className="font-semibold mb-1">Nota &quot;Camuflaje&quot;:</p>
               <p>
-                En la lámina 2 aparece un precio alternativo si el pastel es Camuflaje. 
-                El "+" depende de la cantidad solicitada. 
-                <strong>(El "+" depende de la cantidad)</strong>
+                En la lámina 2 aparece un precio alternativo si el pastel es Camuflaje.
+                El &quot;+&quot; depende de la cantidad solicitada.
+                <strong>(El &quot;+&quot; depende de la cantidad)</strong>
               </p>
             </div>
           </div>

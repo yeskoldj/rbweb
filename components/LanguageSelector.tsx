@@ -11,7 +11,7 @@ interface LanguageSelectorProps {
 }
 
 export default function LanguageSelector({ showWelcome = false, onComplete }: LanguageSelectorProps) {
-  const { language, setLanguage, t } = useLanguage();
+  const { language, setLanguage } = useLanguage();
   const [showDropdown, setShowDropdown] = useState(false);
 
   const handleLanguageSelect = (langCode: string) => {
@@ -27,15 +27,15 @@ export default function LanguageSelector({ showWelcome = false, onComplete }: La
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-xl p-8 w-full max-w-sm text-center">
           <div className="w-16 h-16 flex items-center justify-center mx-auto mb-6">
-            <img 
+            <img
               src="https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/3c3401df8a967b2c425ed28b75bf5296.png"
-              alt="Ranger's Bakery Logo"
+              alt="Ranger&apos;s Bakery Logo"
               className="w-16 h-16 object-contain"
             />
           </div>
           
           <h2 className="text-xl font-bold text-amber-800 mb-2">
-            Welcome to Ranger's Bakery
+            Welcome to Ranger&apos;s Bakery
           </h2>
           <p className="text-gray-600 mb-6 text-sm">
             Please select your preferred language / Por favor selecciona tu idioma preferido

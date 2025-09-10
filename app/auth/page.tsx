@@ -157,7 +157,6 @@ export default function AuthPage() {
           
           // Asignar rol por defecto para nuevos usuarios
           const userRole = 'customer';
-          const isOwner = false;
 
           // Crear perfil en la tabla profiles
           const { error: profileError } = await supabase

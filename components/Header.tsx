@@ -114,9 +114,9 @@ export default function Header() {
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center space-x-3">
           <div className="w-12 h-12 flex items-center justify-center bg-white rounded-full p-1 shadow-md">
-            <img 
+            <img
               src="https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/3c3401df8a967b2c425ed28b75bf5296.png"
-              alt="Ranger's Bakery Logo"
+              alt="Ranger&apos;s Bakery Logo"
               className="w-10 h-10 object-contain"
             />
           </div>
