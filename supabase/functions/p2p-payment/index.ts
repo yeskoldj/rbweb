@@ -55,6 +55,16 @@ serve(async (req) => {
         throw new Error('Invalid or missing userId')
       }
 
+      const { data: profile, error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .select('id')
+        .eq('id', userId)
+        .single()
+
+      if (profileError || !profile?.id) {
+        throw new Error('User profile not found')
+      }
+
       // Calcular montos (orderData.amount representa el subtotal)
       const subtotal = Number(orderData.amount.toFixed(2))
       const tax = 0
@@ -64,8 +74,8 @@ serve(async (req) => {
       const orderRecord: any = {
         // ❌ id: orderId,  ← ELIMINAR ESTA LÍNEA
         // ✅ Deja que PostgreSQL genere el UUID automáticamente
-        
-        user_id: userId,
+
+        user_id: profile.id,
         // Provide default name to satisfy NOT NULL constraint in the DB
         customer_name: orderData.customerInfo?.name?.trim() || 'Cliente',
         customer_phone: orderData.customerInfo?.phone?.trim() || null,
