@@ -108,15 +108,10 @@ export default function UserManagement() {
 
   const loadUsersFromDatabase = async () => {
     try {
-      // Primero intentar cargar desde Supabase
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, email, full_name, phone, role, created_at')
-        .order('created_at', { ascending: false })
-        .limit(100);
+      const response = await fetch('/api/users');
 
-      if (error) {
-        console.error('Error al cargar usuarios:', error);
+      if (!response.ok) {
+        console.error('Error al cargar usuarios:', await response.text());
         try {
           const cached = localStorage.getItem('bakery-users');
           if (cached) {
@@ -131,6 +126,8 @@ export default function UserManagement() {
         return;
       }
 
+      const { data } = await response.json();
+
       if (!data || data.length === 0) {
         console.warn('No se encontraron usuarios en la base de datos');
         setErrorMessage('No se encontraron usuarios en la base de datos.');
@@ -141,7 +138,7 @@ export default function UserManagement() {
       const cleanedUsers = (data as User[]).map((user) => ({
         ...user,
         full_name: user.full_name || user.email.split('@')[0],
-        role: user.role || 'customer'
+        role: user.role || 'customer',
       }));
 
       setUsers(cleanedUsers);
@@ -150,7 +147,6 @@ export default function UserManagement() {
       } catch (storageError) {
         console.error('Error guardando usuarios en cache:', storageError);
       }
-
     } catch (error) {
       console.error('Error de conexión al cargar usuarios:', error);
       try {
@@ -169,13 +165,14 @@ export default function UserManagement() {
 
   const updateUserRole = async (userId: string, newRole: string) => {
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ role: newRole, updated_at: new Date().toISOString() })
-        .eq('id', userId);
+      const response = await fetch('/api/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, newRole }),
+      });
 
-      if (error) {
-        console.error('Error actualizando usuario:', error);
+      if (!response.ok) {
+        console.error('Error actualizando usuario:', await response.text());
         const updatedUsers = users.map(user =>
           user.id === userId ? { ...user, role: newRole } : user
         );
@@ -185,7 +182,7 @@ export default function UserManagement() {
       }
 
       alert(`Usuario actualizado a ${newRole} exitosamente`);
-      await loadUsersFromDatabase(); 
+      await loadUsersFromDatabase();
     } catch (error) {
       console.error('Error:', error);
       alert('Error actualizando el usuario');
