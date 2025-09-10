@@ -396,9 +396,13 @@ export default function QuotePage() {
     }));
   };
 
-  const steps = language === 'es' 
-    ? ['Tipo', 'Ocasión', 'Detalles', 'Tema', 'Porciones', 'Presupuesto', 'Fecha', 'Contacto']
-    : ['Type', 'Occasion', 'Details', 'Theme', 'Servings', 'Budget', 'Date', 'Contact'];
+  const steps = language === 'es'
+    ? quoteData.hasReferencePhoto
+      ? ['Tipo', 'Foto', 'Detalles', 'Tema', 'Porciones', 'Presupuesto', 'Fecha', 'Contacto']
+      : ['Tipo', 'Ocasión', 'Detalles', 'Tema', 'Porciones', 'Presupuesto', 'Fecha', 'Contacto']
+    : quoteData.hasReferencePhoto
+      ? ['Type', 'Photo', 'Details', 'Theme', 'Servings', 'Budget', 'Date', 'Contact']
+      : ['Type', 'Occasion', 'Details', 'Theme', 'Servings', 'Budget', 'Date', 'Contact'];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 to-purple-50">
