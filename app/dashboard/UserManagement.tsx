@@ -117,6 +117,16 @@ export default function UserManagement() {
 
       if (error) {
         console.error('Error al cargar usuarios:', error);
+        try {
+          const cached = localStorage.getItem('bakery-users');
+          if (cached) {
+            setUsers(JSON.parse(cached));
+            setErrorMessage(null);
+            return;
+          }
+        } catch (storageError) {
+          console.error('Error leyendo usuarios desde cache:', storageError);
+        }
         setErrorMessage('No se pudieron cargar los usuarios. Revisa la consola para más detalles.');
         return;
       }
@@ -135,9 +145,24 @@ export default function UserManagement() {
       }));
 
       setUsers(cleanedUsers);
-      
+      try {
+        localStorage.setItem('bakery-users', JSON.stringify(cleanedUsers));
+      } catch (storageError) {
+        console.error('Error guardando usuarios en cache:', storageError);
+      }
+
     } catch (error) {
       console.error('Error de conexión al cargar usuarios:', error);
+      try {
+        const cached = localStorage.getItem('bakery-users');
+        if (cached) {
+          setUsers(JSON.parse(cached));
+          setErrorMessage(null);
+          return;
+        }
+      } catch (storageError) {
+        console.error('Error leyendo usuarios desde cache:', storageError);
+      }
       setErrorMessage('Error de conexión al cargar usuarios.');
     }
   };
