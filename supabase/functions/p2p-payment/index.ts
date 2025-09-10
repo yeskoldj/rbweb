@@ -57,8 +57,8 @@ serve(async (req) => {
 
       // Calcular montos (orderData.amount representa el subtotal)
       const subtotal = Number(orderData.amount.toFixed(2))
-      const tax = Number((subtotal * 0.03).toFixed(2))
-      const total = Number((subtotal + tax).toFixed(2))
+      const tax = 0
+      const total = subtotal
 
       // ✅ CORRECCIÓN: NO incluir 'id' en el objeto
       const orderRecord: any = {
