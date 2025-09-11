@@ -159,8 +159,8 @@ export default function DashboardPage() {
                   return item;
                 }
                 const { data: signed, error: signError } = await supabase.storage
-                  .from('photo-cakes')
-                  .createSignedUrl(item.photoUrl, 60 * 60);
+                  .from('temp-uploads')
+                  .createSignedUrl(photo-cakes/item.photoUrl, 60 * 60);
                 if (signError) {
                   console.error('Error creating signed URL for order photo:', signError);
                   return item;
@@ -294,8 +294,8 @@ export default function DashboardPage() {
               return quote;
             }
             const { data: signed, error: signError } = await supabase.storage
-              .from('photo-cakes')
-              .createSignedUrl(quote.reference_photo_url, 60 * 60);
+              .from('temp-uploads')
+              .createSignedUrl(photo-cakes/quote.reference_photo_url, 60 * 60);
             if (signError) {
               console.error('Error creating signed URL for quote photo:', signError);
               return quote;
