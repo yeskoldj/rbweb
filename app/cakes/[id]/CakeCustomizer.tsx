@@ -1595,16 +1595,31 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                           </label>
                           {uploadedPhoto ? (
                             <div className="relative w-32 h-32">
-                              <img src={uploadedPhoto} alt="Foto subida" className="w-32 h-32 object-cover rounded-lg" />
-                              <button type="button" onClick={removePhoto} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1">
+                              <img
+                                src={uploadedPhoto}
+                                alt="Foto subida"
+                                className="w-32 h-32 object-cover rounded-lg"
+                              />
+                              <button
+                                type="button"
+                                onClick={removePhoto}
+                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
+                              >
                                 <i className="ri-close-line text-xs"></i>
                               </button>
                             </div>
                           ) : (
-                            <label className="flex flex-col items-center justify-center w-32 h-32 border-2 border-dashed border-pink-400 rounded-lg cursor-pointer">
-                              <i className="ri-add-line text-pink-400 text-2xl"></i>
-                              <span className="text-xs mt-1 text-pink-400 text-center">Subir foto</span>
-                              <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+                            <label className="flex flex-col items-center justify-center w-32 h-32 border-2 border-dashed border-pink-400 rounded-lg cursor-pointer p-2">
+                              <i className="ri-add-line text-pink-400 text-2xl mb-1"></i>
+                              <span className="text-[10px] text-pink-400 text-center leading-tight">
+                                Envíanos tu foto con un mensaje lindo
+                              </span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handlePhotoUpload}
+                              />
                             </label>
                           )}
                           {isUploadingPhoto && <p className="text-xs text-gray-500 mt-2">Subiendo foto...</p>}

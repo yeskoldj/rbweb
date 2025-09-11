@@ -11,64 +11,76 @@ export default function CakesPage() {
   const cakes = [
     {
       id: 'birthday-classic',
-      name: 'Pastel Clásico de Cumpleaños',
+      name: 'Pastel de Cumpleaños Clásico',
       basePrice: 20,
-      description: 'Pastel personalizable perfecto para celebrar cumpleaños con decoraciones coloridas',
-      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/58a3f870af7fe55c1b2733bc57137538.png',
+      description:
+        'Pastel de cumpleaños personalizable con decoraciones coloridas y tradicionales',
+      image:
+        'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/58a3f870af7fe55c1b2733bc57137538.png',
       category: 'birthday',
       popular: true
     },
     {
       id: 'birthday-deluxe',
-      name: 'Pastel Deluxe de Cumpleaños',
+      name: 'Pastel de Cumpleaños Deluxe',
       basePrice: 30,
-      description: 'Versión premium con decoraciones especiales y acabados profesionales',
-      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/def4b1d4d19f7bb63fe8ed7acc40b9e6.png',
+      description:
+        'Versión deluxe con decoraciones especiales y acabados profesionales',
+      image:
+        'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/def4b1d4d19f7bb63fe8ed7acc40b9e6.png',
       category: 'birthday',
       popular: false
     },
     {
       id: 'wedding-elegant',
-      name: 'Pastel Elegante de Boda',
+      name: 'Pastel de Cumpleaños Elegante',
       basePrice: 55,
-      description: 'Diseño sofisticado para bodas con múltiples niveles y decoraciones elegantes',
-      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/b55c6989623b0711cfe5124c88d92ed0.png',
+      description:
+        'Inspirado en bodas, con múltiples niveles y decoraciones elegantes',
+      image:
+        'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/b55c6989623b0711cfe5124c88d92ed0.png',
       category: 'wedding',
       popular: true
     },
     {
       id: 'quince-princess',
-      name: 'Pastel Princesa de Quinceañera',
+      name: 'Pastel de Cumpleaños Princesa',
       basePrice: 35,
-      description: 'Diseño especial para quinceañeras con toques principescos y colores vibrantes',
-      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/04879db0557315e718d30f6f01a65327.png',
+      description:
+        'Ideal para quinceañeras con toques principescos y colores vibrantes',
+      image:
+        'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/04879db0557315e718d30f6f01a65327.png',
       category: 'quince',
       popular: true
     },
     {
       id: 'graduation',
-      name: 'Pastel de Graduación',
+      name: 'Pastel de Cumpleaños de Graduación',
       basePrice: 20,
-      description: 'Celebra este logro especial con un pastel temático de graduación',
-      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/58a3f870af7fe55c1b2733bc57137538.png',
+      description:
+        'Temático de graduación para celebrar este logro especial con dulzura',
+      image:
+        'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/58a3f870af7fe55c1b2733bc57137538.png',
       category: 'graduation',
       popular: false
     },
     {
       id: 'photo-cake-basic',
-      name: 'Photo Cake Básico',
+      name: 'Pastel de Cumpleaños con Foto Básico',
       basePrice: 25,
-      description: 'Añade tu foto favorita a un delicioso pastel personalizado',
-      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/def4b1d4d19f7bb63fe8ed7acc40b9e6.png',
+      description:
+        'Añade tu foto favorita a un delicioso pastel de cumpleaños',
+      image: '',
       category: 'photo',
       popular: false
     },
     {
       id: 'photo-cake-premium',
-      name: 'Photo Cake Premium',
+      name: 'Pastel de Cumpleaños con Foto Premium',
       basePrice: 35,
-      description: 'Versión premium con marco decorativo alrededor de tu foto personalizada',
-      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/b55c6989623b0711cfe5124c88d92ed0.png',
+      description:
+        'Versión premium con marco decorativo alrededor de tu foto personalizada',
+      image: '',
       category: 'photo',
       popular: false
     }
@@ -82,7 +94,7 @@ export default function CakesPage() {
     { id: 'wedding', name: 'Bodas', icon: 'ri-heart-line' },
     { id: 'quince', name: 'Quinceañera', icon: 'ri-star-line' },
     { id: 'graduation', name: 'Graduación', icon: 'ri-graduation-cap-line' },
-    { id: 'photo', name: 'Photo Cake', icon: 'ri-camera-line' }
+    { id: 'photo', name: 'Pastel con Foto', icon: 'ri-camera-line' }
   ];
 
   const filteredCakes = selectedCategory === 'all' 
@@ -134,11 +146,17 @@ export default function CakesPage() {
               <div key={cake.id} className="bg-white rounded-xl shadow-sm overflow-hidden">
                 <div className="flex">
                   <div className="w-24 h-24 flex-shrink-0">
-                    <img
-                      src={cake.image}
-                      alt={cake.name}
-                      className="w-full h-full object-cover"
-                    />
+                    {cake.category === 'photo' ? (
+                      <div className="flex items-center justify-center w-full h-full bg-pink-100 text-pink-500 text-xs text-center p-2">
+                        Envíanos tu foto con un mensaje lindo
+                      </div>
+                    ) : (
+                      <img
+                        src={cake.image}
+                        alt={cake.name}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
                   </div>
                   
                   <div className="flex-1 p-4">
