@@ -3,8 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
-import type { Order, OrderStatus } from '@/lib/supabase';
+import { supabase, type Order, type OrderStatus } from '@/lib/supabase';
 
 interface Item {
   name: string;
