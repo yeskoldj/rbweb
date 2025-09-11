@@ -47,19 +47,16 @@ export default function MenuPage() {
         {
           name: 'Gelatina',
           price: '$3.00',
-          description: 'Refrescante gelatina dominicana con varios sabores',
           image: gelatinaImg.src
         },
         {
           name: 'Flan',
           price: '$4.00',
-          description: 'Cremoso flan casero dominicano con caramelo',
           image: flanImg.src
         },
         {
           name: 'Budín de Pan',
           price: '$3.50',
-          description: 'Delicioso budín de pan dominicano con canela',
           image: budinPanImg.src
         }
       ]
@@ -70,31 +67,26 @@ export default function MenuPage() {
         {
           name: 'Cheesecake',
           price: '$5.00',
-          description: 'Cremoso cheesecake estilo dominicano',
           image: cheesecakeImg.src
         },
         {
           name: 'Tres Leches en Vaso',
           price: '$5.00',
-          description: 'Tradicional tres leches dominicano servido en vaso',
           image: tresLechesVasoImg.src
         },
         {
           name: 'Tres Leches de Oreo',
           price: '$5.00',
-          description: 'Nuestra versión especial dominicana con galletas Oreo',
           image: tresLechesOreoImg.src
         },
         {
           name: 'Rebanada de Dulce de Leche',
           price: '$5.00',
-          description: 'Irresistible dulce de leche casero dominicano',
           image: dulceLecheImg.src
         },
         {
           name: 'Rebanada de Torta de Piña',
           price: '$5.00',
-          description: 'Esponjosa torta dominicana con piña fresca',
           image: tortaPinaImg.src
         }
       ]
@@ -105,19 +97,16 @@ export default function MenuPage() {
         {
           name: 'Coco-Piña',
           price: '$5.00',
-          description: 'Exótica combinación dominicana de coco y piña',
           image: cocoPinaImg.src
         },
         {
           name: 'Macarrón de Coco',
           price: '$1.50',
-          description: 'Tradicional dulce dominicano de coco',
           image: macarronCocoImg.src
         },
         {
           name: 'Torta de Guayaba',
           price: '$2.50',
-          description: 'Suave torta dominicana con relleno de guayaba',
           image: tortaGuayabaImg.src
         }
       ]
@@ -128,31 +117,26 @@ export default function MenuPage() {
         {
           name: 'Mantecaditos',
           price: '$1.50',
-          description: 'Tradicionales mantecaditos dominicanos',
           image: mantecaditosImg.src
         },
         {
           name: 'Donas',
           price: '$1.50',
-          description: 'Frescas y esponjosas donas dominicanas',
           image: donasImg.src
         },
         {
           name: 'Donas Azucaradas',
           price: '$1.50',
-          description: 'Donas dominicanas espolvoreadas con azúcar',
           image: donasAzucaradasImg.src
         },
         {
           name: 'Galletas',
           price: '$3.00 por 2',
-          description: 'Deliciosas galletas caseras dominicanas (2 piezas)',
           image: galletasImg.src
         },
         {
           name: 'Croissant',
           price: '$1.50',
-          description: 'Croissant recién horneado estilo dominicano',
           image: croissantImg.src
         }
       ]
@@ -163,25 +147,21 @@ export default function MenuPage() {
         {
           name: 'Mini Pasteles',
           price: '$2.50',
-          description: 'Pequeños pasteles dominicanos con frutas variadas',
           image: miniPastelesImg.src
         },
         {
           name: 'Pastelito',
           price: '$2.00',
-          description: 'Tradicional dulce dominicano frito',
           image: pastelitoImg.src
         },
         {
           name: 'Torticas de Chocolate',
           price: '$2.00',
-          description: 'Crujientes torticas dominicanas bañadas en chocolate',
           image: torticasChocolateImg.src
         },
         {
           name: 'Mini Cannolis',
           price: '$1.50',
-          description: 'Mini cannolis dominicanos rellenos de crema',
           image: miniCannolisImg.src
         }
       ]

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -7,7 +6,6 @@ import { showCartNotification } from '../../lib/cartNotification';
 interface MenuItem {
   name: string;
   price: string;
-  description: string;
   image: string;
 }
 
@@ -22,8 +20,7 @@ export default function MenuSection({ category, items }: MenuSectionProps) {
 
   useEffect(() => {
     checkAuthentication();
-    
-    // Initialize quantities for all items
+
     const initialQuantities: { [key: string]: number } = {};
     items.forEach(item => {
       initialQuantities[item.name] = 1;
@@ -57,24 +54,18 @@ export default function MenuSection({ category, items }: MenuSectionProps) {
       image: item.image
     };
 
-    // Get existing cart
     const existingCart = JSON.parse(localStorage.getItem('bakery-cart') || '[]');
-    
-    // Check if item already exists in cart
+
     const existingItemIndex = existingCart.findIndex((cartItem: any) => cartItem.name === item.name);
-    
+
     if (existingItemIndex >= 0) {
-      // Update quantity if item exists
       existingCart[existingItemIndex].quantity += quantities[item.name] || 1;
     } else {
-      // Add new item to cart
       existingCart.push(cartItem);
     }
 
-    // Save updated cart
     localStorage.setItem('bakery-cart', JSON.stringify(existingCart));
-    
-    // Show success message with animation
+
     showCartNotification(`${item.name} agregado al carrito`);
   };
 
@@ -83,7 +74,7 @@ export default function MenuSection({ category, items }: MenuSectionProps) {
       <h2 className="text-xl font-bold text-amber-800 mb-4 px-2">
         {category}
       </h2>
-      
+
       <div className="space-y-3">
         {items.map((item, index) => (
           <div key={index} className="bg-white rounded-lg shadow-md overflow-hidden mx-2">
@@ -95,7 +86,7 @@ export default function MenuSection({ category, items }: MenuSectionProps) {
                   className="w-full h-full object-cover object-top"
                 />
               </div>
-              
+
               <div className="flex-1 p-3">
                 <div className="flex justify-between items-start mb-1">
                   <h3 className="font-semibold text-amber-800 text-base leading-tight">
@@ -105,11 +96,7 @@ export default function MenuSection({ category, items }: MenuSectionProps) {
                     {item.price}
                   </span>
                 </div>
-                
-                <p className="text-gray-600 text-xs mb-3 leading-tight">
-                  {item.description}
-                </p>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <button
@@ -128,7 +115,7 @@ export default function MenuSection({ category, items }: MenuSectionProps) {
                       <i className="ri-add-line text-xs"></i>
                     </button>
                   </div>
-                  
+
                   <button
                     onClick={() => addToCart(item)}
                     className="bg-gradient-to-r from-pink-400 to-teal-400 text-white px-4 py-1.5 rounded-full text-sm font-medium !rounded-button hover:shadow-md transition-all"
@@ -145,3 +132,4 @@ export default function MenuSection({ category, items }: MenuSectionProps) {
     </div>
   );
 }
+
