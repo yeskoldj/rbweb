@@ -3,65 +3,69 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import type { Order, OrderStatus } from '@/lib/supabase';
 
-interface Order {
-  id: string;
-  p2p_reference?: string | null;
-  customer_name: string;
-  customer_phone: string;
-  customer_email?: string;
-  items: Array<{
-    name: string;
-    quantity: number;
-    price: string;
-    details?: string;
-    photoUrl?: string;
-  }>;
-  total: string;
-  status: 'received' | 'ready' | 'delivered';
-  pickup_date: string;
-  pickup_time: string;
-  special_requests?: string;
-  payment_type?: string;
-  payment_status: 'pending' | 'completed' | 'paid' | 'failed';
-  created_at: string;
+interface Item {
+  name: string;
+  quantity: number;
+  price: string;
+  details?: string;
+  photoUrl?: string;
 }
 
+type DashboardOrder = Order & {
+  items: Item[];
+  pickup_date: string;
+  pickup_time: string;
+};
+
 interface OrderCardProps {
-  order: Order;
-  onStatusChange: (orderId: string, newStatus: Order['status']) => void;
+  order: DashboardOrder;
+  onStatusChange: (orderId: string, newStatus: OrderStatus) => void;
 }
 
 export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const getStatusColor = (status: Order['status']) => {
+  const getStatusColor = (status: OrderStatus) => {
     switch (status) {
-      case 'received':
+      case 'pending':
         return 'bg-blue-100 text-blue-800';
       case 'ready':
         return 'bg-yellow-100 text-yellow-800';
-      case 'delivered':
+      case 'completed':
         return 'bg-green-100 text-green-800';
+      case 'baking':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'decorating':
+        return 'bg-purple-100 text-purple-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const getStatusText = (status: Order['status']) => {
+  const getStatusText = (status: OrderStatus) => {
     switch (status) {
-      case 'received':
+      case 'pending':
         return 'Recibido';
       case 'ready':
         return 'Listo para Pick up';
-      case 'delivered':
+      case 'completed':
         return 'Entregado';
+      case 'baking':
+        return 'En horneado';
+      case 'decorating':
+        return 'Decorando';
+      case 'cancelled':
+        return 'Cancelado';
       default:
         return status;
     }
   };
 
-  const getPaymentStatusColor = (status: Order['payment_status']) => {
+  const getPaymentStatusColor = (status: DashboardOrder['payment_status']) => {
     switch (status) {
       case 'paid':
       case 'completed':
@@ -75,7 +79,7 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
     }
   };
 
-  const getPaymentStatusText = (status: Order['payment_status']) => {
+  const getPaymentStatusText = (status: DashboardOrder['payment_status']) => {
     switch (status) {
       case 'paid':
       case 'completed':
@@ -89,7 +93,7 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
     }
   };
 
-  const handleStatusChange = (newStatus: Order['status']) => {
+  const handleStatusChange = (newStatus: OrderStatus) => {
     onStatusChange(order.id, newStatus);
   };
 
@@ -257,9 +261,9 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
             <h5 className="font-medium text-gray-900 mb-3">Actualizar Estado</h5>
             <div className="flex space-x-2">
               <button
-                onClick={() => handleStatusChange('received')}
+                onClick={() => handleStatusChange('pending')}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  order.status === 'received'
+                  order.status === 'pending'
                     ? 'bg-blue-600 text-white'
                     : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                 }`}
@@ -277,9 +281,9 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
                 Listo para Pick up
               </button>
               <button
-                onClick={() => handleStatusChange('delivered')}
+                onClick={() => handleStatusChange('completed')}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  order.status === 'delivered'
+                  order.status === 'completed'
                     ? 'bg-green-600 text-white'
                     : 'bg-green-100 text-green-700 hover:bg-green-200'
                 }`}

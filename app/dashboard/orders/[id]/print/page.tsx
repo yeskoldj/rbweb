@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import type { Order } from '@/lib/supabase';
 
 interface OrderItem {
   name: string;
@@ -11,21 +12,12 @@ interface OrderItem {
   photoUrl?: string;
 }
 
-interface Order {
-  id: string;
-  p2p_reference?: string | null;
-  customer_name: string;
-  customer_phone: string;
-  customer_email?: string;
+type PrintableOrder = Order & {
   items: OrderItem[];
-  total: number;
-  order_date: string;
-  pickup_time?: string;
-  special_requests?: string;
-}
+};
 
 export default function PrintOrderPage({ params }: { params: { id: string } }) {
-  const [order, setOrder] = useState<Order | null>(null);
+  const [order, setOrder] = useState<PrintableOrder | null>(null);
 
   useEffect(() => {
     const fetchOrder = async () => {
