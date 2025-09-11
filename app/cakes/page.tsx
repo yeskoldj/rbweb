@@ -148,7 +148,7 @@ export default function CakesPage() {
                   <div className="w-24 h-24 flex-shrink-0">
                     {cake.category === 'photo' ? (
                       <div className="flex items-center justify-center w-full h-full bg-pink-100 text-pink-500 text-xs text-center p-2">
-                        Envíanos tu foto con un mensaje lindo
+                        Envíanos tu foto 
                       </div>
                     ) : (
                       <img
