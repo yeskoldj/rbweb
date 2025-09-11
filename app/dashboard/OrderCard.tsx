@@ -1,8 +1,9 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 import type { Order, OrderStatus } from '@/lib/supabase';
 
 interface Item {
@@ -26,6 +27,25 @@ interface OrderCardProps {
 
 export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [signedItems, setSignedItems] = useState<Item[]>([]);
+
+  useEffect(() => {
+    const signItems = async () => {
+      const itemsWithUrls = await Promise.all(
+        (order.items || []).map(async (item) => {
+          if (item.photoUrl) {
+            const { data } = await supabase.storage
+              .from('temp-uploads')
+              .createSignedUrl(item.photoUrl, 60 * 60);
+            return { ...item, photoUrl: data?.signedUrl };
+          }
+          return item;
+        })
+      );
+      setSignedItems(itemsWithUrls);
+    };
+    signItems();
+  }, [order.items]);
 
   const getStatusColor = (status: OrderStatus) => {
     switch (status) {
@@ -100,7 +120,7 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
   // Asegurar que tenemos el nombre del cliente
   const customerName = order.customer_name || 'Cliente';
   const customerInitial = customerName.charAt(0).toUpperCase();
-  const firstItemPhoto = order.items.find((item) => item.photoUrl)?.photoUrl;
+  const firstItemPhoto = signedItems.find((item) => item.photoUrl)?.photoUrl;
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -114,7 +134,7 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
             {firstItemPhoto ? (
               <img
                 src={firstItemPhoto}
-                alt={order.items.find((item) => item.photoUrl)?.name || 'Referencia'}
+                alt={signedItems.find((item) => item.photoUrl)?.name || 'Referencia'}
                 className="w-10 h-10 rounded object-cover"
               />
             ) : (
@@ -208,7 +228,7 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
           <div className="p-4">
             <h5 className="font-medium text-gray-900 mb-3">Artículos del Pedido</h5>
             <div className="space-y-2">
-              {order.items.map((item, index) => (
+              {signedItems.map((item, index) => (
                 <div key={index} className="flex justify-between items-start">
                   <div className="flex-1">
                     <div className="flex items-center">
