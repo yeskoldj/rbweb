@@ -2,6 +2,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 
 interface Order {
   id: string;
@@ -153,6 +154,16 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
       {/* Expanded Order Details */}
       {isExpanded && (
         <div className="border-t border-gray-100">
+          <div className="p-4 flex justify-end">
+            <Link
+              href={`/dashboard/orders/${order.id}/print`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-2 rounded-lg text-sm font-medium bg-pink-600 text-white hover:bg-pink-700"
+            >
+              Imprimir
+            </Link>
+          </div>
           {/* Contact Info */}
           <div className="p-4 bg-gray-50">
             <h5 className="font-medium text-gray-900 mb-2">Información de Contacto</h5>
