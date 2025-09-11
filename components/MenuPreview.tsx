@@ -5,6 +5,11 @@ import Link from 'next/link';
 import { useLanguage } from '../lib/languageContext';
 import { getUser } from '../lib/authStorage';
 import { showCartNotification } from '../lib/cartNotification';
+import tresLechesVasoImg from '../images/Vasito de tres leches.jpeg';
+import flanImg from '../images/flan.jpeg';
+import cheesecakeImg from '../images/Cheesecake .jpeg';
+import miniPastelesImg from '../images/Minipies  (2).jpeg';
+import tresLechesOreoImg from '../images/Tres leches de Oreo.jpeg';
 
 export default function MenuPreview() {
   const { t } = useLanguage();
@@ -16,7 +21,7 @@ export default function MenuPreview() {
       name: 'Tres Leches en Vaso',
       price: '$5.00',
       description: 'Tradicional tres leches dominicano servido en vaso',
-      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/6e38ec235b30b7a74f673bc044a87814.jfif',
+      image: tresLechesVasoImg.src,
       category: 'dessert',
       type: 'dessert'
     },
@@ -25,7 +30,7 @@ export default function MenuPreview() {
       name: 'Flan',
       price: '$4.00',
       description: 'Cremoso flan casero dominicano con caramelo',
-      image: 'https://rangersbakery.com/images/flan.jpeg',
+      image: flanImg.src,
       category: 'dessert',
       type: 'dessert'
     },
@@ -34,7 +39,7 @@ export default function MenuPreview() {
       name: 'Cheesecake',
       price: '$5.00',
       description: 'Cremoso cheesecake estilo dominicano',
-      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/ae1f7420251af709ef833638a428a131.jfif',
+      image: cheesecakeImg.src,
       category: 'dessert',
       type: 'dessert'
     },
@@ -53,7 +58,7 @@ export default function MenuPreview() {
       name: 'Mini Pasteles',
       price: '$2.50',
       description: 'Pequeños pasteles dominicanos con frutas variadas',
-      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/7735a4789459e5d2fb59e816d88b8891.jfif',
+      image: miniPastelesImg.src,
       category: 'dessert',
       type: 'dessert'
     },
@@ -62,7 +67,7 @@ export default function MenuPreview() {
       name: 'Tres Leches de Oreo',
       price: '$5.00',
       description: 'Nuestra versión especial dominicana con galletas Oreo',
-      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/3426923c2c21bd56dac155cac89400e3.jfif',
+      image: tresLechesOreoImg.src,
       category: 'dessert',
       type: 'dessert'
     }
@@ -94,7 +99,7 @@ export default function MenuPreview() {
     
     try {
       const existingCart = localStorage.getItem('bakery-cart');
-      let cart = existingCart ? JSON.parse(existingCart) : [];
+      const cart = existingCart ? JSON.parse(existingCart) : [];
       
       const existingItemIndex = cart.findIndex((cartItem: any) => cartItem.name === item.name && cartItem.type === item.type);
       
