@@ -21,11 +21,12 @@ import mantecaditosImg from '../../images/Mantecados.jpeg';
 import donasImg from '../../images/Donas .jpeg';
 import donasAzucaradasImg from '../../images/Donas azucaradas.jpeg';
 import galletasImg from '../../images/Cookies .jpeg';
-import croissantImg from '../../images/Croissant .jpeg';
+import croissantImg from '../../images/Croissant.jpeg';
 import miniPastelesImg from '../../images/Minipies  (2).jpeg';
 import pastelitoImg from '../../images/milojas.jpeg';
 import torticasChocolateImg from '../../images/Coques de chocolate.jpeg';
 import miniCannolisImg from '../../images/Cannolis.jpeg';
+
 
 export default function MenuPage() {
   const [selectedCategory, setSelectedCategory] = useState('Todos');
