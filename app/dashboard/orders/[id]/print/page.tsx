@@ -16,6 +16,7 @@ interface OrderItem {
 
 type PrintableOrder = Order & {
   items: OrderItem[];
+  pickup_date?: string;
 };
 
 export default function PrintOrderPage({ params }: { params: { id: string } }) {
@@ -68,14 +69,29 @@ export default function PrintOrderPage({ params }: { params: { id: string } }) {
         </div>
 
         <div className="mb-4">
-          <p><strong>Cliente:</strong> {order.customer_name}</p>
-          <p><strong>Teléfono:</strong> {order.customer_phone}</p>
+          <p>
+            <strong>Cliente:</strong> {order.customer_name}
+          </p>
+          <p>
+            <strong>Teléfono:</strong> {order.customer_phone}
+          </p>
           {order.customer_email && (
-            <p><strong>Email:</strong> {order.customer_email}</p>
+            <p>
+              <strong>Email:</strong> {order.customer_email}
+            </p>
           )}
-          <p><strong>Fecha:</strong> {order.order_date}</p>
+          <p>
+            <strong>Fecha de pedido:</strong> {order.order_date}
+          </p>
+          {order.pickup_date && (
+            <p>
+              <strong>Fecha de retiro:</strong> {order.pickup_date}
+            </p>
+          )}
           {order.pickup_time && (
-            <p><strong>Hora de retiro:</strong> {order.pickup_time}</p>
+            <p>
+              <strong>Hora de retiro:</strong> {order.pickup_time}
+            </p>
           )}
         </div>
 
