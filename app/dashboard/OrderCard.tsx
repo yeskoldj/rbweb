@@ -2,6 +2,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 
 interface Order {
   id: string;
@@ -145,14 +146,35 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
               {order.pickup_time}
             </span>
           </div>
-          
-          <i className={`ri-arrow-${isExpanded ? 'up' : 'down'}-s-line text-gray-400`}></i>
+
+          <div className="flex items-center space-x-3">
+            <Link
+              href={`/dashboard/orders/${order.id}/print`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="text-pink-600 hover:text-pink-700"
+            >
+              <i className="ri-printer-line text-lg"></i>
+            </Link>
+            <i className={`ri-arrow-${isExpanded ? 'up' : 'down'}-s-line text-gray-400`}></i>
+          </div>
         </div>
       </div>
 
       {/* Expanded Order Details */}
       {isExpanded && (
         <div className="border-t border-gray-100">
+          <div className="p-4 flex justify-end">
+            <Link
+              href={`/dashboard/orders/${order.id}/print`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-2 rounded-lg text-sm font-medium bg-pink-600 text-white hover:bg-pink-700"
+            >
+              Imprimir
+            </Link>
+          </div>
           {/* Contact Info */}
           <div className="p-4 bg-gray-50">
             <h5 className="font-medium text-gray-900 mb-2">Información de Contacto</h5>
@@ -187,12 +209,15 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
                     {item.photoUrl && (
                       <a
                         href={item.photoUrl}
-                        download
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-blue-600 mt-1 ml-6 underline block"
+                        className="block mt-2 ml-6"
                       >
-                        Descargar foto
+                        <img
+                          src={item.photoUrl}
+                          alt={item.name}
+                          className="h-24 w-24 object-cover rounded"
+                        />
                       </a>
                     )}
                   </div>
