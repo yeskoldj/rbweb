@@ -25,7 +25,7 @@ export default function MenuPreview() {
       name: 'Flan',
       price: '$4.00',
       description: 'Cremoso flan casero dominicano con caramelo',
-      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/33b32b1e5581c150ed0666763a12e667.jfif',
+      image: 'https://rangersbakery.com/images/flan.jpeg',
       category: 'dessert',
       type: 'dessert'
     },
