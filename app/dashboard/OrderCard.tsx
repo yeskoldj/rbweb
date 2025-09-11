@@ -1,6 +1,8 @@
 
 'use client';
 
+/* eslint-disable @next/next/no-img-element */
+
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase, type Order, type OrderStatus } from '@/lib/supabase';
