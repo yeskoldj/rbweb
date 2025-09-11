@@ -2,6 +2,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 
 interface Order {
   id: string;
@@ -95,6 +96,7 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
   // Asegurar que tenemos el nombre del cliente
   const customerName = order.customer_name || 'Cliente';
   const customerInitial = customerName.charAt(0).toUpperCase();
+  const firstItemPhoto = order.items.find((item) => item.photoUrl)?.photoUrl;
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -105,11 +107,17 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
       >
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-pink-400 to-teal-400 rounded-full flex items-center justify-center">
-              <span className="text-white font-bold text-sm">
-                {customerInitial}
-              </span>
-            </div>
+            {firstItemPhoto ? (
+              <img
+                src={firstItemPhoto}
+                alt={order.items.find((item) => item.photoUrl)?.name || 'Referencia'}
+                className="w-10 h-10 rounded object-cover"
+              />
+            ) : (
+              <div className="w-10 h-10 bg-gradient-to-r from-pink-400 to-teal-400 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-sm">{customerInitial}</span>
+              </div>
+            )}
             <div>
               <h4 className="font-semibold text-gray-900">{customerName}</h4>
               <p className="text-sm text-gray-500">#{order.p2p_reference ?? order.id.slice(-8)}</p>
@@ -145,14 +153,36 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
               {order.pickup_time}
             </span>
           </div>
-          
-          <i className={`ri-arrow-${isExpanded ? 'up' : 'down'}-s-line text-gray-400`}></i>
+
+          <div className="flex items-center space-x-3">
+            <Link
+              href={`/dashboard/orders/${order.id}/print`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center space-x-1 text-pink-600 hover:text-pink-700"
+            >
+              <i className="ri-printer-line text-lg"></i>
+              <span className="hidden sm:inline text-sm font-medium">Imprimir</span>
+            </Link>
+            <i className={`ri-arrow-${isExpanded ? 'up' : 'down'}-s-line text-gray-400`}></i>
+          </div>
         </div>
       </div>
 
       {/* Expanded Order Details */}
       {isExpanded && (
         <div className="border-t border-gray-100">
+          <div className="p-4 flex justify-end">
+            <Link
+              href={`/dashboard/orders/${order.id}/print`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-2 rounded-lg text-sm font-medium bg-pink-600 text-white hover:bg-pink-700"
+            >
+              Imprimir
+            </Link>
+          </div>
           {/* Contact Info */}
           <div className="p-4 bg-gray-50">
             <h5 className="font-medium text-gray-900 mb-2">Información de Contacto</h5>
@@ -187,12 +217,15 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
                     {item.photoUrl && (
                       <a
                         href={item.photoUrl}
-                        download
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-blue-600 mt-1 ml-6 underline block"
+                        className="block mt-2 ml-6"
                       >
-                        Descargar foto
+                        <img
+                          src={item.photoUrl}
+                          alt={item.name}
+                          className="h-24 w-24 object-cover rounded"
+                        />
                       </a>
                     )}
                   </div>
