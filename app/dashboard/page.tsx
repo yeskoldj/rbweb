@@ -155,9 +155,16 @@ export default function DashboardPage() {
           const itemsWithUrls = await Promise.all(
             itemsArray.map(async (item: any) => {
               if (item.photoUrl) {
-                const { data: signed } = await supabase.storage
+                if (/^https?:\/\//.test(item.photoUrl)) {
+                  return item;
+                }
+                const { data: signed, error: signError } = await supabase.storage
                   .from('temp-uploads')
                   .createSignedUrl(item.photoUrl, 60 * 60);
+                if (signError) {
+                  console.error('Error creating signed URL for order photo:', signError);
+                  return item;
+                }
                 return { ...item, photoUrl: signed?.signedUrl };
               }
               return item;
@@ -283,9 +290,16 @@ export default function DashboardPage() {
       const quotesWithUrls: Quote[] = await Promise.all(
         (quotesData || []).map(async (quote: Quote) => {
           if (quote.reference_photo_url) {
-            const { data: signed } = await supabase.storage
+            if (/^https?:\/\//.test(quote.reference_photo_url)) {
+              return quote;
+            }
+            const { data: signed, error: signError } = await supabase.storage
               .from('temp-uploads')
               .createSignedUrl(quote.reference_photo_url, 60 * 60);
+            if (signError) {
+              console.error('Error creating signed URL for quote photo:', signError);
+              return quote;
+            }
             return { ...quote, reference_photo_url: signed?.signedUrl || null };
           }
           return quote;
