@@ -4,8 +4,6 @@
 import Header from '../../components/Header';
 import TabBar from '../../components/TabBar';
 import MenuSection from './MenuSection';
-import Link from 'next/link';
-import { useState } from 'react';
 import gelatinaImg from '../../images/gelatina.jpeg';
 import flanImg from '../../images/flan.jpeg';
 import budinPanImg from '../../images/pudin de pan.jpeg';
@@ -29,17 +27,6 @@ import miniCannolisImg from '../../images/Cannolis.jpeg';
 
 
 export default function MenuPage() {
-  const [selectedCategory, setSelectedCategory] = useState('Todos');
-
-  const categories = [
-    'Todos',
-    'Postres Clásicos',
-    'Especialidades',
-    'Tropicales',
-    'Pequeños Placeres',
-    'Únicos'
-  ];
-
   const menuItems = [
     {
       category: 'Postres Clásicos',
@@ -188,70 +175,13 @@ export default function MenuPage() {
     }
   ];
 
-  const getCategoryDisplayName = (category: string) => {
-    const categoryMap: { [key: string]: string } = {
-      'Especialidades de la Casa': 'Especialidades',
-      'Productos Tropicales': 'Tropicales',
-      'Especialidades Únicas': 'Únicos'
-    };
-    return categoryMap[category] || category;
-  };
-
-  const filteredMenuItems = selectedCategory === 'Todos' 
-    ? menuItems 
-    : menuItems.filter(section => getCategoryDisplayName(section.category) === selectedCategory);
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 to-purple-50">
       <Header />
       <div className="pt-16 pb-20">
-        <div className="px-3 py-4">
-          <h1 className="text-2xl font-bold text-amber-800 text-center mb-1">
-            Nuestro Menú
-          </h1>
-          <p className="text-gray-600 text-center mb-6 text-sm">
-            Delicias dominicanas hechas con amor para ti
-          </p>
-
-          {/* Category Filter */}
-          <div className="mb-6 bg-white rounded-xl p-3 shadow-sm">
-            <div className="flex overflow-x-auto space-x-2 pb-2">
-              {categories.map((category) => (
-                <button
-                  key={category}
-                  onClick={() => setSelectedCategory(category)}
-                  className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                    selectedCategory === category
-                      ? 'bg-gradient-to-r from-pink-400 to-teal-400 text-white shadow-md'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {category}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {filteredMenuItems.map((section, index) => (
-            <MenuSection 
-              key={index}
-              category={section.category}
-              items={section.items}
-            />
-          ))}
-
-          <div className="mt-6 bg-gradient-to-r from-pink-400 to-teal-400 rounded-xl p-5 text-white text-center mx-2">
-            <h3 className="text-lg font-semibold mb-2">¿Listo para ordenar?</h3>
-            <p className="text-sm opacity-90 mb-4">
-              Haz tu pedido y lo tendremos listo para ti
-            </p>
-            <Link href="/order">
-              <button className="bg-white/20 backdrop-blur-sm text-white px-8 py-3 rounded-full font-medium !rounded-button">
-                Hacer Pedido
-              </button>
-            </Link>
-          </div>
-        </div>
+        {menuItems.map((section, index) => (
+          <MenuSection key={index} items={section.items} />
+        ))}
       </div>
       <TabBar />
     </div>
