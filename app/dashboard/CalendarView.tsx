@@ -11,6 +11,7 @@ interface CalendarViewProps {
 
 export default function CalendarView({ orders, onStatusUpdate }: CalendarViewProps) {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
 
   const getOrdersForDate = (date: string) => {
     return orders.filter(order => order.order_date === date);
@@ -26,6 +27,21 @@ export default function CalendarView({ orders, onStatusUpdate }: CalendarViewPro
       days.push(date.toISOString().split('T')[0]);
     }
     
+    return days;
+  };
+
+  const getDaysOfMonth = () => {
+    const days = [];
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const date = new Date(year, month, 1);
+
+    while (date.getMonth() === month) {
+      days.push(date.toISOString().split('T')[0]);
+      date.setDate(date.getDate() + 1);
+    }
+
     return days;
   };
 
@@ -77,15 +93,31 @@ export default function CalendarView({ orders, onStatusUpdate }: CalendarViewPro
   return (
     <div className="space-y-4">
       <div className="bg-gradient-to-r from-pink-100 via-purple-100 to-teal-100 rounded-2xl p-4">
-        <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
-          <div className="w-8 h-8 flex items-center justify-center bg-white rounded-full mr-3 shadow-sm">
-            <i className="ri-calendar-line text-pink-500"></i>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-gray-800 flex items-center">
+            <div className="w-8 h-8 flex items-center justify-center bg-white rounded-full mr-3 shadow-sm">
+              <i className="ri-calendar-line text-pink-500"></i>
+            </div>
+            {viewMode === 'week' ? 'Próximos 7 Días' : 'Vista Mensual'}
+          </h3>
+          <div className="space-x-2">
+            <button
+              onClick={() => setViewMode('week')}
+              className={`px-3 py-1 rounded-full text-sm font-medium ${viewMode === 'week' ? 'bg-pink-400 text-white' : 'bg-white text-gray-700'}`}
+            >
+              7 días
+            </button>
+            <button
+              onClick={() => setViewMode('month')}
+              className={`px-3 py-1 rounded-full text-sm font-medium ${viewMode === 'month' ? 'bg-pink-400 text-white' : 'bg-white text-gray-700'}`}
+            >
+              Mes
+            </button>
           </div>
-          Próximos 7 Días
-        </h3>
-        
-        <div className="grid grid-cols-1 gap-3">
-          {getNext7Days().map((date) => {
+        </div>
+
+        <div className={viewMode === 'month' ? 'grid grid-cols-2 md:grid-cols-3 gap-3' : 'grid grid-cols-1 gap-3'}>
+          {(viewMode === 'week' ? getNext7Days() : getDaysOfMonth()).map((date) => {
             const dayOrders = getOrdersForDate(date);
             const isSelected = selectedDate === date;
             const isToday = date === new Date().toISOString().split('T')[0];
