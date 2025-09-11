@@ -7,7 +7,6 @@ export async function generateStaticParams() {
     { id: 'birthday-deluxe' },
     { id: 'wedding-elegant' },
     { id: 'quince-princess' },
-    { id: 'graduation' },
     { id: 'photo-cake-basic' },
     { id: 'photo-cake-premium' },
   ];
