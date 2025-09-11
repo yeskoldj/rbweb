@@ -54,17 +54,6 @@ export default function CakesPage() {
       popular: true
     },
     {
-      id: 'graduation',
-      name: 'Pastel de Cumpleaños de Graduación',
-      basePrice: 20,
-      description:
-        'Temático de graduación para celebrar este logro especial con dulzura',
-      image:
-        'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/58a3f870af7fe55c1b2733bc57137538.png',
-      category: 'graduation',
-      popular: false
-    },
-    {
       id: 'photo-cake-basic',
       name: 'Pastel de Cumpleaños con Foto Básico',
       basePrice: 25,
@@ -93,7 +82,6 @@ export default function CakesPage() {
     { id: 'birthday', name: 'Cumpleaños', icon: 'ri-gift-line' },
     { id: 'wedding', name: 'Bodas', icon: 'ri-heart-line' },
     { id: 'quince', name: 'Quinceañera', icon: 'ri-star-line' },
-    { id: 'graduation', name: 'Graduación', icon: 'ri-graduation-cap-line' },
     { id: 'photo', name: 'Pastel con Foto', icon: 'ri-camera-line' }
   ];
 

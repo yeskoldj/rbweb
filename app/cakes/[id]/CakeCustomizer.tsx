@@ -69,37 +69,32 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
   // Datos de los pasteles usando imágenes reales - PRECIOS ACTUALIZADOS SEGÚN TABLA
   const cakeProducts = {
     'birthday-classic': {
-      name: 'Pastel Clásico de Cumpleaños',
+      name: 'Pastel de Cumpleaños Clásico',
       basePrice: 20,
       image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/58a3f870af7fe55c1b2733bc57137538.png'
     },
     'birthday-deluxe': {
-      name: 'Pastel Deluxe de Cumpleaños',
+      name: 'Pastel de Cumpleaños Deluxe',
       basePrice: 30,
       image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/def4b1d4d19f7bb63fe8ed7acc40b9e6.png'
     },
     'wedding-elegant': {
-      name: 'Pastel Elegante de Boda',
+      name: 'Pastel de Cumpleaños Elegante',
       basePrice: 55,
       image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/b55c6989623b0711cfe5124c88d92ed0.png'
     },
     'quince-princess': {
-      name: 'Pastel Princesa de Quinceañera',
-      basePrice: 45,
+      name: 'Pastel de Cumpleaños Princesa',
+      basePrice: 35,
       image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/04879db0557315e718d30f6f01a65327.png'
     },
-    'graduation': {
-      name: 'Pastel de Graduación',
-      basePrice: 35,
-      image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/58a3f870af7fe55c1b2733bc57137538.png'
-    },
     'photo-cake-basic': {
-      name: 'Photo Cake Básico',
+      name: 'Pastel de Cumpleaños con Foto Básico',
       basePrice: 25,
       image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/def4b1d4d19f7bb63fe8ed7acc40b9e6.png'
     },
     'photo-cake-premium': {
-      name: 'Photo Cake Premium',
+      name: 'Pastel de Cumpleaños con Foto Premium',
       basePrice: 35,
       image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/b55c6989623b0711cfe5124c88d92ed0.png'
     }
