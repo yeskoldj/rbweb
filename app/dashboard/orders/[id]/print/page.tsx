@@ -119,7 +119,7 @@ export default function PrintOrderPage({ params }: { params: { id: string } }) {
                         <img
                           src={item.photoUrl}
                           alt={item.name}
-                          className="mt-1 h-24 object-cover"
+                          className="mt-1 h-24 w-24 object-cover rounded"
                         />
                       )}
                     </div>
