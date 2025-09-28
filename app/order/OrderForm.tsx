@@ -7,6 +7,7 @@ import { squareConfig } from '@/lib/square/config';
 import { createSquarePayment } from '@/lib/square/payments';
 import { createP2POrder, p2pPaymentConfig } from '@/lib/square/p2p';
 import { showCartNotification } from '@/lib/cartNotification';
+import { notifyBusinessAboutOrder } from '@/lib/orderNotifications';
 import Script from 'next/script';
 
 interface CartItem {
@@ -430,6 +431,33 @@ const initSquareCard = useCallback(async () => {
       });
 
       if (paymentResult.success) {
+        const subtotal = Number(calculateSubtotal().toFixed(2));
+        const tax = Number(calculateTax().toFixed(2));
+        const total = Number(parseFloat(calculateTotal()).toFixed(2));
+
+        const notificationResult = await notifyBusinessAboutOrder({
+          id: paymentResult.orderId ?? 'SIN-ID',
+          status: 'pending',
+          customerName: (currentUser?.full_name || currentUser?.fullName || 'Cliente').trim(),
+          customerPhone: (currentUser?.phone || '').trim() || undefined,
+          customerEmail: currentUser?.email || undefined,
+          pickupTime: formData.pickupTime || null,
+          specialRequests: formData.specialRequests?.trim() || null,
+          subtotal,
+          tax,
+          total,
+          paymentMethod: 'Pago con tarjeta (Square)',
+          items: cartItems.map(item => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: getItemPrice(item),
+          })),
+        });
+
+        if (!notificationResult.success) {
+          console.warn('No se pudo enviar la notificación de la orden al negocio');
+        }
+
         // Limpiar carrito y formulario
         localStorage.removeItem('bakery-cart');
         localStorage.removeItem('bakery-order-form');
@@ -509,6 +537,32 @@ const initSquareCard = useCallback(async () => {
 
       if (!result || !result.success) {
         throw new Error(result?.error || 'Error creando la orden');
+      }
+
+      const subtotal = Number(calculateSubtotal().toFixed(2));
+      const total = subtotal; // Zelle no tiene impuestos adicionales
+
+      const notificationResult = await notifyBusinessAboutOrder({
+        id: result.orderId ?? 'SIN-ID',
+        status: 'pending',
+        customerName: (currentUser?.full_name || currentUser?.fullName || 'Cliente').trim(),
+        customerPhone: (currentUser?.phone || '').trim() || undefined,
+        customerEmail: currentUser?.email || undefined,
+        pickupTime: formData.pickupTime || null,
+        specialRequests: formData.specialRequests?.trim() || null,
+        subtotal,
+        tax: 0,
+        total,
+        paymentMethod: 'Transferencia Zelle',
+        items: cartItems.map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: getItemPrice(item),
+        })),
+      });
+
+      if (!notificationResult.success) {
+        console.warn('No se pudo enviar la notificación de la orden al negocio');
       }
 
       // Limpiar carrito y formulario
