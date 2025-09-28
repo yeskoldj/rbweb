@@ -369,14 +369,19 @@ export default function TrackOrderPage() {
                       </h4>
                       <div className="bg-gray-50 rounded-xl p-4 space-y-3">
                         {order.items.map((item, idx) => (
-                          <div key={idx} className="flex justify-between items-center">
-                            <div className="flex items-center space-x-3">
+                          <div key={idx} className="flex justify-between items-start space-x-3">
+                            <div className="flex items-start space-x-3">
                               <div className="w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center text-pink-600 font-bold text-sm">
                                 {item.quantity}
                               </div>
-                              <span className="font-medium text-gray-700">{item.name}</span>
+                              <div>
+                                <span className="font-medium text-gray-700 block">{item.name}</span>
+                                {item.details && (
+                                  <p className="text-xs text-gray-500 whitespace-pre-line mt-1">{item.details}</p>
+                                )}
+                              </div>
                             </div>
-                            <span className="font-bold text-gray-800">{item.price}</span>
+                            <span className="font-bold text-gray-800">{typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : item.price}</span>
                           </div>
                         ))}
                       </div>

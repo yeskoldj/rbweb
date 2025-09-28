@@ -28,6 +28,7 @@ export async function createP2POrder(orderData: {
   userId: string;
   pickupTime?: string;
   specialRequests?: string;
+  orderId?: string;
 }) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
