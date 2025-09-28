@@ -22,6 +22,10 @@ export type SquareOrderItem = {
   name: string;
   price: number; // unit price in dollars
   quantity: number;
+  photoUrl?: string | null;
+  details?: string | null;
+  type?: string | null;
+  customization?: any;
 };
 
 export interface SquareOrderData {
@@ -42,6 +46,9 @@ export interface SquareOrderData {
   pickupTime?: string | null;
   specialRequests?: string | null;
   currency?: 'USD';
+  subtotal?: number;
+  tax?: number;
+  orderId?: string;
 }
 
 // ---- Square payment (calls Supabase Edge Function) ----

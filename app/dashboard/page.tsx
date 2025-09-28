@@ -33,6 +33,11 @@ interface Quote {
   admin_notes?: string | null;
   responded_at?: string | null;
   updated_at?: string | null;
+  cart_items?: any[];
+  requires_cake_quote?: boolean;
+  pickup_time?: string | null;
+  special_requests?: string | null;
+  reference_code?: string | null;
 }
 
 const quoteStatusColors: Record<QuoteStatus, string> = {
@@ -358,13 +363,15 @@ export default function DashboardPage() {
         customer_name: quote.customer_name,
         customer_phone: quote.customer_phone || '',
         customer_email: quote.customer_email || '',
-        items: [],
+        items: quote.cart_items || [],
         subtotal: quote.estimated_price || 0,
         tax: 0,
         total: quote.estimated_price || 0,
         status: 'pending',
         payment_status: 'pending',
         order_date: now,
+        pickup_time: quote.pickup_time || null,
+        special_requests: quote.special_requests || quote.event_details || null,
         created_at: now,
         updated_at: now,
       } as any;
@@ -1218,6 +1225,45 @@ function QuoteCard({ quote, onStatusUpdate, onFinalize, onDelete }: { quote: Quo
         <div className="mb-4 p-3 bg-amber-50 rounded-lg border-l-4 border-amber-400">
           <p className="text-sm font-medium text-amber-800 mb-1">Detalles del Evento:</p>
           <p className="text-sm text-amber-700">{quote.event_details}</p>
+        </div>
+      )}
+
+      {quote.requires_cake_quote && (
+        <div className="mb-4 p-3 bg-pink-50 rounded-lg border-l-4 border-pink-400">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-semibold text-pink-800">Personalización del pastel</p>
+            {quote.reference_code && (
+              <span className="text-xs font-medium text-pink-600">Ref: {quote.reference_code}</span>
+            )}
+          </div>
+          <div className="space-y-2">
+            {(quote.cart_items || []).map((item, index) => (
+              <div key={`${quote.id}-item-${index}`} className="bg-white rounded-md p-2 shadow-sm border border-pink-100">
+                <p className="text-sm font-semibold text-gray-800">
+                  {item.quantity || 1}x {item.name}
+                </p>
+                {item.details && (
+                  <p className="text-xs text-gray-600 whitespace-pre-line mt-1">{item.details}</p>
+                )}
+                {!item.details && item.customization && (
+                  <p className="text-xs text-gray-600 mt-1">
+                    {Object.entries(item.customization)
+                      .filter(([key, value]) => value && typeof value === 'string')
+                      .map(([key, value]) => `${key}: ${value}`)
+                      .join(' | ')}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+          {quote.pickup_time && (
+            <p className="text-xs text-pink-700 mt-2">
+              Hora preferida de recogida: <span className="font-semibold">{quote.pickup_time}</span>
+            </p>
+          )}
+          {quote.special_requests && (
+            <p className="text-xs text-pink-700 mt-1 whitespace-pre-line">Notas: {quote.special_requests}</p>
+          )}
         </div>
       )}
 

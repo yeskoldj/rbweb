@@ -1,13 +1,16 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import TabBar from '@/components/TabBar';
 import OrderForm from './OrderForm';
 import { getUser } from '@/lib/authStorage';
 
 export default function OrderPage() {
+  const searchParams = useSearchParams();
+  const existingOrderId = searchParams.get('orderId') ?? undefined;
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   
@@ -84,7 +87,7 @@ export default function OrderPage() {
             Complete the form and we’ll prepare your delicious products.
           </p>
 
-<OrderForm />
+          <OrderForm orderId={existingOrderId} />
         </div>
       </div>
 

@@ -79,13 +79,67 @@ serve(async (req) => {
       const tax = 0
       const total = subtotal
 
+      const existingOrderId = orderData?.orderId
+      if (existingOrderId && isValidUUID(existingOrderId)) {
+        const { data: existingOrder, error: existingError } = await supabaseAdmin
+          .from('orders')
+          .select('special_requests')
+          .eq('id', existingOrderId)
+          .single()
+
+        if (existingError) {
+          throw new Error('Order not found for update')
+        }
+
+        const baseRequests = orderData.specialRequests
+          ? orderData.specialRequests.trim()
+          : (existingOrder?.special_requests || '').trim()
+
+        const updateData: Record<string, any> = {
+          items: orderData.items || [],
+          subtotal,
+          tax,
+          total,
+          p2p_reference: p2pRef,
+          payment_type: orderData.paymentMethod,
+          payment_status: 'pending',
+          updated_at: new Date().toISOString(),
+        }
+
+        updateData.special_requests = baseRequests
+          ? `${baseRequests}\n[Pagado con Zelle | Ref: ${p2pRef}]`
+          : `[Pagado con Zelle | Ref: ${p2pRef}]`
+
+        if (orderData.pickupTime !== undefined) {
+          updateData.pickup_time = orderData.pickupTime || null
+        }
+
+        const { error: updateError } = await supabaseAdmin
+          .from('orders')
+          .update(updateData)
+          .eq('id', existingOrderId)
+          .select('id, p2p_reference')
+          .single()
+
+        if (updateError) {
+          console.error('❌ Supabase update error:', updateError)
+          throw new Error(`Error actualizando orden: ${updateError.message}`)
+        }
+
+        return new Response(JSON.stringify({
+          success: true,
+          orderId: existingOrderId,
+          reference: p2pRef,
+          status: 'pending_payment',
+          amount: total,
+          paymentMethod: orderData.paymentMethod,
+          message: 'Orden actualizada. Esperando confirmación del propietario.'
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+
       // ✅ CORRECCIÓN: NO incluir 'id' en el objeto
       const orderRecord: any = {
-        // ❌ id: orderId,  ← ELIMINAR ESTA LÍNEA
-        // ✅ Deja que PostgreSQL genere el UUID automáticamente
-
         user_id: profile.id,
-        // Provide default name to satisfy NOT NULL constraint in the DB
         customer_name: orderData.customerInfo?.name?.trim() || 'Cliente',
         customer_phone: orderData.customerInfo?.phone?.trim() || '',
         customer_email: orderData.customerInfo?.email?.trim() || null,
@@ -98,10 +152,10 @@ serve(async (req) => {
         special_requests: orderData.specialRequests
           ? `${orderData.specialRequests}\n[Pagado con Zelle | Ref: ${p2pRef}]`
           : `[Pagado con Zelle | Ref: ${p2pRef}]`,
-        
+
         // ✅ Asegurar que p2p_reference sea TEXT, no UUID
         p2p_reference: p2pRef,
-        
+
         status: 'pending',
         order_date: new Date().toISOString().split('T')[0],
         payment_type: orderData.paymentMethod,
