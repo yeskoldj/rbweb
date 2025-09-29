@@ -20,64 +20,74 @@ serve(async (req) => {
   }
 
   try {
-    // This Edge Function is ready for when you get Google Places API access
-    // For now, it returns a structure showing what's needed
-    
-    const { apiKey } = await req.json()
-    
-    if (!apiKey) {
-      return new Response(
-        JSON.stringify({
-          error: 'Google Places API Key required',
-          message: 'Para conectar con Google Reviews necesitas:',
-          requirements: [
-            '1. Google Places API Key de Google Cloud Console',
-            '2. Place ID de Rangers Bakery (podemos ayudarte a encontrarlo)',
-            '3. Habilitar Places API en Google Cloud Console'
-          ],
-          businessAddress: '3657 John F. Kennedy Blvd, Jersey City, NJ 07307',
-          nextSteps: 'Una vez tengas la API Key, envíala y configuramos la integración'
-        }),
-        { 
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
+    const apiKey = Deno.env.get('GOOGLE_PLACES_API_KEY')
+    const placeId = Deno.env.get('GOOGLE_PLACES_PLACE_ID')
+    const businessName = Deno.env.get('GOOGLE_BUSINESS_NAME') || 'Rangers Bakery'
+
+    const setupInstructions = {
+      success: false,
+      setupRequired: true,
+      message: 'Google Reviews integration is not configured yet.',
+      docsPath: 'docs/google-reviews-setup.md',
+      requirements: [
+        'Configura GOOGLE_PLACES_API_KEY en las variables de entorno del Edge Function',
+        'Configura GOOGLE_PLACES_PLACE_ID en las variables de entorno del Edge Function',
+        'Habilita Places API en Google Cloud Console'
+      ],
+      businessName,
+      businessAddress: '3657 John F. Kennedy Blvd, Jersey City, NJ 07307'
     }
 
-    // When you have the API key, this is how we'll fetch real reviews:
-    /*
+    if (!apiKey || !placeId) {
+      return new Response(JSON.stringify(setupInstructions), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
     const response = await fetch(
       `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=name,rating,reviews,user_ratings_total&key=${apiKey}`
     )
-    
+
+    if (!response.ok) {
+      console.error(`Google Places API error: ${response.status} ${response.statusText}`)
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: 'Error fetching reviews from Google Places API.',
+          status: response.status,
+          statusText: response.statusText
+        }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     const data = await response.json()
-    
-    if (data.status === 'OK') {
+
+    if (data.status === 'OK' && data.result) {
       return new Response(
         JSON.stringify({
           success: true,
-          averageRating: data.result.rating,
-          totalReviews: data.result.user_ratings_total,
+          averageRating: data.result.rating || 0,
+          totalReviews: data.result.user_ratings_total || 0,
           reviews: data.result.reviews || []
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
-    */
 
-    // For now, return empty state
+    console.warn('Unexpected response from Google Places API', data)
     return new Response(
       JSON.stringify({
         success: false,
-        message: 'Google Reviews integration pending',
+        message: data.error_message || 'Unexpected response from Google Places API.',
+        status: data.status,
         averageRating: 0,
         totalReviews: 0,
         reviews: []
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
-
   } catch (error) {
     return new Response(
       JSON.stringify({ 
