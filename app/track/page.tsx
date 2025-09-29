@@ -55,22 +55,9 @@ const formatSpecialRequests = (specialRequests?: string): SpecialRequestEntry[] 
     return [];
   }
 
-  if (pieces.length === 1) {
-    const [label, ...rest] = pieces[0].split(':');
-    if (rest.length === 0) {
-      return [{ value: pieces[0] }];
-    }
-
-    return [
-      {
-        label: label.trim(),
-        value: rest.join(':').trim(),
-      },
-    ];
-  }
-
-  return pieces.map((piece) => {
+  const entries = pieces.map((piece) => {
     const [label, ...rest] = piece.split(':');
+
     if (rest.length === 0) {
       return { value: label.trim() };
     }
@@ -79,6 +66,18 @@ const formatSpecialRequests = (specialRequests?: string): SpecialRequestEntry[] 
       label: label.trim(),
       value: rest.join(':').trim(),
     };
+  });
+
+  const seen = new Set<string>();
+
+  return entries.filter((entry) => {
+    const key = `${entry.label?.toLowerCase() ?? ''}|${entry.value.toLowerCase()}`;
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
   });
 };
 
