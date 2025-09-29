@@ -8,6 +8,7 @@ import Header from '../../../components/Header';
 import TabBar from '../../../components/TabBar';
 import { supabase } from '../../../lib/supabase';
 import { showCartNotification } from '../../../lib/cartNotification';
+import SafeImage from '@/components/SafeImage';
 
 interface CakeCustomizerProps {
   cakeId: string;
@@ -1573,10 +1574,12 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                           </label>
                           {uploadedPhoto ? (
                             <div className="relative w-32 h-32">
-                              <img
+                              <SafeImage
                                 src={uploadedPhoto}
                                 alt="Foto subida"
-                                className="w-32 h-32 object-cover rounded-lg"
+                                fill
+                                className="object-cover rounded-lg"
+                                sizes="128px"
                               />
                               <button
                                 type="button"

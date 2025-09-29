@@ -6,6 +6,7 @@ import TabBar from '../../components/TabBar';
 import Link from 'next/link';
 import { useLanguage } from '../../lib/languageContext';
 import { supabase } from '../../lib/supabase';
+import SafeImage from '@/components/SafeImage';
 
 export default function QuotePage() {
   const { language } = useLanguage();
@@ -554,11 +555,15 @@ export default function QuotePage() {
                   ) : (
                     <div className="space-y-4">
                       <div className="relative bg-gray-50 rounded-xl p-4">
-                        <img
-                          src={uploadedPhoto}
-                          alt="Foto de referencia"
-                          className="w-full h-48 object-cover rounded-lg"
-                        />
+                        <div className="relative h-48 w-full overflow-hidden rounded-lg">
+                          <SafeImage
+                            src={uploadedPhoto}
+                            alt="Foto de referencia"
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 768px) 90vw, 600px"
+                          />
+                        </div>
                         <button
                           onClick={removePhoto}
                           className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"

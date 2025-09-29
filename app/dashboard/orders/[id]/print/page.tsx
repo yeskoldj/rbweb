@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import SafeImage from '@/components/SafeImage';
 
 interface OrderItem {
   name: string;
@@ -93,11 +94,15 @@ export default function PrintOrderPage({ params }: { params: { id: string } }) {
                         <div className="text-sm text-gray-600">{item.details}</div>
                       )}
                       {item.photoUrl && (
-                        <img
-                          src={item.photoUrl}
-                          alt={item.name}
-                          className="mt-1 h-24 object-cover"
-                        />
+                        <div className="relative mt-1 h-24 w-32 overflow-hidden rounded">
+                          <SafeImage
+                            src={item.photoUrl}
+                            alt={item.name}
+                            fill
+                            className="object-cover"
+                            sizes="128px"
+                          />
+                        </div>
                       )}
                     </div>
                   </td>

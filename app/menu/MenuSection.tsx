@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { showCartNotification } from '../../lib/cartNotification';
+import SafeImage from '@/components/SafeImage';
 
 interface MenuItem {
   name: string;
@@ -79,11 +80,13 @@ export default function MenuSection({ category, items }: MenuSectionProps) {
         {items.map((item, index) => (
           <div key={index} className="bg-white rounded-lg shadow-md overflow-hidden mx-2">
             <div className="flex">
-              <div className="w-20 h-20 flex-shrink-0">
-                <img
+              <div className="relative w-20 h-20 flex-shrink-0 overflow-hidden">
+                <SafeImage
                   src={item.image}
                   alt={item.name}
-                  className="w-full h-full object-cover object-top"
+                  fill
+                  className="object-cover object-top"
+                  sizes="80px"
                 />
               </div>
 

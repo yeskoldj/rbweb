@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../lib/languageContext';
+import SafeImage from './SafeImage';
 
 interface Review {
   id: string;
@@ -136,11 +137,14 @@ export default function Reviews() {
         {reviews.map((review) => (
           <div key={review.id} className="bg-white rounded-xl shadow-sm p-4">
             <div className="flex items-start space-x-3">
-              <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-gray-200">
-                <img
-                  src={review.profile_photo_url || ''}
+              <div className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-gray-200">
+                <SafeImage
+                  src={review.profile_photo_url || undefined}
                   alt={review.author_name}
-                  className="w-full h-full object-cover"
+                  fill
+                  className="object-cover"
+                  sizes="40px"
+                  fallbackSrc="/images/avatar-placeholder.svg"
                 />
               </div>
               

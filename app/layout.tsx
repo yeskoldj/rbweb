@@ -2,6 +2,7 @@
 import type { Metadata, Viewport } from "next";
 import { LanguageProvider } from "../lib/languageContext";
 import InstallPrompt from "../components/InstallPrompt";
+import { inter, pacifico } from "../lib/fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -26,12 +27,6 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning={true}>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link 
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Pacifico&display=swap" 
-          rel="stylesheet" 
-        />
         <link rel="manifest" href="/manifest.json" />
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <meta name="theme-color" content="#f472b6" />
@@ -40,7 +35,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Ranger's Bakery" />
       </head>
-      <body className="font-sans antialiased">
+      <body className={`${inter.className} ${pacifico.variable} antialiased`}>
         <LanguageProvider>
           <InstallPrompt />
           {children}

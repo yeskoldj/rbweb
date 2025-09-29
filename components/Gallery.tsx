@@ -2,6 +2,7 @@
 'use client';
 
 import { useState } from 'react';
+import SafeImage from './SafeImage';
 export default function Gallery() {
   const [showModal, setShowModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState('');
@@ -62,12 +63,17 @@ export default function Gallery() {
 
       <div className="grid grid-cols-2 gap-4 mb-6">
         {galleryImages.slice(0, 4).map((image, index) => (
-          <div key={index} className="aspect-video rounded-lg overflow-hidden shadow-lg cursor-pointer">
-            <img 
+          <div
+            key={index}
+            className="relative aspect-video rounded-lg overflow-hidden shadow-lg cursor-pointer"
+            onClick={() => openModal(image.src)}
+          >
+            <SafeImage
               src={image.src}
-              alt={image.alt} 
-              className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-              onClick={() => openModal(image.src)}
+              alt={image.alt}
+              fill
+              className="object-cover transition-transform duration-300 hover:scale-105"
+              sizes="(max-width: 768px) 45vw, 25vw"
             />
           </div>
         ))}
@@ -99,22 +105,27 @@ export default function Gallery() {
               </h4>
 
               {activeImage && (
-                <div className="mb-4">
-                  <img
+                <div className="relative mb-4 w-full max-h-80">
+                  <SafeImage
                     src={activeImage.src}
                     alt={activeImage.alt}
-                    className="w-full max-h-80 object-cover rounded-lg"
+                    width={960}
+                    height={540}
+                    className="w-full h-auto object-cover rounded-lg"
+                    sizes="(max-width: 1024px) 90vw, 960px"
                   />
                 </div>
               )}
 
               <div className="grid grid-cols-2 gap-3 max-h-96 overflow-y-auto">
                 {galleryImages.map((image, index) => (
-                  <div key={index} className="aspect-video rounded-lg overflow-hidden">
-                    <img
+                  <div key={index} className="relative aspect-video rounded-lg overflow-hidden">
+                    <SafeImage
                       src={image.src}
                       alt={image.alt}
-                      className="w-full h-full object-cover"
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 1024px) 40vw, 20vw"
                     />
                   </div>
                 ))}

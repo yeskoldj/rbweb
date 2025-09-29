@@ -2,12 +2,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../lib/languageContext';
 import LanguageSelector from './LanguageSelector';
 import { getUser } from '../lib/authStorage';
+import SafeImage from './SafeImage';
 
 export default function Header() {
   interface CurrentUser {
@@ -20,47 +21,7 @@ export default function Header() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const { t } = useLanguage();
 
-  useEffect(() => {
-    if (!supabase) {
-      checkLocalUser();
-      return;
-    }
-
-    checkCurrentUser();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event: AuthChangeEvent, session: Session | null) => {
-        if (session?.user) {
-          checkUserRole(session.user.id);
-        } else {
-          checkLocalUser();
-        }
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const checkCurrentUser = async () => {
-    if (!supabase) {
-      checkLocalUser();
-      return;
-    }
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await checkUserRole(user.id);
-      } else {
-        checkLocalUser();
-      }
-    } catch (error) {
-      console.log('Usando almacenamiento local', error);
-      checkLocalUser();
-    }
-  };
-
-  const checkLocalUser = () => {
+  const checkLocalUser = useCallback(() => {
     const user = getUser();
     if (user) {
       setCurrentUser({
@@ -72,9 +33,9 @@ export default function Header() {
     } else {
       setCurrentUser(null);
     }
-  };
+  }, []);
 
-  const checkUserRole = async (userId: string) => {
+  const checkUserRole = useCallback(async (userId: string) => {
     if (!supabase) {
       checkLocalUser();
       return;
@@ -99,7 +60,47 @@ export default function Header() {
       console.log('Error fetching user role, usando local', error);
       checkLocalUser();
     }
-  };
+  }, [checkLocalUser]);
+
+  const checkCurrentUser = useCallback(async () => {
+    if (!supabase) {
+      checkLocalUser();
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await checkUserRole(user.id);
+      } else {
+        checkLocalUser();
+      }
+    } catch (error) {
+      console.log('Usando almacenamiento local', error);
+      checkLocalUser();
+    }
+  }, [checkLocalUser, checkUserRole]);
+
+  useEffect(() => {
+    if (!supabase) {
+      checkLocalUser();
+      return;
+    }
+
+    checkCurrentUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event: AuthChangeEvent, session: Session | null) => {
+        if (session?.user) {
+          checkUserRole(session.user.id);
+        } else {
+          checkLocalUser();
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, [checkCurrentUser, checkLocalUser, checkUserRole]);
 
   const isOwnerOrEmployee = () => {
     return currentUser && (currentUser.role === 'employee' || currentUser.role === 'owner');
@@ -114,13 +115,17 @@ export default function Header() {
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center space-x-3">
           <div className="w-12 h-12 flex items-center justify-center bg-white rounded-full p-1 shadow-md">
-            <img
-              src="https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/3c3401df8a967b2c425ed28b75bf5296.png"
-              alt="Ranger&apos;s Bakery Logo"
-              className="w-10 h-10 object-contain"
-            />
+            <div className="relative w-10 h-10">
+              <SafeImage
+                src="https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/3c3401df8a967b2c425ed28b75bf5296.png"
+                alt="Ranger&apos;s Bakery Logo"
+                fill
+                className="object-contain"
+                sizes="40px"
+              />
+            </div>
           </div>
-          <h1 className="font-[('Pacifico')] text-xl text-white drop-shadow-sm">{t('bakeryName')}</h1>
+          <h1 className="font-pacifico text-xl text-white drop-shadow-sm">{t('bakeryName')}</h1>
         </div>
         
         <div className="flex items-center space-x-3">

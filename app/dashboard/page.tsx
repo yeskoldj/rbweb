@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { supabase, Order } from '../../lib/supabase';
 import Header from '../../components/Header';
 import TabBar from '../../components/TabBar';
+import SafeImage from '@/components/SafeImage';
 import CalendarView from './CalendarView';
 import UserManagement from './UserManagement';
 
@@ -1283,7 +1284,14 @@ function QuoteCard({ quote, onStatusUpdate, onFinalize, onDelete }: { quote: Quo
           <p className="text-sm text-blue-700">{quote.photo_description}</p>
           {quote.reference_photo_url && (
             <div className="mt-2">
-              <img src={quote.reference_photo_url} alt="Referencia" className="max-w-full h-32 object-cover rounded" />
+              <SafeImage
+                src={quote.reference_photo_url}
+                alt="Referencia"
+                width={320}
+                height={128}
+                className="max-w-full h-32 object-cover rounded"
+                sizes="(max-width: 768px) 90vw, 320px"
+              />
             </div>
           )}
         </div>

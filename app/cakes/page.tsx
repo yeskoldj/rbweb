@@ -5,6 +5,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Header from '../../components/Header';
 import TabBar from '../../components/TabBar';
+import SafeImage from '@/components/SafeImage';
 
 export default function CakesPage() {
   // Pasteles disponibles usando las imágenes reales - PRECIOS CORREGIDOS SEGÚN TABLA
@@ -139,10 +140,13 @@ export default function CakesPage() {
                         Envíanos tu foto 
                       </div>
                     ) : (
-                      <img
+                      <SafeImage
                         src={cake.image}
                         alt={cake.name}
+                        width={96}
+                        height={96}
                         className="w-full h-full object-cover"
+                        sizes="96px"
                       />
                     )}
                   </div>

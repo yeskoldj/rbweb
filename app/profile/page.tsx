@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import Header from '../../components/Header';
@@ -26,11 +26,7 @@ export default function ProfilePage() {
     securityAnswer: ''
   });
   const router = useRouter();
-  useEffect(() => {
-    checkUser();
-  }, []);
-
-  const checkUser = async () => {
+  const checkUser = useCallback(async () => {
     try {
       // Primero verificar Supabase
       const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -98,9 +94,13 @@ export default function ProfilePage() {
         return;
       }
     }
-    
+
     setLoading(false);
-  };
+  }, [router]);
+
+  useEffect(() => {
+    checkUser();
+  }, [checkUser]);
 
   const updateProfile = async (e: React.FormEvent) => {
     e.preventDefault();

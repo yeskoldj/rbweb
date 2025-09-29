@@ -3,6 +3,7 @@
 
 import Link from 'next/link';
 import { useLanguage } from '../lib/languageContext';
+import SafeImage from './SafeImage';
 import { getUser } from '../lib/authStorage';
 import { showCartNotification } from '../lib/cartNotification';
 import tresLechesVasoImg from '../images/Vasito de tres leches.jpeg';
@@ -129,16 +130,14 @@ export default function MenuPreview() {
       <div className="space-y-4 mb-6" data-product-shop>
         {featuredItems.map((item) => (
           <div key={item.id} className="bg-white rounded-xl shadow-sm p-4 flex space-x-4" data-product-shop>
-            <div className="w-20 h-20 flex-shrink-0">
-              <img
+            <div className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden">
+              <SafeImage
                 src={item.image}
                 alt={item.name}
-                className="w-full h-full object-cover rounded-lg"
-                loading="lazy"
-                onError={(e) => {
-                  console.error(`Error cargando imagen para ${item.name}:`, item.image);
-                  e.currentTarget.src = 'https://via.placeholder.com/80x80/f3f4f6/9ca3af?text=Imagen+No+Disponible';
-                }}
+                fill
+                className="object-cover"
+                sizes="80px"
+                onError={() => console.error(`Error cargando imagen para ${item.name}:`, item.image)}
               />
             </div>
             <div className="flex-1">
