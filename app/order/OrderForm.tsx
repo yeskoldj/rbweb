@@ -78,13 +78,8 @@ useEffect(() => {
     email: '',
     phone: ''
   });
-  const [billingStreet, setBillingStreet] = useState('');
-  const [billingCity, setBillingCity] = useState('');
   const [billingPostalCode, setBillingPostalCode] = useState('');
-  const billingAddress = [billingStreet, billingCity, billingPostalCode]
-    .map(part => part.trim())
-    .filter(Boolean)
-    .join(', ');
+  const billingAddress = billingPostalCode.trim();
   const [saveBillingAddress, setSaveBillingAddress] = useState(true);
   const hasPendingPrice = cartItems.some(item => {
     if (existingOrder) return false;
@@ -97,8 +92,9 @@ useEffect(() => {
   });
   const profileEmailFromState = (currentUser?.email || currentUser?.emailAddress || '').trim();
   const profilePhoneFromState = (currentUser?.phone || '').trim();
+  const profileHasPhone = Boolean(profilePhoneFromState);
   const requiresContactEmail = !profileEmailFromState;
-  const requiresContactPhone = !profilePhoneFromState;
+  const requiresContactPhone = true;
   const shouldShowContactSection = hasPendingPrice && !existingOrder;
 
   const showNotification = useCallback(
@@ -128,6 +124,16 @@ useEffect(() => {
       phone: prev.phone || phoneFromProfile
     }));
   }, [currentUser]);
+
+  useEffect(() => {
+    const phoneFromOrder = (existingOrder?.customer_phone || '').trim();
+    if (phoneFromOrder) {
+      setContactInfo(prev => ({
+        ...prev,
+        phone: prev.phone || phoneFromOrder,
+      }));
+    }
+  }, [existingOrder]);
 
   const loadExistingOrder = useCallback(
     async (id: string) => {
@@ -183,6 +189,15 @@ useEffect(() => {
           specialRequests: data.special_requests || '',
           pickupTime: data.pickup_time || '',
         });
+
+        if (typeof data.billing_address === 'string') {
+          const rawBilling = data.billing_address.trim();
+          if (rawBilling) {
+            const parts = rawBilling.split(',').map((part: string) => part.trim()).filter(Boolean);
+            const postalCode = parts.length > 0 ? parts[parts.length - 1] : rawBilling;
+            setBillingPostalCode(postalCode);
+          }
+        }
       } catch (err: any) {
         console.error('Error loading existing order:', err);
         showNotification(
@@ -358,14 +373,15 @@ const initSquareCard = useCallback(async () => {
     if (savedBilling) {
       try {
         const parsed = JSON.parse(savedBilling);
-        setBillingStreet(parsed.street || '');
-        setBillingCity(parsed.city || '');
-        setBillingPostalCode(parsed.postalCode || '');
+        if (typeof parsed === 'string') {
+          setBillingPostalCode(parsed);
+        } else if (parsed && typeof parsed === 'object') {
+          setBillingPostalCode(parsed.postalCode || parsed.zip || '');
+        }
       } catch {
-        const parts = savedBilling.split(',').map(p => p.trim());
-        setBillingStreet(parts[0] || '');
-        setBillingCity(parts[1] || '');
-        setBillingPostalCode(parts[2] || '');
+        const parts = savedBilling.split(',').map(p => p.trim()).filter(Boolean);
+        const lastPart = parts.length > 0 ? parts[parts.length - 1] : savedBilling.trim();
+        setBillingPostalCode(lastPart);
       }
     }
 
@@ -572,11 +588,11 @@ const initSquareCard = useCallback(async () => {
     const customerEmail = providedEmail || profileEmail;
     const customerPhone = providedPhone || profilePhone;
 
-    if (!customerEmail && !customerPhone) {
+    if (!customerPhone) {
       showNotification(
         'warning',
-        'Información de contacto requerida',
-        'Por favor, actualiza tu perfil con un email o teléfono para que podamos contactarte sobre tu cotización.'
+        'Teléfono requerido',
+        'Ingresa un número de teléfono válido para coordinar tu cotización personalizada.'
       );
       return;
     }
@@ -678,7 +694,7 @@ const initSquareCard = useCallback(async () => {
 
       const orderPayload: Record<string, any> = {
         customer_name: customerName,
-        customer_phone: customerPhone || '',
+        customer_phone: customerPhone,
         customer_email: customerEmail || null,
         billing_address: billingAddress.trim() ? billingAddress.trim() : null,
         items: formattedItems,
@@ -715,7 +731,7 @@ const initSquareCard = useCallback(async () => {
           id: insertedOrder.id || finalReference,
           status: insertedOrder.status || 'pending',
           customerName: customerName,
-          customerPhone: customerPhone || undefined,
+          customerPhone: customerPhone,
           customerEmail: customerEmail || undefined,
           pickupTime: formData.pickupTime || null,
           specialRequests: orderPayload.special_requests,
@@ -750,7 +766,7 @@ const initSquareCard = useCallback(async () => {
                 id: insertedOrder.id || finalReference,
                 status: insertedOrder.status || 'pending',
                 customer_name: customerName,
-                customer_phone: customerPhone || '',
+                customer_phone: customerPhone,
                 customer_email: customerEmail || null,
                 pickup_time: formData.pickupTime || null,
                 special_requests: orderPayload.special_requests,
@@ -840,6 +856,19 @@ const initSquareCard = useCallback(async () => {
       return;
     }
 
+    const contactPhone = contactInfo.phone.trim();
+    const existingOrderPhone = (existingOrder?.customer_phone || '').trim();
+    const phoneAvailable = contactPhone || profilePhoneFromState || existingOrderPhone;
+
+    if (!phoneAvailable) {
+      showNotification(
+        'warning',
+        'Teléfono requerido',
+        'Agrega un número de teléfono en tu perfil o en la sección de contacto para continuar con tu pedido.'
+      );
+      return;
+    }
+
     if (existingOrder) {
       setShowPayment(true);
       return;
@@ -860,19 +889,24 @@ const initSquareCard = useCallback(async () => {
     try {
       console.log('🔥 Iniciando proceso de pago:', selectedPaymentMethod);
 
-      if (
-        saveBillingAddress &&
-        billingStreet.trim() &&
-        billingCity.trim() &&
-        billingPostalCode.trim()
-      ) {
+      const postalCode = billingPostalCode.trim();
+      const contactPhoneValue = contactInfo.phone.trim();
+      const existingOrderPhone = (existingOrder?.customer_phone || '').trim();
+      const customerPhone = contactPhoneValue || profilePhoneFromState || existingOrderPhone;
+
+      if (!customerPhone) {
+        showNotification(
+          'warning',
+          'Teléfono requerido',
+          'Agrega o actualiza un número de teléfono válido en tu perfil antes de continuar con el pago.'
+        );
+        return;
+      }
+
+      if (saveBillingAddress && postalCode) {
         localStorage.setItem(
           'bakery-billing-address',
-          JSON.stringify({
-            street: billingStreet.trim(),
-            city: billingCity.trim(),
-            postalCode: billingPostalCode.trim()
-          })
+          JSON.stringify({ postalCode })
         );
       } else {
         localStorage.removeItem('bakery-billing-address');
@@ -893,7 +927,17 @@ const initSquareCard = useCallback(async () => {
         return;
       }
 
-      
+
+      if (selectedPaymentMethod === 'card' && !postalCode) {
+        showNotification(
+          'warning',
+          'Código postal requerido',
+          'Square necesita un código postal de facturación para procesar tu pago.'
+        );
+        return;
+      }
+
+
 
       // Tokenizar con Square según el método seleccionado
       let sourceId: string | undefined;
@@ -937,9 +981,9 @@ const initSquareCard = useCallback(async () => {
         })),
         customerInfo: {
           name: (currentUser?.full_name || currentUser?.fullName || '').trim(),
-          phone: (currentUser?.phone || '').trim(),
+          phone: customerPhone,
           email: currentUser?.email || '',
-          billingAddress,
+          billingAddress: postalCode,
         },
         paymentMethod: 'card',
         sourceId,
@@ -959,7 +1003,7 @@ const initSquareCard = useCallback(async () => {
           id: paymentResult.orderId ?? 'SIN-ID',
           status: 'pending',
           customerName: (currentUser?.full_name || currentUser?.fullName || 'Cliente').trim(),
-          customerPhone: (currentUser?.phone || '').trim() || undefined,
+          customerPhone: customerPhone,
           customerEmail: currentUser?.email || undefined,
           pickupTime: formData.pickupTime || null,
           specialRequests: formData.specialRequests?.trim() || null,
@@ -1004,6 +1048,8 @@ const initSquareCard = useCallback(async () => {
               customization: item.customization,
               type: item.type,
             })),
+            customer_phone: customerPhone,
+            billing_address: postalCode,
           } as Order);
         }
 
@@ -1031,19 +1077,24 @@ const initSquareCard = useCallback(async () => {
     setIsSubmitting(true);
 
     try {
-      if (
-        saveBillingAddress &&
-        billingStreet.trim() &&
-        billingCity.trim() &&
-        billingPostalCode.trim()
-      ) {
+      const postalCode = billingPostalCode.trim();
+      const contactPhoneValue = contactInfo.phone.trim();
+      const existingOrderPhone = (existingOrder?.customer_phone || '').trim();
+      const customerPhone = contactPhoneValue || profilePhoneFromState || existingOrderPhone;
+
+      if (!customerPhone) {
+        showNotification(
+          'warning',
+          'Teléfono requerido',
+          'Agrega o actualiza un número de teléfono válido en tu perfil antes de continuar con la orden.'
+        );
+        return;
+      }
+
+      if (saveBillingAddress && postalCode) {
         localStorage.setItem(
           'bakery-billing-address',
-          JSON.stringify({
-            street: billingStreet.trim(),
-            city: billingCity.trim(),
-            postalCode: billingPostalCode.trim()
-          })
+          JSON.stringify({ postalCode })
         );
       } else {
         localStorage.removeItem('bakery-billing-address');
@@ -1068,9 +1119,9 @@ const initSquareCard = useCallback(async () => {
         })),
         customerInfo: {
           name: (currentUser?.full_name || currentUser?.fullName || '').trim(),
-          phone: (currentUser?.phone || '').trim(),
+          phone: customerPhone,
           email: currentUser?.email || '',
-          billingAddress,
+          billingAddress: postalCode,
         },
         paymentMethod: 'zelle',
         userId,
@@ -1090,7 +1141,7 @@ const initSquareCard = useCallback(async () => {
         id: result.orderId ?? 'SIN-ID',
         status: 'pending',
         customerName: (currentUser?.full_name || currentUser?.fullName || 'Cliente').trim(),
-        customerPhone: (currentUser?.phone || '').trim() || undefined,
+        customerPhone: customerPhone,
         customerEmail: currentUser?.email || undefined,
         pickupTime: formData.pickupTime || null,
         specialRequests: formData.specialRequests?.trim() || null,
@@ -1130,6 +1181,8 @@ const initSquareCard = useCallback(async () => {
             customization: item.customization,
             type: item.type,
           })),
+          customer_phone: customerPhone,
+          billing_address: postalCode,
         } as Order);
       }
 
@@ -1404,27 +1457,17 @@ const initSquareCard = useCallback(async () => {
           </p>
         </div>
         <div className="bg-white rounded-xl p-4 mb-6">
-          <h4 className="font-semibold text-gray-800 mb-3">Dirección de Facturación</h4>
-          <div className="space-y-2">
-            <input
-              className="w-full border rounded-lg p-3"
-              placeholder="Calle"
-              value={billingStreet}
-              onChange={(e) => setBillingStreet(e.target.value)}
-            />
-            <input
-              className="w-full border rounded-lg p-3"
-              placeholder="Ciudad"
-              value={billingCity}
-              onChange={(e) => setBillingCity(e.target.value)}
-            />
-            <input
-              className="w-full border rounded-lg p-3"
-              placeholder="Código postal"
-              value={billingPostalCode}
-              onChange={(e) => setBillingPostalCode(e.target.value)}
-            />
-          </div>
+          <h4 className="font-semibold text-gray-800 mb-3">Código postal de facturación</h4>
+          <p className="text-xs text-gray-500 mb-2">
+            Square solo requiere el código postal asociado a tu tarjeta para verificar el pago.
+          </p>
+          <input
+            className="w-full border rounded-lg p-3"
+            placeholder="Código postal"
+            inputMode="numeric"
+            value={billingPostalCode}
+            onChange={(e) => setBillingPostalCode(e.target.value)}
+          />
           <label className="flex items-center mt-2 text-sm text-gray-600">
             <input
               type="checkbox"
@@ -1432,7 +1475,7 @@ const initSquareCard = useCallback(async () => {
               checked={saveBillingAddress}
               onChange={(e) => setSaveBillingAddress(e.target.checked)}
             />
-            Guardar esta dirección para futuras compras
+            Guardar este código postal para futuras compras
           </label>
         </div>
 
@@ -1827,11 +1870,15 @@ const initSquareCard = useCallback(async () => {
                     value={contactInfo.phone}
                     onChange={handleContactInfoChange('phone')}
                     placeholder="(555) 123-4567"
-                    required={requiresContactPhone && !contactInfo.email.trim()}
+                    required={requiresContactPhone}
                     className="w-full px-3 py-2 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-400 focus:border-transparent text-sm"
                   />
-                  {requiresContactPhone && !contactInfo.email.trim() && (
-                    <p className="text-[11px] text-purple-600 mt-1">Si no tienes correo, déjanos tu teléfono para contactarte.</p>
+                  {requiresContactPhone && (
+                    <p className="text-[11px] text-purple-600 mt-1">
+                      {profileHasPhone
+                        ? 'Puedes actualizar el número si necesitas un contacto diferente para esta orden.'
+                        : 'Ingresa un número de teléfono para que podamos coordinar tu pedido.'}
+                    </p>
                   )}
                 </div>
               </div>
