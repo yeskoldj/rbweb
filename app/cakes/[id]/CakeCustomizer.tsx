@@ -9,6 +9,7 @@ import TabBar from '../../../components/TabBar';
 import { supabase } from '../../../lib/supabase';
 import { showCartNotification } from '../../../lib/cartNotification';
 import SafeImage from '@/components/SafeImage';
+import { useLanguage } from '../../../lib/languageContext';
 
 interface CakeCustomizerProps {
   cakeId: string;
@@ -41,6 +42,8 @@ interface DecorationExtra {
 
 export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
   const router = useRouter();
+  const { t, language } = useLanguage();
+  const localize = (es: string, en: string) => (language === 'es' ? es : en);
   const [customizerMode, setCustomizerMode] = useState<'basic' | 'advanced'>('basic');
   const [currentStep, setCurrentStep] = useState(1);
   const [quantity, setQuantity] = useState(1);
@@ -68,32 +71,32 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
   // Datos de los pasteles usando imágenes reales - PRECIOS ACTUALIZADOS SEGÚN TABLA
   const cakeProducts = {
     'birthday-classic': {
-      name: 'Pastel de Cumpleaños Clásico',
+      name: localize('Pastel de Cumpleaños Clásico', 'Classic Birthday Cake'),
       basePrice: 20,
       image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/58a3f870af7fe55c1b2733bc57137538.png'
     },
     'birthday-deluxe': {
-      name: 'Pastel de Cumpleaños Deluxe',
+      name: localize('Pastel de Cumpleaños Deluxe', 'Deluxe Birthday Cake'),
       basePrice: 30,
       image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/def4b1d4d19f7bb63fe8ed7acc40b9e6.png'
     },
     'wedding-elegant': {
-      name: 'Pastel de Cumpleaños Elegante',
+      name: localize('Pastel Elegante de Boda', 'Elegant Wedding Cake'),
       basePrice: 55,
       image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/b55c6989623b0711cfe5124c88d92ed0.png'
     },
     'quince-princess': {
-      name: 'Pastel de Cumpleaños Princesa',
+      name: localize('Pastel Princesa de Quinceañera', 'Princess Quinceañera Cake'),
       basePrice: 35,
       image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/04879db0557315e718d30f6f01a65327.png'
     },
     'photo-cake-basic': {
-      name: 'Pastel de Cumpleaños con Foto Básico',
+      name: localize('Pastel con Foto Básico', 'Basic Photo Cake'),
       basePrice: 25,
       image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/def4b1d4d19f7bb63fe8ed7acc40b9e6.png'
     },
     'photo-cake-premium': {
-      name: 'Pastel de Cumpleaños con Foto Premium',
+      name: localize('Pastel con Foto Premium', 'Premium Photo Cake'),
       basePrice: 35,
       image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/b55c6989623b0711cfe5124c88d92ed0.png'
     }
@@ -101,47 +104,47 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
 
   // Formas disponibles
   const shapeOptions: CakeOption[] = [
-    { id: 'round', name: 'Redondo', price: 0, icon: 'ri-circle-line' },
-    { id: 'square', name: 'Cuadrado', price: 0, icon: 'ri-stop-line' },
-    { id: 'rectangle', name: 'Rectangular', price: 0, icon: 'ri-rectangle-line' },
-    { id: 'heart', name: 'Corazón', price: 5, icon: 'ri-heart-line' }
+    { id: 'round', name: localize('Redondo', 'Round'), price: 0, icon: 'ri-circle-line' },
+    { id: 'square', name: localize('Cuadrado', 'Square'), price: 0, icon: 'ri-stop-line' },
+    { id: 'rectangle', name: localize('Rectangular', 'Rectangle'), price: 0, icon: 'ri-rectangle-line' },
+    { id: 'heart', name: localize('Corazón', 'Heart'), price: 5, icon: 'ri-heart-line' }
   ];
 
   // TAMAÑOS ACTUALIZADOS SEGÚN TABLA OFICIAL
   const sizeOptions = [
-    { id: '6', name: '6 pulgadas', price: 20, serves: '4-6 personas' },
-    { id: '8', name: '8 pulgadas', price: 30, serves: '8-10 personas' },
-    { id: '10', name: '10 pulgadas', price: 35, serves: '10-15 personas' },
-    { id: '12', name: '12 pulgadas', price: 55, serves: '20-25 personas' },
-    { id: '14', name: '14 pulgadas', price: 80, serves: '35-40 personas' }
+    { id: '6', name: localize('6 pulgadas', '6 inches'), price: 20, serves: localize('4-6 personas', 'Serves 4-6') },
+    { id: '8', name: localize('8 pulgadas', '8 inches'), price: 30, serves: localize('8-10 personas', 'Serves 8-10') },
+    { id: '10', name: localize('10 pulgadas', '10 inches'), price: 35, serves: localize('10-15 personas', 'Serves 10-15') },
+    { id: '12', name: localize('12 pulgadas', '12 inches'), price: 55, serves: localize('20-25 personas', 'Serves 20-25') },
+    { id: '14', name: localize('14 pulgadas', '14 inches'), price: 80, serves: localize('35-40 personas', 'Serves 35-40') }
   ];
 
   // Masas disponibles
   const flavorOptions: CakeOption[] = [
     { id: 'red-velvet', name: 'Red Velvet', price: 5, color: '#DC143C' },
-    { id: 'carrot', name: 'Zanahoria', price: 6, color: '#DEB887' },
-    { id: 'vanilla', name: 'Vainilla', price: 0, color: '#F5E6A3' },
-    { id: 'chocolate', name: 'Chocolate', price: 0, color: '#8B4513' }
+    { id: 'carrot', name: localize('Zanahoria', 'Carrot'), price: 6, color: '#DEB887' },
+    { id: 'vanilla', name: localize('Vainilla', 'Vanilla'), price: 0, color: '#F5E6A3' },
+    { id: 'chocolate', name: localize('Chocolate', 'Chocolate'), price: 0, color: '#8B4513' }
   ];
 
   // Colores de decoración
   const colorOptions: CakeOption[] = [
-    { id: 'white', name: 'Blanco', price: 0, color: '#FFFFFF' },
-    { id: 'pink', name: 'Rosa', price: 0, color: '#FF69B4' },
-    { id: 'blue', name: 'Azul', price: 0, color: '#4169E1' },
-    { id: 'purple', name: 'Morado', price: 0, color: '#9370DB' },
-    { id: 'green', name: 'Verde', price: 0, color: '#32CD32' },
-    { id: 'yellow', name: 'Amarillo', price: 0, color: '#FFD700' },
-    { id: 'red', name: 'Rojo', price: 0, color: '#DC143C' },
-    { id: 'gold', name: 'Dorado', price: 0, color: '#FFD700' },
-    { id: 'silver', name: 'Plateado', price: 0, color: '#C0C0C0' }
+    { id: 'white', name: localize('Blanco', 'White'), price: 0, color: '#FFFFFF' },
+    { id: 'pink', name: localize('Rosa', 'Pink'), price: 0, color: '#FF69B4' },
+    { id: 'blue', name: localize('Azul', 'Blue'), price: 0, color: '#4169E1' },
+    { id: 'purple', name: localize('Morado', 'Purple'), price: 0, color: '#9370DB' },
+    { id: 'green', name: localize('Verde', 'Green'), price: 0, color: '#32CD32' },
+    { id: 'yellow', name: localize('Amarillo', 'Yellow'), price: 0, color: '#FFD700' },
+    { id: 'red', name: localize('Rojo', 'Red'), price: 0, color: '#DC143C' },
+    { id: 'gold', name: localize('Dorado', 'Gold'), price: 0, color: '#FFD700' },
+    { id: 'silver', name: localize('Plateado', 'Silver'), price: 0, color: '#C0C0C0' }
   ];
 
   const formatOptionPricing = (price?: number) => {
     if (!price || price <= 0) {
-      return 'Incluido';
+      return t('included');
     }
-    return 'Cotización con la panadería';
+    return t('bakeryWillQuote');
   };
 
   // Rellenos disponibles
@@ -666,7 +669,7 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
     localStorage.setItem('bakery-cart', JSON.stringify(cart));
 
     // Mostrar confirmación visual
-    showCartNotification(`${cartItem.name} agregado al carrito`);
+    showCartNotification(t('itemAddedToCart').replace('{item}', cartItem.name));
 
     setTimeout(() => {
       setIsAdding(false);

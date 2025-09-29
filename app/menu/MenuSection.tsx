@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { showCartNotification } from '../../lib/cartNotification';
 import SafeImage from '@/components/SafeImage';
+import { useLanguage } from '../../lib/languageContext';
 
 interface MenuItem {
   name: string;
@@ -18,6 +19,7 @@ interface MenuSectionProps {
 export default function MenuSection({ category, items }: MenuSectionProps) {
   const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { t } = useLanguage();
 
   useEffect(() => {
     checkAuthentication();
@@ -43,7 +45,7 @@ export default function MenuSection({ category, items }: MenuSectionProps) {
 
   const addToCart = (item: MenuItem) => {
     if (!isAuthenticated) {
-      alert('Necesitas crear una cuenta para agregar productos al carrito');
+      alert(t('loginRequiredForCart'));
       return;
     }
 
@@ -67,7 +69,7 @@ export default function MenuSection({ category, items }: MenuSectionProps) {
 
     localStorage.setItem('bakery-cart', JSON.stringify(existingCart));
 
-    showCartNotification(`${item.name} agregado al carrito`);
+    showCartNotification(t('itemAddedToCart').replace('{item}', item.name));
   };
 
   return (
@@ -124,7 +126,7 @@ export default function MenuSection({ category, items }: MenuSectionProps) {
                     className="bg-gradient-to-r from-pink-400 to-teal-400 text-white px-4 py-1.5 rounded-full text-sm font-medium !rounded-button hover:shadow-md transition-all"
                   >
                     <i className="ri-shopping-cart-line mr-1 text-xs"></i>
-                    Agregar
+                    {t('addToCart')}
                   </button>
                 </div>
               </div>

@@ -6,6 +6,7 @@ import TabBar from '../../components/TabBar';
 import MenuSection from './MenuSection';
 import Link from 'next/link';
 import { useState } from 'react';
+import { useLanguage } from '../../lib/languageContext';
 import gelatinaImg from '../../images/gelatina.jpeg';
 import flanImg from '../../images/flan.jpeg';
 import budinPanImg from '../../images/pudin de pan.jpeg';
@@ -29,20 +30,22 @@ import miniCannolisImg from '../../images/Cannolis.jpeg';
 
 
 export default function MenuPage() {
-  const [selectedCategory, setSelectedCategory] = useState('Todos');
+  const { t } = useLanguage();
+  const [selectedCategory, setSelectedCategory] = useState('all');
 
   const categories = [
-    'Todos',
-    'Postres Clásicos',
-    'Especialidades',
-    'Tropicales',
-    'Pequeños Placeres',
-    'Únicos'
+    { id: 'all', label: t('menuCategoryAll') },
+    { id: 'classics', label: t('menuCategoryClassics') },
+    { id: 'specialties', label: t('menuCategorySpecialties') },
+    { id: 'tropical', label: t('menuCategoryTropical') },
+    { id: 'smallDelights', label: t('menuCategorySmallDelights') },
+    { id: 'unique', label: t('menuCategoryUnique') }
   ];
 
   const menuItems = [
     {
-      category: 'Postres Clásicos',
+      categoryId: 'classics',
+      title: t('menuCategoryClassics'),
       items: [
         {
           name: 'Gelatina',
@@ -62,7 +65,8 @@ export default function MenuPage() {
       ]
     },
     {
-      category: 'Especialidades de la Casa',
+      categoryId: 'specialties',
+      title: t('menuCategorySpecialties'),
       items: [
         {
           name: 'Cheesecake',
@@ -92,7 +96,8 @@ export default function MenuPage() {
       ]
     },
     {
-      category: 'Productos Tropicales',
+      categoryId: 'tropical',
+      title: t('menuCategoryTropical'),
       items: [
         {
           name: 'Coco-Piña',
@@ -112,7 +117,8 @@ export default function MenuPage() {
       ]
     },
     {
-      category: 'Pequeños Placeres',
+      categoryId: 'smallDelights',
+      title: t('menuCategorySmallDelights'),
       items: [
         {
           name: 'Mantecaditos',
@@ -142,7 +148,8 @@ export default function MenuPage() {
       ]
     },
     {
-      category: 'Especialidades Únicas',
+      categoryId: 'unique',
+      title: t('menuCategoryUnique'),
       items: [
         {
           name: 'Mini Pasteles',
@@ -168,18 +175,9 @@ export default function MenuPage() {
     }
   ];
 
-  const getCategoryDisplayName = (category: string) => {
-    const categoryMap: { [key: string]: string } = {
-      'Especialidades de la Casa': 'Especialidades',
-      'Productos Tropicales': 'Tropicales',
-      'Especialidades Únicas': 'Únicos'
-    };
-    return categoryMap[category] || category;
-  };
-
-  const filteredMenuItems = selectedCategory === 'Todos' 
-    ? menuItems 
-    : menuItems.filter(section => getCategoryDisplayName(section.category) === selectedCategory);
+  const filteredMenuItems = selectedCategory === 'all'
+    ? menuItems
+    : menuItems.filter(section => section.categoryId === selectedCategory);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 to-purple-50">
@@ -187,10 +185,10 @@ export default function MenuPage() {
       <div className="pt-16 pb-20">
         <div className="px-3 py-4">
           <h1 className="text-2xl font-bold text-amber-800 text-center mb-1">
-            Nuestro Menú
+            {t('menuTitle')}
           </h1>
           <p className="text-gray-600 text-center mb-6 text-sm">
-            Delicias dominicanas hechas con amor para ti
+            {t('menuSubtitle')}
           </p>
 
           {/* Category Filter */}
@@ -198,36 +196,36 @@ export default function MenuPage() {
             <div className="flex overflow-x-auto space-x-2 pb-2">
               {categories.map((category) => (
                 <button
-                  key={category}
-                  onClick={() => setSelectedCategory(category)}
+                  key={category.id}
+                  onClick={() => setSelectedCategory(category.id)}
                   className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                    selectedCategory === category
+                    selectedCategory === category.id
                       ? 'bg-gradient-to-r from-pink-400 to-teal-400 text-white shadow-md'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
-                  {category}
+                  {category.label}
                 </button>
               ))}
             </div>
           </div>
 
           {filteredMenuItems.map((section, index) => (
-            <MenuSection 
+            <MenuSection
               key={index}
-              category={section.category}
+              category={section.title}
               items={section.items}
             />
           ))}
 
           <div className="mt-6 bg-gradient-to-r from-pink-400 to-teal-400 rounded-xl p-5 text-white text-center mx-2">
-            <h3 className="text-lg font-semibold mb-2">¿Listo para ordenar?</h3>
+            <h3 className="text-lg font-semibold mb-2">{t('menuReadyToOrder')}</h3>
             <p className="text-sm opacity-90 mb-4">
-              Haz tu pedido y lo tendremos listo para ti
+              {t('menuReadyDescription')}
             </p>
             <Link href="/order">
               <button className="bg-white/20 backdrop-blur-sm text-white px-8 py-3 rounded-full font-medium !rounded-button">
-                Hacer Pedido
+                {t('menuOrderButton')}
               </button>
             </Link>
           </div>

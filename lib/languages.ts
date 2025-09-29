@@ -23,7 +23,27 @@ export const translations = {
     featuredProducts: "Productos Destacados",
     seeFullMenu: "Ver Menú Completo",
     addToCart: "Agregar",
-    
+    heroSubtitle: "Hechas con amor para tus momentos especiales",
+
+    // Gallery
+    galleryTitle: "Galería de Nuestras Creaciones",
+    viewMorePhotos: "Ver Más Fotos",
+    galleryModalTitle: "Nuestras Creaciones",
+    galleryInstagramCta: "Ver más en Instagram",
+
+    // Contact
+    contactTitle: "Contáctanos",
+    contactSubtitle: "¡Nos encantaría saber de ti! Escríbenos para pedidos personalizados o preguntas.",
+    contactGetInTouch: "Ponte en contacto",
+    contactFollowUs: "Síguenos",
+    contactInstagramSectionTitle: "¡Síguenos en Instagram!",
+    contactInstagramDescription: "Mira nuestras últimas creaciones y momentos detrás de cámara",
+    contactInstagramButton: "Seguir @rangersbakery",
+
+    // Language selector
+    languageWelcomeTitle: "Bienvenido a Ranger's Bakery",
+    languageWelcomeDescription: "Selecciona tu idioma preferido",
+
     // PWA Install
     installApp: "¡Instala nuestra App!",
     installDescription: "Accede más rápido a nuestros deliciosos pasteles",
@@ -101,7 +121,9 @@ export const translations = {
     backToCakes: "Volver a los Pasteles",
     cakeCustomization: "Personalización del Pastel",
     requires24Hours: "Requiere 24 horas de anticipación",
-    
+    priceDefinedByBakery: "Precio definido por la panadería",
+    priceConfirmedLater: "El precio final será confirmado por la panadería después de revisar tu personalización",
+
     // Reviews
     clientReviews: "Reseñas de Clientes",
     basedOnReviews: "Basado en {count} reseñas",
@@ -122,7 +144,64 @@ export const translations = {
     no: "No",
     pleaseWait: "Por favor espera...",
     error: "Error",
-    success: "Éxito"
+    success: "Éxito",
+    included: "Incluido",
+    bakeryWillQuote: "Cotización con la panadería",
+    loginRequiredForCart: "Necesitas crear una cuenta para agregar productos al carrito",
+    addToCartError: "Error al agregar al carrito. Intenta de nuevo.",
+    itemAddedToCart: "{item} agregado al carrito",
+
+    // Menu Page
+    menuTitle: "Nuestro Menú",
+    menuSubtitle: "Delicias dominicanas hechas con amor para ti",
+    menuReadyToOrder: "¿Listo para ordenar?",
+    menuReadyDescription: "Haz tu pedido y lo tendremos listo para ti",
+    menuOrderButton: "Hacer Pedido",
+    menuCategoryAll: "Todos",
+    menuCategoryClassics: "Postres Clásicos",
+    menuCategorySpecialties: "Especialidades",
+    menuCategoryTropical: "Tropicales",
+    menuCategorySmallDelights: "Pequeños Placeres",
+    menuCategoryUnique: "Únicos",
+
+    // Menu Items
+    productTresLechesVasoName: "Tres Leches en Vaso",
+    productTresLechesVasoDescription: "Tradicional tres leches dominicano servido en vaso",
+    productFlanName: "Flan",
+    productFlanDescription: "Cremoso flan casero dominicano con caramelo",
+    productCheesecakeName: "Cheesecake",
+    productCheesecakeDescription: "Cremoso cheesecake estilo dominicano",
+    productBirthdayCakeName: "Cake de Cumpleaños",
+    productBirthdayCakeDescription: "Cake personalizado con decoración especial",
+    productMiniPastelesName: "Mini Pasteles",
+    productMiniPastelesDescription: "Pequeños pasteles dominicanos con frutas variadas",
+    productTresLechesOreoName: "Tres Leches de Oreo",
+    productTresLechesOreoDescription: "Nuestra versión especial dominicana con galletas Oreo",
+    priceCustomQuote: "Cotización personalizada",
+
+    // Cakes page
+    cakesBackLink: "Volver al Inicio",
+    cakesTitle: "Pasteles Personalizados",
+    cakesSubtitle: "Crea el pastel perfecto para tu ocasión especial",
+    cakeCategoryAll: "Todos",
+    cakeCategoryBirthday: "Cumpleaños",
+    cakeCategoryWeddings: "Bodas",
+    cakeCategoryQuince: "Quinceañera",
+    cakeCategoryPhoto: "Pastel con Foto",
+    sendUsYourPhoto: "Envíanos tu foto",
+    popularTag: "Popular",
+    fromPrice: "Desde",
+    howItWorks: "¿Cómo funciona?",
+    stepSelect: "Selecciona el tipo de pastel que más te guste",
+    stepCustomize: "Personaliza forma, masas, colores y decoraciones",
+    stepOrder: "Ordena y nosotros lo preparamos especialmente para ti",
+    cantFindCta: "¿No encuentras lo que buscas?",
+    contactForCustom: "Contáctanos para crear un diseño completamente personalizado",
+
+    // Contact info labels
+    contactSectionGetInTouch: "Ponte en contacto",
+    contactSectionFollowUs: "Síguenos",
+    contactFollowButton: "Seguir @rangersbakery"
   },
   en: {
     // Header
@@ -136,7 +215,27 @@ export const translations = {
     featuredProducts: "Featured Products",
     seeFullMenu: "See Full Menu",
     addToCart: "Add",
-    
+    heroSubtitle: "Made with love for your special moments",
+
+    // Gallery
+    galleryTitle: "Gallery of Our Creations",
+    viewMorePhotos: "View More Photos",
+    galleryModalTitle: "Our Creations",
+    galleryInstagramCta: "See more on Instagram",
+
+    // Contact
+    contactTitle: "Contact Us",
+    contactSubtitle: "We'd love to hear from you! Reach out for custom orders or questions.",
+    contactGetInTouch: "Get in Touch",
+    contactFollowUs: "Follow Us",
+    contactInstagramSectionTitle: "Follow us on Instagram!",
+    contactInstagramDescription: "See our latest creations and behind-the-scenes moments",
+    contactInstagramButton: "Follow @rangersbakery",
+
+    // Language selector
+    languageWelcomeTitle: "Welcome to Ranger's Bakery",
+    languageWelcomeDescription: "Please select your preferred language",
+
     // PWA Install
     installApp: "Install our App!",
     installDescription: "Get faster access to our delicious cakes",
@@ -214,7 +313,9 @@ export const translations = {
     backToCakes: "Back to Cakes",
     cakeCustomization: "Cake Customization",
     requires24Hours: "Requires 24 hours notice",
-    
+    priceDefinedByBakery: "Price determined by the bakery",
+    priceConfirmedLater: "The final price will be confirmed by the bakery after reviewing your customization",
+
     // Reviews
     clientReviews: "Client Reviews",
     basedOnReviews: "Based on {count} reviews",
@@ -235,7 +336,64 @@ export const translations = {
     no: "No",
     pleaseWait: "Please wait...",
     error: "Error",
-    success: "Success"
+    success: "Success",
+    included: "Included",
+    bakeryWillQuote: "Bakery will provide quote",
+    loginRequiredForCart: "You need to create an account to add products to the cart",
+    addToCartError: "Error adding to cart. Please try again.",
+    itemAddedToCart: "{item} added to cart",
+
+    // Menu Page
+    menuTitle: "Our Menu",
+    menuSubtitle: "Dominican delights made with love for you",
+    menuReadyToOrder: "Ready to order?",
+    menuReadyDescription: "Place your order and we'll have it ready for you",
+    menuOrderButton: "Place Order",
+    menuCategoryAll: "All",
+    menuCategoryClassics: "Classic Desserts",
+    menuCategorySpecialties: "Specialties",
+    menuCategoryTropical: "Tropical",
+    menuCategorySmallDelights: "Small Delights",
+    menuCategoryUnique: "Unique",
+
+    // Menu Items
+    productTresLechesVasoName: "Tres Leches in a Cup",
+    productTresLechesVasoDescription: "Traditional Dominican tres leches served in a cup",
+    productFlanName: "Flan",
+    productFlanDescription: "Creamy homemade Dominican flan with caramel",
+    productCheesecakeName: "Cheesecake",
+    productCheesecakeDescription: "Creamy Dominican-style cheesecake",
+    productBirthdayCakeName: "Birthday Cake",
+    productBirthdayCakeDescription: "Personalized cake with special decoration",
+    productMiniPastelesName: "Mini Cakes",
+    productMiniPastelesDescription: "Small Dominican cakes with assorted fruits",
+    productTresLechesOreoName: "Oreo Tres Leches",
+    productTresLechesOreoDescription: "Our special Dominican version with Oreo cookies",
+    priceCustomQuote: "Custom quote",
+
+    // Cakes page
+    cakesBackLink: "Back to Home",
+    cakesTitle: "Custom Cakes",
+    cakesSubtitle: "Create the perfect cake for your special occasion",
+    cakeCategoryAll: "All",
+    cakeCategoryBirthday: "Birthday",
+    cakeCategoryWeddings: "Weddings",
+    cakeCategoryQuince: "Quinceañera",
+    cakeCategoryPhoto: "Photo Cake",
+    sendUsYourPhoto: "Send us your photo",
+    popularTag: "Popular",
+    fromPrice: "From",
+    howItWorks: "How does it work?",
+    stepSelect: "Select the cake type you love the most",
+    stepCustomize: "Customize shape, flavors, colors and decorations",
+    stepOrder: "Place your order and we'll prepare it especially for you",
+    cantFindCta: "Can't find what you're looking for?",
+    contactForCustom: "Contact us to create a fully custom design",
+
+    // Contact info labels
+    contactSectionGetInTouch: "Get in Touch",
+    contactSectionFollowUs: "Follow Us",
+    contactFollowButton: "Follow @rangersbakery"
   }
 };
 
