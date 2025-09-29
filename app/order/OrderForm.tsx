@@ -35,12 +35,71 @@ interface OrderFormProps {
   orderId?: string;
 }
 
+const parseSpecialRequestSections = (raw: string | null | undefined) => {
+  if (!raw || typeof raw !== 'string') {
+    return {
+      summary: null as string | null,
+      userRequests: '',
+      referenceCode: null as string | null,
+      statusMessage: null as string | null,
+    };
+  }
+
+  const sections = raw
+    .split('\n\n')
+    .map((section) => section.trim())
+    .filter(Boolean)
+    .filter((section) => section !== '---');
+
+  let referenceCode: string | null = null;
+  let statusMessage: string | null = null;
+  const summaryParts: string[] = [];
+
+  sections.forEach((section) => {
+    const normalized = section.toLowerCase();
+
+    if (normalized.startsWith('referencia interna')) {
+      const code = section.split(':').slice(1).join(':').trim();
+      referenceCode = code || null;
+      return;
+    }
+
+    if (normalized.startsWith('estado:')) {
+      const message = section.split(':').slice(1).join(':').trim();
+      statusMessage = message || null;
+      return;
+    }
+
+    summaryParts.push(section);
+  });
+
+  const summary = summaryParts.length > 0 ? summaryParts.join('\n\n') : null;
+
+  let userRequests = '';
+
+  if (summary) {
+    const specialRequestMatch = summary.match(/Solicitudes especiales:\s*([\s\S]*)/i);
+    if (specialRequestMatch) {
+      userRequests = (specialRequestMatch[1] || '').trim();
+    }
+  }
+
+  return {
+    summary,
+    userRequests,
+    referenceCode,
+    statusMessage,
+  };
+};
+
 export default function OrderForm({ orderId }: OrderFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [quoteSubmitted, setQuoteSubmitted] = useState(false);
   const [quoteReference, setQuoteReference] = useState<string | null>(null);
+  const [systemSummary, setSystemSummary] = useState<string | null>(null);
+  const [systemStatusMessage, setSystemStatusMessage] = useState<string | null>(null);
   const [showPayment, setShowPayment] = useState(false);
   const [showCardForm, setShowCardForm] = useState(false);
 
@@ -257,12 +316,17 @@ useEffect(() => {
             })
           : [];
 
+        const parsedSpecial = parseSpecialRequestSections(data.special_requests || '');
+
         setExistingOrder(data as Order);
         setCartItems(normalizedItems);
         setFormData({
-          specialRequests: data.special_requests || '',
+          specialRequests: parsedSpecial.userRequests || '',
           pickupTime: data.pickup_time || '',
         });
+        setSystemSummary(parsedSpecial.summary);
+        setSystemStatusMessage(parsedSpecial.statusMessage);
+        setQuoteReference(parsedSpecial.referenceCode);
 
         if (typeof data.billing_address === 'string') {
           const rawBilling = data.billing_address.trim();
@@ -420,6 +484,11 @@ const initSquareCard = useCallback(async () => {
     if (orderId) {
       loadExistingOrder(orderId);
     } else {
+      setSystemSummary(null);
+      setSystemStatusMessage(null);
+      if (!quoteSubmitted) {
+        setQuoteReference(null);
+      }
       const savedCart = localStorage.getItem('bakery-cart');
       if (savedCart) {
         try {
@@ -460,7 +529,7 @@ const initSquareCard = useCallback(async () => {
     }
 
     checkCurrentUser();
-  }, [orderId, loadExistingOrder]);
+  }, [orderId, loadExistingOrder, quoteSubmitted]);
 
   useEffect(() => {
     localStorage.setItem('bakery-order-form', JSON.stringify(formData));
@@ -1984,6 +2053,31 @@ const initSquareCard = useCallback(async () => {
                     </p>
                   )}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {existingOrder && (systemSummary || quoteReference || systemStatusMessage) && (
+            <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+              <h4 className="text-sm font-semibold text-gray-800 mb-2">Resumen confirmado por la panadería</h4>
+              {systemSummary && (
+                <pre className="whitespace-pre-wrap text-xs text-gray-600 bg-white border border-gray-200 rounded-md p-3">
+                  {systemSummary}
+                </pre>
+              )}
+              <div className="mt-3 space-y-1 text-xs text-gray-600">
+                {quoteReference && (
+                  <p>
+                    <span className="font-medium text-gray-700">Referencia interna:</span>{' '}
+                    <span className="font-mono text-pink-600">{quoteReference}</span>
+                  </p>
+                )}
+                {systemStatusMessage && (
+                  <p>
+                    <span className="font-medium text-gray-700">Estado:</span>{' '}
+                    {systemStatusMessage}
+                  </p>
+                )}
               </div>
             </div>
           )}
