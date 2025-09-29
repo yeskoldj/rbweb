@@ -20,6 +20,8 @@ interface CartItem {
   type?: string;
   details?: string;
   customization?: any;
+  priceLabel?: string;
+  isPricePending?: boolean;
 }
 
 interface Notification {
@@ -80,6 +82,15 @@ useEffect(() => {
     .filter(Boolean)
     .join(', ');
   const [saveBillingAddress, setSaveBillingAddress] = useState(true);
+  const hasPendingPrice = cartItems.some(item => {
+    if (existingOrder) return false;
+    if (item.isPricePending) return true;
+    if (typeof item.price === 'string') {
+      const normalized = item.price.toLowerCase();
+      return normalized.includes('pendiente') || normalized.includes('cotiza');
+    }
+    return false;
+  });
 
   const showNotification = useCallback(
     (type: 'success' | 'error' | 'warning' | 'info', title: string, message: string) => {
@@ -114,15 +125,28 @@ useEffect(() => {
 
         const normalizedItems: CartItem[] = Array.isArray(data.items)
           ? data.items.map((item: any, index: number) => {
-              const rawPrice = item?.price ?? 0;
+              const rawPrice = item?.price;
+              const rawPriceLabel = item?.priceLabel || item?.price_label;
+              const stringPrice = typeof rawPrice === 'string' ? rawPrice : '';
+              const pendingFlag = Boolean(
+                item?.isPricePending ??
+                item?.price_pending ??
+                rawPrice === null ||
+                rawPrice === undefined ||
+                stringPrice.toLowerCase().includes('pendiente') ||
+                stringPrice.toLowerCase().includes('cotiza')
+              );
+
               const numericPrice = typeof rawPrice === 'number'
                 ? rawPrice
-                : parseFloat(String(rawPrice).replace(/[^0-9.,]/g, '').replace(',', '.')) || 0;
+                : parseFloat(String(rawPrice ?? '').replace(/[^0-9.,]/g, '').replace(',', '.')) || 0;
 
               return {
                 id: item?.id || `${id}-${index}`,
                 name: item?.name || `Producto ${index + 1}`,
-                price: numericPrice,
+                price: pendingFlag ? 0 : numericPrice,
+                priceLabel: rawPriceLabel || (pendingFlag ? 'Precio pendiente de aprobación' : undefined),
+                isPricePending: pendingFlag,
                 quantity: item?.quantity ?? 1,
                 image: item?.image,
                 photoUrl: item?.photoUrl,
@@ -371,6 +395,8 @@ const initSquareCard = useCallback(async () => {
       id: `${item.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
       name: item.name,
       price: item.price,
+      priceLabel: item.priceLabel,
+      isPricePending: item.isPricePending,
       quantity: 1,
       image: item.image,
       photoUrl: item.photoUrl,
@@ -433,20 +459,47 @@ const initSquareCard = useCallback(async () => {
   };
 
   const getItemPrice = (item: CartItem): number => {
+    if (item.isPricePending) {
+      return 0;
+    }
     if (typeof item.price === 'number') {
       return item.price;
     }
     if (typeof item.price === 'string') {
-      return parseFloat(item.price.replace('$', '').split(' ')[0]);
+      const normalized = item.price.toLowerCase();
+      if (normalized.includes('pendiente') || normalized.includes('cotiza')) {
+        return 0;
+      }
+      return parseFloat(item.price.replace(/[^0-9.,]/g, '').replace(',', '.')) || 0;
     }
     return 0;
   };
 
   const formatPrice = (item: CartItem): string => {
+    if (item.isPricePending) {
+      return existingOrder
+        ? item.priceLabel || 'Incluido en total'
+        : item.priceLabel || 'Precio pendiente de aprobación';
+    }
     if (typeof item.price === 'number') {
       return `$${item.price.toFixed(2)}`;
     }
-    return item.price.toString();
+    if (typeof item.price === 'string') {
+      const trimmed = item.price.trim();
+      if (!trimmed) {
+        return existingOrder ? 'Incluido en total' : '$0.00';
+      }
+      const normalized = trimmed.toLowerCase();
+      if (normalized.includes('cotiza') || normalized.includes('pendiente')) {
+        return trimmed;
+      }
+      const parsed = parseFloat(trimmed.replace(/[^0-9.,]/g, '').replace(',', '.'));
+      if (!Number.isNaN(parsed)) {
+        return `$${parsed.toFixed(2)}`;
+      }
+      return trimmed;
+    }
+    return existingOrder ? item.priceLabel || 'Incluido en total' : '$0.00';
   };
 
   const calculateSubtotal = () => {
@@ -502,15 +555,22 @@ const initSquareCard = useCallback(async () => {
     setIsSubmitting(true);
 
     try {
-      const formattedItems = cartItems.map((item) => ({
-        name: item.name,
-        quantity: item.quantity,
-        price: getItemPrice(item),
-        details: getCustomizationDetails(item),
-        customization: item.customization || null,
-        type: item.type || null,
-        photoUrl: item.photoUrl || null,
-      }));
+      const formattedItems = cartItems.map((item) => {
+        const numericPrice = getItemPrice(item);
+        const priceLabel = item.priceLabel || (item.isPricePending ? 'Precio pendiente de aprobación' : undefined);
+
+        return {
+          name: item.name,
+          quantity: item.quantity,
+          price: item.isPricePending ? null : numericPrice,
+          details: getCustomizationDetails(item),
+          customization: item.customization || null,
+          type: item.type || null,
+          photoUrl: item.photoUrl || null,
+          ...(priceLabel ? { price_label: priceLabel } : {}),
+          ...(item.isPricePending ? { isPricePending: true } : {}),
+        };
+      });
 
       const cakeSummaries = cakeItems.map((item, index) => {
         const detail = getCustomizationDetails(item);
@@ -547,12 +607,17 @@ const initSquareCard = useCallback(async () => {
       };
 
       const fallbackCartSummary = formattedItems
-        .map(
-          (item) =>
-            `• ${item.quantity || 1} x ${item.name || 'Artículo'}${
-              item.price ? ` ($${item.price})` : ''
-            }${item.details ? `\n   Detalles: ${item.details}` : ''}`
-        )
+        .map((item: any) => {
+          const pricePart = item.isPricePending
+            ? ' (precio pendiente)'
+            : typeof item.price === 'number' && item.price > 0
+              ? ` ($${item.price})`
+              : '';
+
+          return `• ${item.quantity || 1} x ${item.name || 'Artículo'}${pricePart}${
+            item.details ? `\n   Detalles: ${item.details}` : ''
+          }`;
+        })
         .join('\n');
 
       const fallbackQuotePayload = {
@@ -1525,7 +1590,15 @@ const initSquareCard = useCallback(async () => {
                 <div key={item.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
                   <div className="flex-1">
                     <span className="font-medium text-sm">{item.name}</span>
-                    <span className="text-pink-600 text-sm ml-2">{formatPrice(item)}</span>
+                    <span
+                      className={`text-sm ml-2 ${
+                        item.isPricePending && !existingOrder
+                          ? 'text-amber-600 font-medium'
+                          : 'text-pink-600'
+                      }`}
+                    >
+                      {formatPrice(item)}
+                    </span>
                     {getCustomizationDetails(item) && (
                       <p className="text-xs text-gray-500 mt-1 whitespace-pre-line">
                         {getCustomizationDetails(item)}
@@ -1561,20 +1634,28 @@ const initSquareCard = useCallback(async () => {
               ))}
             </div>
             <div className="space-y-2 pt-2 border-t">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Subtotal:</span>
-                <span>${calculateSubtotal().toFixed(2)}</span>
-              </div>
-              {calculateTax() > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Impuesto (3%):</span>
-                  <span>${calculateTax().toFixed(2)}</span>
+              {hasPendingPrice ? (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                  El precio final será definido por la panadería. Te enviaremos la cotización para confirmar antes de pagar.
                 </div>
+              ) : (
+                <>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Subtotal:</span>
+                    <span>${calculateSubtotal().toFixed(2)}</span>
+                  </div>
+                  {calculateTax() > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Impuesto (3%):</span>
+                      <span>${calculateTax().toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-lg font-bold text-gray-800">Total:</span>
+                    <span className="text-lg font-bold text-pink-600">${calculateTotal()}</span>
+                  </div>
+                </>
               )}
-              <div className="flex justify-between">
-                <span className="text-lg font-bold text-gray-800">Total:</span>
-                <span className="text-lg font-bold text-pink-600">${calculateTotal()}</span>
-              </div>
             </div>
           </div>
 
@@ -1625,25 +1706,50 @@ const initSquareCard = useCallback(async () => {
 
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-pink-400 to-teal-400 text-white py-3 rounded-lg font-medium"
+            disabled={isSubmitting}
+            className="w-full bg-gradient-to-r from-pink-400 to-teal-400 text-white py-3 rounded-lg font-medium disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {existingOrder ? `Continuar con el pago - $${calculateTotal()}` : `Continuar al Pago - $${calculateTotal()}`}
+            {isSubmitting
+              ? hasPendingPrice && !existingOrder
+                ? 'Enviando personalización...'
+                : 'Procesando...'
+              : existingOrder
+                ? `Continuar con el pago - $${calculateTotal()}`
+                : hasPendingPrice
+                  ? 'Enviar personalización al bakery'
+                  : `Continuar al Pago - $${calculateTotal()}`}
           </button>
         </div>
 
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-          <div className="flex items-start">
-            <div className="w-5 h-5 flex items-center justify-center">
-              <i className="ri-secure-payment-line text-blue-600 text-sm"></i>
-            </div>
-            <div className="ml-3">
-              <h4 className="text-sm font-medium text-blue-800">Pago Seguro con Square</h4>
-              <p className="text-xs text-blue-700 mt-1">
-                Tu pedido será procesado de forma segura a través del sistema de pagos de Square.
-              </p>
+        {hasPendingPrice ? (
+          <div className="mt-6 p-4 bg-pink-50 rounded-lg border border-pink-200">
+            <div className="flex items-start">
+              <div className="w-5 h-5 flex items-center justify-center">
+                <i className="ri-customer-service-2-line text-pink-600 text-sm"></i>
+              </div>
+              <div className="ml-3">
+                <h4 className="text-sm font-medium text-pink-800">Revisión del propietario</h4>
+                <p className="text-xs text-pink-700 mt-1">
+                  Revisaremos tu personalización y te enviaremos la cotización final. Luego podrás regresar para pagar el monto aprobado.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-start">
+              <div className="w-5 h-5 flex items-center justify-center">
+                <i className="ri-secure-payment-line text-blue-600 text-sm"></i>
+              </div>
+              <div className="ml-3">
+                <h4 className="text-sm font-medium text-blue-800">Pago Seguro con Square</h4>
+                <p className="text-xs text-blue-700 mt-1">
+                  Tu pedido será procesado de forma segura a través del sistema de pagos de Square.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </form>
     </>
   );
