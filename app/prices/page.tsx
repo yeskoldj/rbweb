@@ -4,11 +4,7 @@ import Header from '../../components/Header';
 import TabBar from '../../components/TabBar';
 import PriceList from '../../components/PriceList';
 import Link from 'next/link';
-import { useLanguage } from '../../lib/languageContext';
-
 export default function PricesPage() {
-  const { language, t } = useLanguage();
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 to-purple-50">
       <Header />

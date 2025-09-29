@@ -2,10 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useLanguage } from '../lib/languageContext';
-
 export default function Gallery() {
-  const { t } = useLanguage();
   const [showModal, setShowModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState('');
 
@@ -44,6 +41,8 @@ export default function Gallery() {
       alt: 'Flan casero dominicano'
     }
   ];
+
+  const activeImage = galleryImages.find(image => image.src === selectedImage) || galleryImages[0];
 
   const openModal = (imageSrc: string) => {
     setSelectedImage(imageSrc);
@@ -93,16 +92,26 @@ export default function Gallery() {
             >
               <i className="ri-close-line text-xl"></i>
             </button>
-            
+
             <div className="p-4">
               <h4 className="text-xl font-bold text-amber-800 mb-4 text-center">
                 Nuestras Creaciones
               </h4>
-              
+
+              {activeImage && (
+                <div className="mb-4">
+                  <img
+                    src={activeImage.src}
+                    alt={activeImage.alt}
+                    className="w-full max-h-80 object-cover rounded-lg"
+                  />
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3 max-h-96 overflow-y-auto">
                 {galleryImages.map((image, index) => (
                   <div key={index} className="aspect-video rounded-lg overflow-hidden">
-                    <img 
+                    <img
                       src={image.src}
                       alt={image.alt}
                       className="w-full h-full object-cover"

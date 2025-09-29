@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '../../../components/Header';
 import TabBar from '../../../components/TabBar';
-import { useLanguage } from '../../../lib/languageContext';
 import { supabase } from '../../../lib/supabase';
 import { showCartNotification } from '../../../lib/cartNotification';
 
@@ -41,7 +40,6 @@ interface DecorationExtra {
 
 export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
   const router = useRouter();
-  const { language } = useLanguage();
   const [customizerMode, setCustomizerMode] = useState<'basic' | 'advanced'>('basic');
   const [currentStep, setCurrentStep] = useState(1);
   const [quantity, setQuantity] = useState(1);
@@ -306,21 +304,25 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
 
   // Funciones para manejar las capas
   const addLayer = () => {
-    const layerNumber = selectedOptions.layers.length + 1;
-    const timestamp = Date.now();
-    
-    // CORREGIDO: Usar tamaño 6" por defecto para que empiece desde $20
-    const defaultSize = '6';
-    const newLayer: CakeLayer = {
-      id: `layer-${timestamp}`,
-      name: `Nivel ${layerNumber}`,
-      size: defaultSize,
-      price: sizeOptions.find(s => s.id === defaultSize)?.price || 20
-    };
-    setSelectedOptions(prev => ({
-      ...prev,
-      layers: [...prev.layers, newLayer]
-    }));
+    setSelectedOptions(prev => {
+      const layerNumber = prev.layers.length + 1;
+      const timestamp = Date.now();
+
+      // CORREGIDO: Usar tamaño 6" por defecto para que empiece desde $20
+      const defaultSize = '6';
+      const defaultPrice = sizeOptions.find(s => s.id === defaultSize)?.price || 20;
+      const newLayer: CakeLayer = {
+        id: `layer-${timestamp}`,
+        name: `Nivel ${layerNumber}`,
+        size: defaultSize,
+        price: defaultPrice
+      };
+
+      return {
+        ...prev,
+        layers: [...prev.layers, newLayer]
+      };
+    });
   };
 
   const removeLayer = (layerId: string) => {
@@ -405,9 +407,25 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
   // Inicializar con una capa por defecto
   useEffect(() => {
     if (selectedOptions.layers.length === 0) {
-      addLayer();
+      setSelectedOptions(prev => {
+        if (prev.layers.length > 0) {
+          return prev;
+        }
+
+        const defaultLayer: CakeLayer = {
+          id: `layer-${Date.now()}`,
+          name: 'Nivel 1',
+          size: '6',
+          price: 20
+        };
+
+        return {
+          ...prev,
+          layers: [defaultLayer]
+        };
+      });
     }
-  }, []);
+  }, [selectedOptions.layers.length]);
 
   // Funciones para manejar opciones múltiples
   const toggleOption = (category: keyof typeof selectedOptions, optionId: string) => {
@@ -422,33 +440,6 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
           : [...currentArray, optionId]
       };
     });
-  };
-
-  // Calcular precio total
-  const calculateTotal = () => {
-    let total = 0;
-
-    total += selectedOptions.layers.reduce((sum, layer) => sum + layer.price, 0);
-
-    const shapePrice = shapeOptions.find(s => s.id === selectedOptions.shape)?.price || 0;
-    total += shapePrice;
-
-    selectedOptions.flavors.forEach(flavorId => {
-      const flavor = flavorOptions.find(f => f.id === flavorId);
-      if (flavor) total += flavor.price;
-    });
-
-    selectedOptions.fillings.forEach(fillingId => {
-      const filling = fillingOptions.find(f => f.id === fillingId);
-      if (filling) total += filling.price;
-    });
-
-    selectedOptions.decorations.forEach(decorationId => {
-      const decoration = decorationOptions.find(d => d.id === decorationId);
-      if (decoration) total += decoration.price;
-    });
-
-    return total * quantity;
   };
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -509,15 +500,12 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
       <div className="flex flex-col items-center justify-end space-y-2 bg-gradient-to-b from-blue-50 to-pink-50 rounded-xl p-6 h-40 relative">
         {layers.map((layer, index) => {
           const layerIndex = layers.length - 1 - index;
-          const sizeNum = parseInt(layer.size);
-          
           // Mejorar el cálculo de tamaños para mejor visualización
           let widthClass, heightClass;
           if (layers.length === 1) {
             widthClass = 'w-20';
             heightClass = 'h-8';
           } else {
-            const baseWidth = Math.max(12, sizeNum + 4);
             widthClass = layerIndex === 0 ? `w-24` : layerIndex === 1 ? `w-20` : `w-16`;
             heightClass = 'h-7';
           }
@@ -593,7 +581,7 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
         <div className="text-center mt-3 space-y-1 z-30 relative">
           <div className="text-sm text-gray-700 font-medium flex items-center justify-center space-x-1">
             <span>{selectedOptions.layers.length} nivel{selectedOptions.layers.length > 1 ? 'es' : ''}</span>
-            {selectedOptions.layers[0] && <span>{selectedOptions.layers[0].size}"</span>}
+            {selectedOptions.layers[0] && <span>{selectedOptions.layers[0].size}&quot;</span>}
             <span>{shapeOptions.find(s => s.id === selectedOptions.shape)?.name}</span>
           </div>
           {selectedOptions.decorations.length > 0 && (
@@ -605,21 +593,6 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
       </div>
     );
   };
-
-  const renderShapePreview = (shape: string, size: string) => {
-    const baseClasses = 'relative bg-gradient-to-br border-2 border-gray-200 shadow-sm';
-
-    switch (shape) {
-      case 'square':
-        return `${baseClasses} rounded-sm w-12 h-12`;
-      case 'rectangle':
-        return `${baseClasses} rounded-sm w-16 h-10`;
-      default:
-        return `${baseClasses} rounded-full w-12 h-12`;
-    }
-  };
-
-  // Previously used to render a detailed cake preview; removed to avoid duplicate previews.
 
   const addToCart = async () => {
     setIsAdding(true);
@@ -687,7 +660,7 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
     };
 
     const existingCart = localStorage.getItem('bakery-cart');
-    let cart = existingCart ? JSON.parse(existingCart) : [];
+    const cart = existingCart ? JSON.parse(existingCart) : [];
     cart.push(cartItem);
     localStorage.setItem('bakery-cart', JSON.stringify(cart));
 
@@ -698,18 +671,6 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
       setIsAdding(false);
       router.push('/cart');
     }, 1000);
-  };
-
-  const nextStep = () => {
-    if (currentStep < maxSteps) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const prevStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
   };
 
   if (!currentProduct) {
@@ -1814,7 +1775,7 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                   <div className="grid grid-cols-2 gap-3 text-xs text-gray-600">
                     <div>
                       <span className="block font-medium text-gray-700">Tamaño</span>
-                      <span>{layer.size}"</span>
+                      <span>{layer.size}&quot;</span>
                     </div>
                     <div>
                       <span className="block font-medium text-gray-700">Masa</span>

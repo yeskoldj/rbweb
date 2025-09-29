@@ -55,7 +55,7 @@ export default function Header() {
         checkLocalUser();
       }
     } catch (error) {
-      console.log('Usando almacenamiento local');
+      console.log('Usando almacenamiento local', error);
       checkLocalUser();
     }
   };
@@ -96,7 +96,7 @@ export default function Header() {
         checkLocalUser();
       }
     } catch (error) {
-      console.log('Error fetching user role, usando local');
+      console.log('Error fetching user role, usando local', error);
       checkLocalUser();
     }
   };
