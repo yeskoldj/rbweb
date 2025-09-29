@@ -54,6 +54,7 @@ const parseSpecialRequestSections = (raw: string | null | undefined) => {
   let referenceCode: string | null = null;
   let statusMessage: string | null = null;
   const summaryParts: string[] = [];
+  const metadataMatchers = [/^referencia interna/i, /^estado:/i];
 
   sections.forEach((section) => {
     const normalized = section.toLowerCase();
@@ -73,7 +74,18 @@ const parseSpecialRequestSections = (raw: string | null | undefined) => {
     summaryParts.push(section);
   });
 
-  const summary = summaryParts.length > 0 ? summaryParts.join('\n\n') : null;
+  const summary = summaryParts.length > 0
+    ? summaryParts
+        .map((part) =>
+          part
+            .split('\n')
+            .filter((line) => !metadataMatchers.some((pattern) => pattern.test(line.trim())))
+            .join('\n')
+            .trim()
+        )
+        .filter(Boolean)
+        .join('\n\n')
+    : null;
 
   let userRequests = '';
 
@@ -84,9 +96,16 @@ const parseSpecialRequestSections = (raw: string | null | undefined) => {
     }
   }
 
+  const sanitizedUserRequests = userRequests
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .filter((line) => !metadataMatchers.some((pattern) => pattern.test(line.trim())))
+    .join('\n')
+    .trim();
+
   return {
     summary,
-    userRequests,
+    userRequests: sanitizedUserRequests,
     referenceCode,
     statusMessage,
   };
@@ -99,7 +118,7 @@ export default function OrderForm({ orderId }: OrderFormProps) {
   const [quoteSubmitted, setQuoteSubmitted] = useState(false);
   const [quoteReference, setQuoteReference] = useState<string | null>(null);
   const [systemSummary, setSystemSummary] = useState<string | null>(null);
-  const [systemStatusMessage, setSystemStatusMessage] = useState<string | null>(null);
+  const [, setSystemStatusMessage] = useState<string | null>(null);
   const [showPayment, setShowPayment] = useState(false);
   const [showCardForm, setShowCardForm] = useState(false);
 
@@ -2057,7 +2076,7 @@ const initSquareCard = useCallback(async () => {
             </div>
           )}
 
-          {existingOrder && (systemSummary || quoteReference || systemStatusMessage) && (
+          {existingOrder && systemSummary && (
             <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
               <h4 className="text-sm font-semibold text-gray-800 mb-2">Resumen confirmado por la panadería</h4>
               {systemSummary && (
@@ -2065,20 +2084,6 @@ const initSquareCard = useCallback(async () => {
                   {systemSummary}
                 </pre>
               )}
-              <div className="mt-3 space-y-1 text-xs text-gray-600">
-                {quoteReference && (
-                  <p>
-                    <span className="font-medium text-gray-700">Referencia interna:</span>{' '}
-                    <span className="font-mono text-pink-600">{quoteReference}</span>
-                  </p>
-                )}
-                {systemStatusMessage && (
-                  <p>
-                    <span className="font-medium text-gray-700">Estado:</span>{' '}
-                    {systemStatusMessage}
-                  </p>
-                )}
-              </div>
             </div>
           )}
 
