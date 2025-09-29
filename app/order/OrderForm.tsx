@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase, Order } from '@/lib/supabase';
 import { squareConfig } from '@/lib/square/config';
@@ -74,6 +74,10 @@ useEffect(() => {
     specialRequests: '',
     pickupTime: ''
   });
+  const [contactInfo, setContactInfo] = useState({
+    email: '',
+    phone: ''
+  });
   const [billingStreet, setBillingStreet] = useState('');
   const [billingCity, setBillingCity] = useState('');
   const [billingPostalCode, setBillingPostalCode] = useState('');
@@ -91,6 +95,11 @@ useEffect(() => {
     }
     return false;
   });
+  const profileEmailFromState = (currentUser?.email || currentUser?.emailAddress || '').trim();
+  const profilePhoneFromState = (currentUser?.phone || '').trim();
+  const requiresContactEmail = !profileEmailFromState;
+  const requiresContactPhone = !profilePhoneFromState;
+  const shouldShowContactSection = hasPendingPrice && !existingOrder;
 
   const showNotification = useCallback(
     (type: 'success' | 'error' | 'warning' | 'info', title: string, message: string) => {
@@ -109,6 +118,16 @@ useEffect(() => {
   const dismissNotification = useCallback((id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
   }, []);
+
+  useEffect(() => {
+    const emailFromProfile = (currentUser?.email || currentUser?.emailAddress || '').trim();
+    const phoneFromProfile = (currentUser?.phone || '').trim();
+
+    setContactInfo(prev => ({
+      email: prev.email || emailFromProfile,
+      phone: prev.phone || phoneFromProfile
+    }));
+  }, [currentUser]);
 
   const loadExistingOrder = useCallback(
     async (id: string) => {
@@ -381,6 +400,11 @@ const initSquareCard = useCallback(async () => {
     }
   };
 
+  const handleContactInfoChange = (field: 'email' | 'phone') => (event: ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setContactInfo(prev => ({ ...prev, [field]: value }));
+  };
+
   const addToCart = (item: CartItem) => {
     if (existingOrder) {
       showNotification(
@@ -540,8 +564,12 @@ const initSquareCard = useCallback(async () => {
     }
 
     const customerName = (currentUser?.full_name || currentUser?.fullName || '').trim() || 'Cliente';
-    const customerEmail = (currentUser?.email || currentUser?.emailAddress || '').trim();
-    const customerPhone = (currentUser?.phone || '').trim();
+    const profileEmail = (currentUser?.email || currentUser?.emailAddress || '').trim();
+    const profilePhone = (currentUser?.phone || '').trim();
+    const providedEmail = contactInfo.email.trim();
+    const providedPhone = contactInfo.phone.trim();
+    const customerEmail = providedEmail || profileEmail;
+    const customerPhone = providedPhone || profilePhone;
 
     if (!customerEmail && !customerPhone) {
       showNotification(
@@ -555,6 +583,50 @@ const initSquareCard = useCallback(async () => {
     setIsSubmitting(true);
 
     try {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        const contactUpdates: Record<string, string> = {};
+
+        if (user?.id) {
+          if (providedEmail && providedEmail !== profileEmail) {
+            contactUpdates.email = providedEmail;
+          }
+          if (providedPhone && providedPhone !== profilePhone) {
+            contactUpdates.phone = providedPhone;
+          }
+
+          if (Object.keys(contactUpdates).length > 0) {
+            await supabase
+              .from('profiles')
+              .update({
+                ...contactUpdates,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', user.id);
+
+            setCurrentUser((prev: any) => (prev ? { ...prev, ...contactUpdates } : prev));
+          }
+        } else if (providedEmail || providedPhone) {
+          const localUserRaw = localStorage.getItem('bakery-user');
+          if (localUserRaw) {
+            try {
+              const localUser = JSON.parse(localUserRaw);
+              const updatedUser = {
+                ...localUser,
+                ...(providedEmail ? { email: providedEmail } : {}),
+                ...(providedPhone ? { phone: providedPhone } : {}),
+              };
+              localStorage.setItem('bakery-user', JSON.stringify(updatedUser));
+              setCurrentUser((prev: any) => (prev ? { ...prev, ...updatedUser } : updatedUser));
+            } catch {
+              // Ignore local storage parse errors
+            }
+          }
+        }
+      } catch (profileUpdateError) {
+        console.warn('No se pudo actualizar el perfil con los datos de contacto:', profileUpdateError);
+      }
+
       const formattedItems = cartItems.map((item) => {
         const numericPrice = getItemPrice(item);
         const priceLabel = item.priceLabel || (item.isPricePending ? 'Precio pendiente de aprobación' : undefined);
@@ -687,6 +759,35 @@ const initSquareCard = useCallback(async () => {
         }
       } catch (notificationError) {
         console.log('Error enviando notificación de cotización:', notificationError);
+      }
+
+      if (customerEmail) {
+        try {
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+          if (supabaseUrl) {
+            await fetch(`${supabaseUrl}/functions/v1/send-notification-email`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+              },
+              body: JSON.stringify({
+                to: customerEmail,
+                type: 'customer_quote_confirmation',
+                language: 'es',
+                quoteData: {
+                  ...insertedQuote,
+                  customer_email: customerEmail,
+                  customer_phone: customerPhone,
+                  reference_code: finalReference,
+                  cart_items: formattedItems,
+                },
+              }),
+            });
+          }
+        } catch (customerNotificationError) {
+          console.log('Error enviando confirmación al cliente:', customerNotificationError);
+        }
       }
 
       localStorage.removeItem('bakery-cart');
@@ -1685,6 +1786,47 @@ const initSquareCard = useCallback(async () => {
               <option value="5:00 PM">5:00 PM</option>
             </select>
           </div>
+
+          {shouldShowContactSection && (
+            <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+              <h4 className="text-sm font-semibold text-purple-800">
+                Confirma tus datos de contacto
+              </h4>
+              <p className="text-xs text-purple-700 mt-1">
+                Necesitamos al menos un correo o teléfono válido para enviarte la cotización personalizada.
+              </p>
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-medium text-purple-800 mb-1">Correo electrónico</label>
+                  <input
+                    type="email"
+                    value={contactInfo.email}
+                    onChange={handleContactInfoChange('email')}
+                    placeholder="tu@email.com"
+                    required={requiresContactEmail}
+                    className="w-full px-3 py-2 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-400 focus:border-transparent text-sm"
+                  />
+                  {requiresContactEmail && (
+                    <p className="text-[11px] text-purple-600 mt-1">Ingresa un correo para recibir la respuesta del bakery.</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-purple-800 mb-1">Teléfono</label>
+                  <input
+                    type="tel"
+                    value={contactInfo.phone}
+                    onChange={handleContactInfoChange('phone')}
+                    placeholder="(555) 123-4567"
+                    required={requiresContactPhone && !contactInfo.email.trim()}
+                    className="w-full px-3 py-2 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-400 focus:border-transparent text-sm"
+                  />
+                  {requiresContactPhone && !contactInfo.email.trim() && (
+                    <p className="text-[11px] text-purple-600 mt-1">Si no tienes correo, déjanos tu teléfono para contactarte.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
