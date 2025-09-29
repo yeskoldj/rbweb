@@ -138,6 +138,13 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
     { id: 'silver', name: 'Plateado', price: 0, color: '#C0C0C0' }
   ];
 
+  const formatOptionPricing = (price?: number) => {
+    if (!price || price <= 0) {
+      return 'Incluido';
+    }
+    return 'Cotización con la panadería';
+  };
+
   // Rellenos disponibles
   const fillingOptions: CakeOption[] = [
     { id: 'none', name: 'Sin Relleno', price: 0 },
@@ -650,7 +657,9 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
     const cartItem = {
       id: `cake-${Date.now()}`,
       name: `${currentProduct?.name} Personalizado`,
-      price: `$${calculateTotal().toFixed(2)}`,
+      price: 0,
+      priceLabel: 'Precio pendiente de aprobación',
+      isPricePending: true,
       quantity: quantity,
       image: currentProduct?.image || '',
       photoUrl: selectedOptions.photoUrl || undefined,
@@ -714,9 +723,7 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
     );
   }
 
-  const totalPrice = calculateTotal();
-
-  const renderAdvancedStep = () => {
+    const renderAdvancedStep = () => {
     switch (currentStep) {
       case 1: // Forma
         return (
@@ -753,8 +760,8 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                       <i className={`${shape.icon} text-2xl`}></i>
                     </div>
                     <h4 className="font-semibold text-gray-800 mb-1">{shape.name}</h4>
-                    <p className="text-sm font-bold text-pink-600">
-                      {shape.price > 0 ? `+$${shape.price}` : 'Incluido'}
+                    <p className="text-sm font-semibold text-pink-600">
+                      {formatOptionPricing(shape.price)}
                     </p>
                   </div>
                 </label>
@@ -814,15 +821,15 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                         >
                           {getAvailableSizesForLayer(index).map(size => (
                             <option key={size.id} value={size.id}>
-                              {size.name} - ${size.price} ({size.serves})
+                              {`${size.name} (${size.serves}) - Cotización con la panadería`}
                             </option>
                           ))}
                         </select>
                       </div>
 
                       <div className="text-right">
-                        <span className="text-lg font-bold text-orange-600">
-                          ${layer.price}
+                        <span className="text-sm font-semibold text-orange-600">
+                          Precio definido al revisar tu diseño
                         </span>
                       </div>
                     </div>
@@ -881,8 +888,8 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                       style={{ backgroundColor: flavor.color }}
                     ></div>
                     <h4 className="font-semibold text-gray-800 mb-1">{flavor.name}</h4>
-                    <p className="text-sm font-bold text-purple-600">
-                      {flavor.price > 0 ? `+$${flavor.price}` : 'Incluido'}
+                    <p className="text-xs font-semibold text-purple-600">
+                      {formatOptionPricing(flavor.price)}
                     </p>
                   </div>
                 </label>
@@ -985,8 +992,8 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                       <p className="text-sm text-gray-600">Relleno cremoso entre capas</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-amber-600">
-                        {filling.price > 0 ? `+$${filling.price}` : 'Incluido'}
+                      <p className="font-semibold text-amber-600 text-sm">
+                        {formatOptionPricing(filling.price)}
                       </p>
                     </div>
                   </div>
@@ -1031,8 +1038,8 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                     </div>
                     <h4 className="font-semibold text-gray-800 mb-1 text-sm">{decoration.name}</h4>
                     <p className="text-xs text-gray-600 mb-2">{decoration.description}</p>
-                    <p className="text-sm font-bold text-yellow-600">
-                      +${decoration.price}
+                    <p className="text-xs font-semibold text-yellow-600">
+                      {formatOptionPricing(decoration.price)}
                     </p>
                   </div>
                 </label>
@@ -1154,16 +1161,8 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                       </span>
                     </div>
                   )}
-                  <div className="border-t border-green-200 pt-3 mt-3">
-                    <div className="flex justify-between text-lg">
-                      <span className="font-bold text-gray-800">Total:</span>
-                      <span className="font-bold text-green-600 text-xl">
-                        ${totalPrice.toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="text-xs text-gray-600 text-right mt-1">
-                      Precio por {quantity} pastel{quantity > 1 ? 'es' : ''}
-                    </div>
+                  <div className="border-t border-green-200 pt-3 mt-3 text-sm text-gray-600">
+                    El precio final será confirmado por la panadería una vez que revise tu diseño.
                   </div>
                 </div>
               </div>
@@ -1238,6 +1237,11 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
             </div>
           </div>
 
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-sm text-amber-800">
+            Personaliza tu pastel sin preocuparte por el precio. Una vez envíes esta solicitud, el propietario revisará los
+            detalles y te compartirá la cotización final antes de pagar.
+          </div>
+
           <div className="bg-white rounded-xl shadow-lg p-4 mb-6 sticky top-20 z-10">
             <div className="flex items-center space-x-4">
               <div className="w-40 flex-shrink-0">
@@ -1281,10 +1285,10 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                 </div>
                 
                 <div className="text-right bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg p-3">
-                  <div className="text-2xl font-bold text-pink-600">
-                    ${totalPrice.toFixed(2)}
+                  <div className="text-sm font-semibold text-pink-600">
+                    Precio definido por la panadería después de revisar tu personalización
                   </div>
-                  <div className="text-xs text-gray-500">Total por 1 pastel</div>
+                  <div className="text-xs text-gray-500">Recibirás la cotización antes de pagar</div>
                 </div>
               </div>
             </div>
@@ -1370,8 +1374,8 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                               <i className={`${shape.icon} text-2xl`}></i>
                             </div>
                             <h4 className="font-semibold text-gray-800 mb-1">{shape.name}</h4>
-                            <p className="text-sm font-bold text-pink-600">
-                              {shape.price > 0 ? `+$${shape.price}` : 'Incluido'}
+                            <p className="text-sm font-semibold text-pink-600">
+                              {formatOptionPricing(shape.price)}
                             </p>
                           </div>
                         </label>
@@ -1491,8 +1495,8 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                               style={{ backgroundColor: flavor.color }}
                             ></div>
                             <h4 className="font-semibold text-gray-800 mb-1">{flavor.name}</h4>
-                            <p className="text-sm font-bold text-purple-600">
-                              {flavor.price > 0 ? `+$${flavor.price}` : 'Incluido'}
+                            <p className="text-xs font-semibold text-purple-600">
+                              {formatOptionPricing(flavor.price)}
                             </p>
                           </div>
                         </label>
@@ -1693,16 +1697,8 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                               </span>
                             </div>
                           )}
-                          <div className="border-t border-green-200 pt-3 mt-3">
-                            <div className="flex justify-between text-lg">
-                              <span className="font-bold text-gray-800">Total:</span>
-                              <span className="font-bold text-green-600 text-xl">
-                                ${totalPrice.toFixed(2)}
-                              </span>
-                            </div>
-                            <div className="text-xs text-gray-600 text-right mt-1">
-                              Precio por {quantity} pastel{quantity > 1 ? 'es' : ''}
-                            </div>
+                          <div className="border-t border-green-200 pt-3 mt-3 text-sm text-gray-600">
+                            El precio total será confirmado por la panadería después de revisar esta solicitud.
                           </div>
                         </div>
                       </div>
@@ -1755,7 +1751,7 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                     ) : (
                       <>
                         <i className="ri-shopping-cart-line mr-2"></i>
-                        Agregar al Carrito
+                        Enviar personalización
                       </>
                     )}
                   </button>
@@ -1831,9 +1827,8 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
 
             {/* Precio total más prominente */}
             <div className="mt-6 pt-4 border-t border-gray-200">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-pink-600">${totalPrice.toFixed(2)}</div>
-                <div className="text-xs text-gray-500 mt-1">x1 total</div>
+              <div className="text-center text-sm text-gray-600">
+                El precio final será compartido contigo por la panadería antes de realizar el pago.
               </div>
             </div>
           </div>
@@ -1890,9 +1885,9 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                             <i className={shape.icon}></i>
                           </div>
                           <div className="font-medium text-sm text-gray-700">{shape.name}</div>
-                          {shape.price > 0 && (
-                            <div className="text-xs text-pink-600 font-medium">+${shape.price}</div>
-                          )}
+                          <div className="text-xs text-pink-600 font-medium">
+                            {formatOptionPricing(shape.price)}
+                          </div>
                         </div>
                       </button>
                     ))}
@@ -1924,7 +1919,9 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                             <div className="font-medium text-gray-800">{size.name}</div>
                             <div className="text-sm text-gray-600">{size.serves}</div>
                           </div>
-                          <div className="text-pink-600 font-semibold">${size.price}</div>
+                          <div className="text-xs font-semibold text-pink-600">
+                            {formatOptionPricing(size.price)}
+                          </div>
                         </div>
                       </button>
                     ))}
@@ -1958,9 +1955,9 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                               <div className="text-sm text-gray-600">Masa tradicional</div>
                             </div>
                           </div>
-                          {flavor.price > 0 && (
-                            <div className="text-pink-600 font-semibold">+${flavor.price}</div>
-                          )}
+                          <div className="text-xs font-semibold text-pink-600">
+                            {formatOptionPricing(flavor.price)}
+                          </div>
                         </div>
                       </button>
                     ))}
@@ -2010,7 +2007,7 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                     >
                       <div className="flex items-center justify-center space-x-2 text-gray-600">
                         <i className="ri-add-line"></i>
-                        <span>Agregar Capa (+$15)</span>
+                        <span>Agregar otra capa</span>
                       </div>
                     </button>
                   </div>
