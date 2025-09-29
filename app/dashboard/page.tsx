@@ -9,8 +9,43 @@ import TabBar from '../../components/TabBar';
 import SafeImage from '@/components/SafeImage';
 import CalendarView from './CalendarView';
 import UserManagement from './UserManagement';
+import { formatSpecialRequests, type SpecialRequestEntry } from '../../lib/specialRequests';
 
 type QuoteStatus = 'pending' | 'responded' | 'accepted' | 'rejected';
+
+const renderSpecialRequests = (orderId: string, requests: SpecialRequestEntry[]) => {
+  if (requests.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mb-4 p-3 bg-gradient-to-r from-yellow-50 to-amber-50 rounded-xl border-l-4 border-yellow-400">
+      <div className="flex items-start space-x-2">
+        <i className="ri-lightbulb-line text-yellow-600 mt-0.5"></i>
+        <div>
+          <p className="text-sm font-bold text-yellow-800">Solicitud especial:</p>
+          <ul className="mt-1 space-y-1 text-sm text-yellow-700">
+            {requests.map((entry, idx) => (
+              <li key={`${orderId}-special-${idx}`} className="flex items-start gap-2">
+                <span className="mt-1 text-yellow-500">•</span>
+                <span>
+                  {entry.label ? (
+                    <>
+                      <span className="font-semibold text-yellow-800">{entry.label}:</span>{' '}
+                      {entry.value}
+                    </>
+                  ) : (
+                    entry.value
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 interface Quote {
   id: string;
@@ -1220,11 +1255,14 @@ export default function DashboardPage() {
                             </p>
                           </div>
                         ) : (
-                          getTodayOrders().map((order) => (
-                            <div
-                              key={order.id}
-                              className="space-y-3 rounded-2xl border border-gray-100 bg-gray-50 p-5 shadow-sm"
-                            >
+                          getTodayOrders().map((order) => {
+                            const specialRequests = formatSpecialRequests(order.special_requests ?? undefined);
+
+                            return (
+                              <div
+                                key={order.id}
+                                className="space-y-3 rounded-2xl border border-gray-100 bg-gray-50 p-5 shadow-sm"
+                              >
                               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                                 <div>
                                   <p className="text-sm font-semibold text-gray-600">Cliente</p>
@@ -1255,13 +1293,10 @@ export default function DashboardPage() {
                                   <span>{order.customer_email || 'Sin correo'}</span>
                                 </div>
                               </div>
-                              {order.special_requests && (
-                                <p className="rounded-2xl bg-white px-4 py-3 text-sm text-gray-700 shadow-inner">
-                                  {order.special_requests}
-                                </p>
-                              )}
-                            </div>
-                          ))
+                                {renderSpecialRequests(order.id, specialRequests)}
+                              </div>
+                            );
+                          })
                         )}
                       </div>
                     </div>
@@ -1283,6 +1318,7 @@ export default function DashboardPage() {
                   ) : (
                     orders.map((order) => {
                       const paymentConfirmed = isPaymentConfirmed(order);
+                      const specialRequests = formatSpecialRequests(order.special_requests ?? undefined);
 
                       return (
                         <div key={order.id} className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
@@ -1375,17 +1411,7 @@ export default function DashboardPage() {
                             </div>
                           </div>
 
-                          {order.special_requests && (
-                            <div className="mb-4 p-3 bg-gradient-to-r from-yellow-50 to-amber-50 rounded-xl border-l-4 border-yellow-400">
-                              <div className="flex items-start space-x-2">
-                                <i className="ri-lightbulb-line text-yellow-600 mt-0.5"></i>
-                                <div>
-                                  <p className="text-sm font-bold text-yellow-800">Solicitud Especial:</p>
-                                  <p className="text-sm text-yellow-700">{order.special_requests}</p>
-                                </div>
-                              </div>
-                            </div>
-                          )}
+                          {renderSpecialRequests(order.id, specialRequests)}
 
                           <div className="flex flex-wrap gap-2">
                             {currentUser?.role === 'owner' && orderHasPendingPrice(order) && (

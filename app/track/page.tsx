@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import Header from '../../components/Header';
 import TabBar from '../../components/TabBar';
+import { formatSpecialRequests } from '../../lib/specialRequests';
 
 interface OrderItem {
   name: string;
@@ -35,52 +36,6 @@ interface Order {
   created_at: string;
   updated_at?: string;
 }
-
-interface SpecialRequestEntry {
-  label?: string;
-  value: string;
-}
-
-const formatSpecialRequests = (specialRequests?: string): SpecialRequestEntry[] => {
-  if (!specialRequests) {
-    return [];
-  }
-
-  const pieces = specialRequests
-    .split(/[\n;]+/)
-    .map((piece) => piece.trim())
-    .filter(Boolean);
-
-  if (pieces.length === 0) {
-    return [];
-  }
-
-  if (pieces.length === 1) {
-    const [label, ...rest] = pieces[0].split(':');
-    if (rest.length === 0) {
-      return [{ value: pieces[0] }];
-    }
-
-    return [
-      {
-        label: label.trim(),
-        value: rest.join(':').trim(),
-      },
-    ];
-  }
-
-  return pieces.map((piece) => {
-    const [label, ...rest] = piece.split(':');
-    if (rest.length === 0) {
-      return { value: label.trim() };
-    }
-
-    return {
-      label: label.trim(),
-      value: rest.join(':').trim(),
-    };
-  });
-};
 
 export default function TrackOrderPage() {
   const [orders, setOrders] = useState<Order[]>([]);
