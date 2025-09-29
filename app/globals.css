@@ -3,6 +3,16 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --font-inter: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Helvetica, Arial, sans-serif;
+  --font-pacifico: 'Pacifico', 'Brush Script MT', cursive;
+}
+
+body {
+  font-family: var(--font-inter);
+}
+
 .font-pacifico {
-  font-family: var(--font-pacifico), 'Pacifico', cursive;
+  font-family: var(--font-pacifico);
 }

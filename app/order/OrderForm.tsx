@@ -147,9 +147,10 @@ useEffect(() => {
               const rawPrice = item?.price;
               const rawPriceLabel = item?.priceLabel || item?.price_label;
               const stringPrice = typeof rawPrice === 'string' ? rawPrice : '';
+              const pendingFlagFromItem =
+                (item?.isPricePending ?? item?.price_pending) ?? false;
               const pendingFlag = Boolean(
-                item?.isPricePending ??
-                item?.price_pending ??
+                pendingFlagFromItem ||
                 rawPrice === null ||
                 rawPrice === undefined ||
                 stringPrice.toLowerCase().includes('pendiente') ||
