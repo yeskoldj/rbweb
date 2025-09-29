@@ -322,6 +322,7 @@ export default function DashboardPage() {
     adminNotes?: string
   ) => {
     try {
+      const targetQuote = quotes.find((quote) => quote.id === quoteId);
       const updateData: any = {
         status: newStatus,
         updated_at: new Date().toISOString(),
@@ -333,6 +334,10 @@ export default function DashboardPage() {
 
       if (adminNotes !== undefined) {
         updateData.admin_notes = adminNotes;
+      }
+
+      if (newStatus === 'responded') {
+        updateData.responded_at = new Date().toISOString();
       }
 
       const { error } = await supabase.from('quotes').update(updateData).eq('id', quoteId);
@@ -348,6 +353,51 @@ export default function DashboardPage() {
       setQuotes(updatedQuotes);
 
       console.log(`Quote ${quoteId} updated to ${newStatus}`);
+
+      if (newStatus === 'responded') {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+        const customerEmail = targetQuote?.customer_email;
+
+        if (supabaseUrl && anonKey && customerEmail && estimatedPrice) {
+          try {
+            const response = await fetch(`${supabaseUrl}/functions/v1/send-quote-response`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${anonKey}`,
+              },
+              body: JSON.stringify({
+                quoteId,
+                estimatedPrice,
+                adminNotes: adminNotes || targetQuote?.admin_notes || '',
+                customerEmail,
+                customerName: targetQuote?.customer_name || 'Cliente',
+                eventType: targetQuote?.occasion || targetQuote?.theme || null,
+                eventDate: targetQuote?.event_date || null,
+              }),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || !result?.success) {
+              throw new Error(result?.error || 'Edge function error');
+            }
+
+            setShowSuccessMessage('✅ Cotización respondida y correo enviado al cliente');
+          } catch (notificationError) {
+            console.error('Error sending quote response email:', notificationError);
+            setShowSuccessMessage('⚠️ Cotización respondida, pero no se pudo enviar el correo automático');
+          }
+        } else {
+          setShowSuccessMessage('✅ Cotización marcada como respondida');
+          if (!customerEmail) {
+            console.warn('Quote responded without customer email; skipping notification.');
+          }
+        }
+
+        setTimeout(() => setShowSuccessMessage(''), 3000);
+      }
     } catch (error) {
       console.error('Supabase quote update error:', error);
     }
