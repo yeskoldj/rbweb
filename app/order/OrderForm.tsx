@@ -679,62 +679,17 @@ const initSquareCard = useCallback(async () => {
         cart_items: formattedItems,
       };
 
-      const fallbackCartSummary = formattedItems
-        .map((item: any) => {
-          const pricePart = item.isPricePending
-            ? ' (precio pendiente)'
-            : typeof item.price === 'number' && item.price > 0
-              ? ` ($${item.price})`
-              : '';
-
-          return `• ${item.quantity || 1} x ${item.name || 'Artículo'}${pricePart}${
-            item.details ? `\n   Detalles: ${item.details}` : ''
-          }`;
-        })
-        .join('\n');
-
-      const fallbackQuotePayload = {
-        ...baseQuotePayload,
-        event_details: `${summary}\n\nResumen del carrito (guardado automáticamente):\n${fallbackCartSummary}`.trim(),
-      };
-
       const { data, error } = await supabase
         .from('quotes')
         .insert([preferredQuotePayload])
         .select()
         .single();
 
-      let insertedQuote = data || {};
-
       if (error) {
-        const message = error?.message || '';
-        const missingCartColumn =
-          message.includes('cart_items') && message.includes('quotes');
-
-        if (!missingCartColumn) {
-          throw new Error(message);
-        }
-
-        console.warn(
-          'Supabase quotes table missing cart_items column; retrying insert sin snapshot',
-          error
-        );
-
-        const {
-          data: fallbackData,
-          error: fallbackError,
-        } = await supabase
-          .from('quotes')
-          .insert([fallbackQuotePayload])
-          .select()
-          .single();
-
-        if (fallbackError) {
-          throw new Error(fallbackError.message);
-        }
-
-        insertedQuote = fallbackData || {};
+        throw new Error(error?.message || 'No se pudo guardar la cotización.');
       }
+
+      const insertedQuote = data || {};
       const finalReference = insertedQuote.reference_code || referenceCode;
 
       try {
