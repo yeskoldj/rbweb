@@ -37,6 +37,10 @@ const isValidUUID = (value: string | undefined | null): boolean => {
   return uuidRegex.test(value);
 };
 
+const isMissingBillingColumn = (error: any): boolean => {
+  return typeof error?.message === 'string' && error.message.includes("'billing_address'");
+};
+
 // ======================
 
 serve(async (req) => {
@@ -139,6 +143,8 @@ serve(async (req) => {
           ? Math.round(orderData.tax * 100) / 100
           : Math.round((amountValue * 0.03) * 100) / 100;
 
+      const customerPhoneValue = orderData?.customerInfo?.phone?.trim() || '';
+      const billingAddressValue = orderData?.customerInfo?.billingAddress?.trim() || null;
       const existingOrderId = orderData?.orderId;
       if (existingOrderId && isValidUUID(existingOrderId)) {
         const updateData: Record<string, any> = {
@@ -161,16 +167,49 @@ serve(async (req) => {
           updateData.special_requests = orderData.specialRequests?.trim() || null;
         }
 
-        const { error: updateError } = await supabaseAdmin
+        if (orderData.customerInfo && orderData.customerInfo.phone !== undefined) {
+          updateData.customer_phone = customerPhoneValue || null;
+        }
+
+        if (orderData.customerInfo && orderData.customerInfo.billingAddress !== undefined) {
+          updateData.billing_address = billingAddressValue;
+        }
+
+        let { error: updateError } = await supabaseAdmin
           .from('orders')
           .update(updateData)
           .eq('id', existingOrderId)
           .select('id')
           .single();
 
+        if (updateError && isMissingBillingColumn(updateError)) {
+          console.warn("La columna 'billing_address' no existe al actualizar orden Square. Reintentando sin esa columna.");
+          const fallbackUpdate = { ...updateData };
+          delete fallbackUpdate.billing_address;
+          const retryUpdate = await supabaseAdmin
+            .from('orders')
+            .update(fallbackUpdate)
+            .eq('id', existingOrderId)
+            .select('id')
+            .single();
+
+          updateError = retryUpdate.error;
+        }
+
         if (updateError) {
           console.error('❌ Database update error:', updateError);
           throw new Error(`Payment ok but DB update error: ${updateError.message}`);
+        }
+
+        if (orderData?.userId && isValidUUID(orderData.userId) && customerPhoneValue) {
+          const { error: phoneUpdateError } = await supabaseAdmin
+            .from('profiles')
+            .update({ phone: customerPhoneValue, updated_at: new Date().toISOString() })
+            .eq('id', orderData.userId);
+
+          if (phoneUpdateError) {
+            console.warn('⚠️ No se pudo actualizar el teléfono del perfil (Square update):', phoneUpdateError.message);
+          }
         }
 
         console.log('✅ Orden Square actualizada:', existingOrderId);
@@ -196,7 +235,7 @@ serve(async (req) => {
 
       const { data: profile, error: profileError } = await supabaseAdmin
         .from('profiles')
-        .select('id')
+        .select('id, phone')
         .eq('id', userId)
         .single();
 
@@ -204,12 +243,24 @@ serve(async (req) => {
         throw new Error('User profile not found');
       }
 
+      const profilePhone = (profile as any)?.phone ? String((profile as any).phone).trim() : '';
+      if (customerPhoneValue && customerPhoneValue !== profilePhone) {
+        const { error: phoneUpdateError } = await supabaseAdmin
+          .from('profiles')
+          .update({ phone: customerPhoneValue, updated_at: new Date().toISOString() })
+          .eq('id', profile.id);
+
+        if (phoneUpdateError) {
+          console.warn('⚠️ No se pudo actualizar el teléfono del perfil (Square):', phoneUpdateError.message);
+        }
+      }
+
       const orderRecord: Record<string, any> = {
         user_id: profile.id,
         customer_name: orderData.customerInfo?.name?.trim() || 'Cliente',
-        customer_phone: orderData.customerInfo?.phone?.trim() || '',
+        customer_phone: customerPhoneValue,
         customer_email: orderData.customerInfo?.email?.trim() || null,
-        billing_address: orderData.customerInfo?.billingAddress?.trim() || null,
+        billing_address: billingAddressValue,
         items: orderData.items || [],
         subtotal: normalizedSubtotal,
         tax: normalizedTax,
@@ -231,11 +282,29 @@ serve(async (req) => {
         total: orderRecord.total,
       });
 
-      const { data: insertedOrder, error: dbError } = await supabaseAdmin
+      const storedBillingValue = orderRecord.billing_address ?? null;
+
+      let { data: insertedOrder, error: dbError } = await supabaseAdmin
         .from('orders')
         .insert([orderRecord])
         .select('id')
         .single();
+
+      if (dbError && isMissingBillingColumn(dbError)) {
+        console.warn("La columna 'billing_address' no existe al insertar orden Square. Reintentando sin esa columna.");
+        const fallbackRecord = { ...orderRecord };
+        delete fallbackRecord.billing_address;
+        const retryInsert = await supabaseAdmin
+          .from('orders')
+          .insert([fallbackRecord])
+          .select('id')
+          .single();
+
+        dbError = retryInsert.error;
+        insertedOrder = retryInsert.data
+          ? { ...retryInsert.data, billing_address: storedBillingValue }
+          : retryInsert.data;
+      }
 
       if (dbError) {
         console.error('❌ Database error:', dbError);

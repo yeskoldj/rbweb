@@ -23,6 +23,10 @@ const isValidUUID = (value: string | undefined | null): boolean => {
   return uuidRegex.test(value);
 }
 
+const isMissingBillingColumn = (error: any): boolean => {
+  return typeof error?.message === 'string' && error.message.includes("'billing_address'");
+};
+
 serve(async (req) => {
   const origin = req.headers.get('origin') || ''
   if (ALLOWED_ORIGIN !== '*' && origin && origin !== ALLOWED_ORIGIN) {
@@ -66,12 +70,27 @@ serve(async (req) => {
 
       const { data: profile, error: profileError } = await supabaseAdmin
         .from('profiles')
-        .select('id')
+        .select('id, phone')
         .eq('id', userId)
         .single()
 
       if (profileError || !profile?.id) {
         throw new Error('User profile not found')
+      }
+
+      const profilePhone = (profile as any)?.phone ? String((profile as any).phone).trim() : ''
+      const customerPhoneValue = orderData.customerInfo?.phone?.trim() || ''
+      const billingAddressValue = orderData.customerInfo?.billingAddress?.trim() || null
+
+      if (customerPhoneValue && customerPhoneValue !== profilePhone) {
+        const { error: phoneUpdateError } = await supabaseAdmin
+          .from('profiles')
+          .update({ phone: customerPhoneValue, updated_at: new Date().toISOString() })
+          .eq('id', profile.id)
+
+        if (phoneUpdateError) {
+          console.warn('⚠️ No se pudo actualizar el teléfono del perfil (P2P):', phoneUpdateError.message)
+        }
       }
 
       // Calcular montos (orderData.amount representa el subtotal)
@@ -114,12 +133,32 @@ serve(async (req) => {
           updateData.pickup_time = orderData.pickupTime || null
         }
 
-        const { error: updateError } = await supabaseAdmin
+        if (customerPhoneValue) {
+          updateData.customer_phone = customerPhoneValue
+        }
+
+        updateData.billing_address = billingAddressValue
+
+        let { error: updateError } = await supabaseAdmin
           .from('orders')
           .update(updateData)
           .eq('id', existingOrderId)
           .select('id, p2p_reference')
           .single()
+
+        if (updateError && isMissingBillingColumn(updateError)) {
+          console.warn("La columna 'billing_address' no existe al actualizar la orden P2P. Reintentando sin esa columna.")
+          const fallbackUpdate = { ...updateData }
+          delete fallbackUpdate.billing_address
+          const retryUpdate = await supabaseAdmin
+            .from('orders')
+            .update(fallbackUpdate)
+            .eq('id', existingOrderId)
+            .select('id, p2p_reference')
+            .single()
+
+          updateError = retryUpdate.error
+        }
 
         if (updateError) {
           console.error('❌ Supabase update error:', updateError)
@@ -141,9 +180,9 @@ serve(async (req) => {
       const orderRecord: any = {
         user_id: profile.id,
         customer_name: orderData.customerInfo?.name?.trim() || 'Cliente',
-        customer_phone: orderData.customerInfo?.phone?.trim() || '',
+        customer_phone: customerPhoneValue,
         customer_email: orderData.customerInfo?.email?.trim() || null,
-        billing_address: orderData.customerInfo?.billingAddress?.trim() || null,
+        billing_address: billingAddressValue,
         items: orderData.items || [],
         subtotal,
         tax,
@@ -170,11 +209,29 @@ serve(async (req) => {
         total: orderRecord.total
       })
 
-      const { data: insertedOrder, error: dbError } = await supabaseAdmin
+      const storedBillingValue = orderRecord.billing_address ?? null
+
+      let { data: insertedOrder, error: dbError } = await supabaseAdmin
         .from('orders')
         .insert([orderRecord])
         .select('id, p2p_reference')
         .single()
+
+      if (dbError && isMissingBillingColumn(dbError)) {
+        console.warn("La columna 'billing_address' no existe al insertar orden P2P. Reintentando sin esa columna.")
+        const fallbackRecord = { ...orderRecord }
+        delete fallbackRecord.billing_address
+        const retryInsert = await supabaseAdmin
+          .from('orders')
+          .insert([fallbackRecord])
+          .select('id, p2p_reference')
+          .single()
+
+        dbError = retryInsert.error
+        insertedOrder = retryInsert.data
+          ? { ...retryInsert.data, billing_address: storedBillingValue }
+          : retryInsert.data
+      }
 
       if (dbError) {
         console.error('❌ Supabase insert error:', dbError)

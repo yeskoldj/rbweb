@@ -2,6 +2,7 @@ export interface StoredUser {
   id: string;
   email: string;
   fullName?: string;
+  phone?: string;
   isOwner?: boolean;
   role?: string;
   expiresAt: number;
