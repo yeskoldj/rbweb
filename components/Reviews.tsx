@@ -21,6 +21,9 @@ export default function Reviews() {
   const [loading, setLoading] = useState(true);
   const [averageRating, setAverageRating] = useState(0);
   const [totalReviews, setTotalReviews] = useState(0);
+  const [setupRequired, setSetupRequired] = useState(false);
+  const [missingSupabaseUrl, setMissingSupabaseUrl] = useState(false);
+  const [apiError, setApiError] = useState(false);
 
   useEffect(() => {
     fetchGoogleReviews();
@@ -29,17 +32,52 @@ export default function Reviews() {
   const fetchGoogleReviews = async () => {
     try {
       setLoading(true);
-      
+      setSetupRequired(false);
+      setMissingSupabaseUrl(false);
+      setApiError(false);
+
       // Simulando delay de API para mostrar loading
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Estado vacío ya que no tenemos reseñas reales aún
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+      if (!supabaseUrl) {
+        setMissingSupabaseUrl(true);
+        setSetupRequired(true);
+        setReviews([]);
+        setTotalReviews(0);
+        setAverageRating(0);
+        return;
+      }
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/google-reviews`, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (response.ok && data?.success) {
+        setReviews(Array.isArray(data.reviews) ? data.reviews : []);
+        setTotalReviews(typeof data.totalReviews === 'number' ? data.totalReviews : 0);
+        setAverageRating(typeof data.averageRating === 'number' ? data.averageRating : 0);
+        return;
+      }
+
+      if (data?.setupRequired) {
+        setSetupRequired(true);
+      } else {
+        setApiError(true);
+      }
+
       setReviews([]);
       setTotalReviews(0);
       setAverageRating(0);
-      
+
     } catch (error) {
       console.error('Error fetching reviews:', error);
+      setApiError(true);
+      setReviews([]);
+      setTotalReviews(0);
+      setAverageRating(0);
     } finally {
       setLoading(false);
     }
@@ -90,6 +128,28 @@ export default function Reviews() {
       <h3 className="text-2xl font-bold text-amber-800 mb-6 text-center">
         {t('clientReviews')}
       </h3>
+
+      {setupRequired && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-amber-900">
+          <h4 className="font-semibold mb-2">{t('reviewsSetupPendingTitle')}</h4>
+          <p className="text-sm mb-3">{t('reviewsSetupPendingDescription')}</p>
+          <ul className="list-disc pl-5 space-y-1 text-sm">
+            <li>{t('reviewsSetupStepApiKey')}</li>
+            <li>{t('reviewsSetupStepPlaceId')}</li>
+            <li>{t('reviewsSetupStepDeploy')}</li>
+          </ul>
+          <p className="text-xs mt-3">{t('reviewsSetupViewDocs')}</p>
+          {missingSupabaseUrl && (
+            <p className="text-xs mt-2 text-red-600">{t('reviewsSetupMissingSupabase')}</p>
+          )}
+        </div>
+      )}
+
+      {apiError && !setupRequired && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-red-700 text-sm">
+          {t('reviewsSetupError')}
+        </div>
+      )}
 
       {/* Resumen de Calificaciones */}
       <div className="bg-white rounded-xl shadow-lg p-6 mb-6">

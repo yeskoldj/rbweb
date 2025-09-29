@@ -133,6 +133,19 @@ export const translations = {
     shareExperience: "Compartir tu experiencia",
     viewOnGoogleMaps: "Ver en Google Maps",
     loadingReviews: "Cargando reseñas...",
+    reviewsSetupPendingTitle: "Integración con Google Reviews pendiente",
+    reviewsSetupPendingDescription:
+      "Para mostrar tus reseñas de Google aquí, conecta el perfil del negocio con el API de Google Places.",
+    reviewsSetupStepApiKey:
+      "Agrega GOOGLE_PLACES_API_KEY en las variables de entorno del Edge Function google-reviews.",
+    reviewsSetupStepPlaceId:
+      "Agrega GOOGLE_PLACES_PLACE_ID con el Place ID oficial de la panadería.",
+    reviewsSetupStepDeploy:
+      "Vuelve a desplegar el Edge Function google-reviews después de guardar los cambios.",
+    reviewsSetupViewDocs: "Consulta docs/google-reviews-setup.md para la guía paso a paso.",
+    reviewsSetupMissingSupabase:
+      "Falta configurar NEXT_PUBLIC_SUPABASE_URL para llamar al Edge Function de Google Reviews.",
+    reviewsSetupError: "No pudimos cargar las reseñas de Google en este momento. Intenta de nuevo más tarde.",
     
     // Common
     loading: "Cargando...",
@@ -325,6 +338,19 @@ export const translations = {
     shareExperience: "Share your experience",
     viewOnGoogleMaps: "View on Google Maps",
     loadingReviews: "Loading reviews...",
+    reviewsSetupPendingTitle: "Google Reviews integration pending",
+    reviewsSetupPendingDescription:
+      "Connect your Google Business Profile to the Google Places API so your reviews appear here.",
+    reviewsSetupStepApiKey:
+      "Add GOOGLE_PLACES_API_KEY to the google-reviews Edge Function environment variables.",
+    reviewsSetupStepPlaceId:
+      "Add GOOGLE_PLACES_PLACE_ID with the bakery's official Place ID.",
+    reviewsSetupStepDeploy:
+      "Redeploy the google-reviews Edge Function after saving the environment variables.",
+    reviewsSetupViewDocs: "See docs/google-reviews-setup.md for the step-by-step guide.",
+    reviewsSetupMissingSupabase:
+      "NEXT_PUBLIC_SUPABASE_URL is not configured, so the site cannot call the google-reviews Edge Function.",
+    reviewsSetupError: "We couldn't load Google reviews right now. Please try again later.",
     
     // Common
     loading: "Loading...",
