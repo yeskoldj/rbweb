@@ -40,6 +40,17 @@ interface Quote {
   reference_code?: string | null;
 }
 
+interface OrderItem {
+  name: string;
+  quantity: number;
+  price?: number | string | null;
+  price_label?: string | null;
+  isPricePending?: boolean;
+  details?: string | null;
+  photoUrl?: string | null;
+  type?: string | null;
+}
+
 const quoteStatusColors: Record<QuoteStatus, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
   responded: 'bg-blue-100 text-blue-800',
@@ -65,6 +76,11 @@ export default function DashboardPage() {
   const [deletingOrder, setDeletingOrder] = useState<string | null>(null);
   const [employeeCancelRequest, setEmployeeCancelRequest] = useState<string | null>(null);
   const [pendingCancelRequests, setPendingCancelRequests] = useState<{[key: string]: any}>({});
+  const [priceApprovalOrder, setPriceApprovalOrder] = useState<Order | null>(null);
+  const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
+  const [taxInput, setTaxInput] = useState('0.00');
+  const [isSavingPrice, setIsSavingPrice] = useState(false);
+  const [priceError, setPriceError] = useState<string | null>(null);
   const router = useRouter();
 
   // -------------------------------------------------------------------------
@@ -133,6 +149,256 @@ export default function DashboardPage() {
       }
     }
     setLoading(false);
+  };
+
+  const normalizePriceString = (value: string) =>
+    value.replace(/[^0-9.,-]/g, '').replace(',', '.');
+
+  const parsePriceValue = (value: number | string | null | undefined) => {
+    if (typeof value === 'number') {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+
+      if (normalized.includes('pendiente') || normalized.includes('cotiza')) {
+        return 0;
+      }
+
+      const parsed = parseFloat(normalizePriceString(value));
+      return Number.isNaN(parsed) ? 0 : parsed;
+    }
+
+    return 0;
+  };
+
+  const isItemPricePending = (item: OrderItem) => {
+    if (!item) return false;
+    if (item.isPricePending) return true;
+    if (item.price === null || typeof item.price === 'undefined') return true;
+
+    if (typeof item.price === 'string') {
+      const normalized = item.price.toLowerCase();
+      if (normalized.includes('pendiente') || normalized.includes('cotiza')) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  const orderHasPendingPrice = (order: Order) => {
+    const items = Array.isArray(order.items) ? (order.items as OrderItem[]) : [];
+    const pendingItem = items.some((item) => isItemPricePending(item));
+    return pendingItem || !order.total || order.total <= 0;
+  };
+
+  const formatOrderItemPrice = (item: OrderItem) => {
+    if (isItemPricePending(item)) {
+      return item.price_label || 'Precio pendiente de aprobación';
+    }
+
+    if (typeof item.price === 'number') {
+      return `$${item.price.toFixed(2)}`;
+    }
+
+    if (typeof item.price === 'string') {
+      const trimmed = item.price.trim();
+      if (!trimmed) {
+        return '$0.00';
+      }
+
+      if (trimmed.startsWith('$')) {
+        return trimmed;
+      }
+
+      const parsed = parseFloat(normalizePriceString(trimmed));
+      return Number.isNaN(parsed) ? trimmed : `$${parsed.toFixed(2)}`;
+    }
+
+    return '$0.00';
+  };
+
+  const formatOrderTotal = (order: Order) => {
+    if (orderHasPendingPrice(order)) {
+      return 'Precio pendiente';
+    }
+
+    const value = typeof order.total === 'number'
+      ? order.total
+      : parseFloat(normalizePriceString(String(order.total ?? 0)));
+
+    if (Number.isNaN(value)) {
+      return '$0.00';
+    }
+
+    return `$${value.toFixed(2)}`;
+  };
+
+  const parseInputToNumber = (value: string) => {
+    if (!value) return null;
+    const normalized = value.replace(',', '.');
+    const parsed = parseFloat(normalized);
+    return Number.isNaN(parsed) ? null : parsed;
+  };
+
+  const computeSubtotalPreview = (order: Order, overrides: Record<string, string>) => {
+    const items = Array.isArray(order.items) ? (order.items as OrderItem[]) : [];
+
+    return items.reduce((total, item, index) => {
+      const quantity = Number(item.quantity) || 1;
+
+      if (isItemPricePending(item)) {
+        const override = parseInputToNumber(overrides[String(index)]) || 0;
+        return total + override * quantity;
+      }
+
+      return total + parsePriceValue(item.price) * quantity;
+    }, 0);
+  };
+
+  const openPriceModal = (order: Order) => {
+    const items = Array.isArray(order.items) ? (order.items as OrderItem[]) : [];
+    const inputs: Record<string, string> = {};
+
+    items.forEach((item, index) => {
+      if (isItemPricePending(item)) {
+        if (typeof item.price === 'number' && item.price > 0) {
+          inputs[String(index)] = item.price.toFixed(2);
+        } else {
+          inputs[String(index)] = '';
+        }
+      }
+    });
+
+    setPriceApprovalOrder(order);
+    setPriceInputs(inputs);
+    setTaxInput(order.tax ? order.tax.toFixed(2) : '0.00');
+    setPriceError(null);
+  };
+
+  const closePriceModal = () => {
+    setPriceApprovalOrder(null);
+    setPriceInputs({});
+    setTaxInput('0.00');
+    setPriceError(null);
+    setIsSavingPrice(false);
+  };
+
+  const submitPriceApproval = async () => {
+    if (!priceApprovalOrder) {
+      return;
+    }
+
+    const items = Array.isArray(priceApprovalOrder.items)
+      ? (priceApprovalOrder.items as OrderItem[])
+      : [];
+
+    const pendingEntries = items
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => isItemPricePending(item));
+
+    if (pendingEntries.length === 0) {
+      setPriceError('No hay artículos pendientes de precio en esta orden.');
+      return;
+    }
+
+    for (const { index } of pendingEntries) {
+      const parsed = parseInputToNumber(priceInputs[String(index)]);
+      if (parsed === null || parsed <= 0) {
+        setPriceError('Ingresa un precio válido para todos los artículos pendientes.');
+        return;
+      }
+    }
+
+    const parsedTax = parseInputToNumber(taxInput);
+    if (parsedTax !== null && parsedTax < 0) {
+      setPriceError('El impuesto no puede ser negativo.');
+      return;
+    }
+
+    const updatedItems = items.map((item, index) => {
+      if (!isItemPricePending(item)) {
+        return item;
+      }
+
+      const parsed = parseInputToNumber(priceInputs[String(index)]) || 0;
+      const roundedPrice = Number(parsed.toFixed(2));
+      const updatedLabel = item.price_label && item.price_label.toLowerCase().includes('pendiente')
+        ? `Precio aprobado: $${roundedPrice.toFixed(2)}`
+        : item.price_label;
+
+      return {
+        ...item,
+        price: roundedPrice,
+        isPricePending: false,
+        ...(updatedLabel ? { price_label: updatedLabel } : {}),
+      };
+    });
+
+    const subtotal = computeSubtotalPreview(priceApprovalOrder, priceInputs);
+    const roundedSubtotal = Number(subtotal.toFixed(2));
+    const taxValue = parsedTax ? Number(parsedTax.toFixed(2)) : 0;
+    const totalValue = Number((roundedSubtotal + taxValue).toFixed(2));
+
+    const pendingMessage = 'Estado: Esperando confirmación de precio personalizado.';
+    const approvedMessage = 'Estado: Precio aprobado por la panadería. Puedes proceder con el pago.';
+
+    const updatedSpecialRequests = priceApprovalOrder.special_requests
+      ? priceApprovalOrder.special_requests.includes(approvedMessage)
+        ? priceApprovalOrder.special_requests
+        : priceApprovalOrder.special_requests.includes(pendingMessage)
+          ? priceApprovalOrder.special_requests.replace(pendingMessage, approvedMessage)
+          : `${priceApprovalOrder.special_requests}\n\n${approvedMessage}`
+      : approvedMessage;
+
+    setIsSavingPrice(true);
+    setPriceError(null);
+
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .update({
+          items: updatedItems,
+          subtotal: roundedSubtotal,
+          tax: taxValue,
+          total: totalValue,
+          payment_status: 'pending',
+          special_requests: updatedSpecialRequests,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', priceApprovalOrder.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error approving price:', error);
+        setPriceError('No se pudo guardar el precio. Inténtalo nuevamente.');
+        return;
+      }
+
+      const nextOrder: Order = {
+        ...priceApprovalOrder,
+        ...(data || {}),
+        items: updatedItems as any,
+        subtotal: roundedSubtotal,
+        tax: taxValue,
+        total: totalValue,
+        payment_status: 'pending',
+        special_requests: updatedSpecialRequests,
+      };
+
+      setOrders((prev) => prev.map((order) => (order.id === nextOrder.id ? nextOrder : order)));
+      setShowSuccessMessage('✅ Precio aprobado y enviado al cliente.');
+      setTimeout(() => setShowSuccessMessage(''), 3000);
+      closePriceModal();
+    } catch (error) {
+      console.error('Unexpected error approving price:', error);
+      setPriceError('Ocurrió un error inesperado al guardar el precio.');
+    } finally {
+      setIsSavingPrice(false);
+    }
   };
 
   // -------------------------------------------------------------------------
@@ -623,6 +889,29 @@ export default function DashboardPage() {
     return 'Usuario';
   };
 
+  const pendingPriceItems = priceApprovalOrder
+    ? (Array.isArray(priceApprovalOrder.items)
+        ? (priceApprovalOrder.items as OrderItem[])
+            .map((item, index) => ({ item, index }))
+            .filter(({ item }) => isItemPricePending(item))
+        : [])
+    : [];
+
+  const previewSubtotal = priceApprovalOrder
+    ? computeSubtotalPreview(priceApprovalOrder, priceInputs)
+    : 0;
+  const previewSubtotalRounded = Number(previewSubtotal.toFixed(2));
+  const parsedPreviewTax = parseInputToNumber(taxInput);
+  const previewTaxRounded = parsedPreviewTax ? Number(parsedPreviewTax.toFixed(2)) : 0;
+  const previewTotalRounded = Number((previewSubtotalRounded + previewTaxRounded).toFixed(2));
+
+  const isPriceSaveDisabled =
+    isSavingPrice ||
+    pendingPriceItems.some(({ index }) => {
+      const parsed = parseInputToNumber(priceInputs[String(index)]);
+      return parsed === null || parsed <= 0;
+    });
+
   // -------------------------------------------------------------------------
   // Loading / auth UI
   // -------------------------------------------------------------------------
@@ -675,19 +964,19 @@ export default function DashboardPage() {
                 <h3 className="text-lg font-bold text-red-800">Solicitudes de Cancelación Pendientes</h3>
               </div>
               
-              <div className="space-y-3">
-                {Object.entries(pendingCancelRequests).map(([orderId, request]) => (
-                  <div key={orderId} className="bg-white rounded-lg p-4 border border-red-200">
-                    <div className="flex items-center justify-between mb-2">
-                      <div>
-                        <h4 className="font-bold text-gray-800">{request.order.customer_name}</h4>
-                        <p className="text-sm text-gray-600">Pedido #{request.order.p2p_reference ?? orderId.slice(-8)}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-red-600">${request.order.total.toFixed(2)}</p>
-                        <p className="text-xs text-gray-500">Solicitado por: {request.requestedBy}</p>
-                      </div>
-                    </div>
+      <div className="space-y-3">
+        {Object.entries(pendingCancelRequests).map(([orderId, request]) => (
+          <div key={orderId} className="bg-white rounded-lg p-4 border border-red-200">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <h4 className="font-bold text-gray-800">{request.order.customer_name}</h4>
+                <p className="text-sm text-gray-600">Pedido #{request.order.p2p_reference ?? orderId.slice(-8)}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-lg font-bold text-red-600">{formatOrderTotal(request.order)}</p>
+                <p className="text-xs text-gray-500">Solicitado por: {request.requestedBy}</p>
+              </div>
+            </div>
                     
                     <div className="flex space-x-2 mt-3">
                       <button
@@ -950,7 +1239,7 @@ export default function DashboardPage() {
                                 <div className="text-right">
                                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total</p>
                                   <p className="text-lg font-bold text-pink-600">
-                                    ${typeof order.total === 'number' ? order.total.toFixed(2) : order.total}
+                                    {formatOrderTotal(order)}
                                   </p>
                                   <span className="mt-2 inline-flex items-center justify-center rounded-full bg-white px-3 py-1 text-xs font-semibold capitalize text-gray-700 shadow">
                                     {order.status}
@@ -1014,38 +1303,46 @@ export default function DashboardPage() {
                               </div>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <div className="text-right">
-                                <p className="text-2xl font-bold text-pink-600">${order.total.toFixed(2)}</p>
-                                <span
-                                  className={`px-3 py-1 rounded-full text-xs font-bold ${statusColors[order.status]} shadow-sm`}
-                                >
-                                  <i
-                                    className={`${
-                                      order.status === 'pending'
-                                        ? 'ri-timer-line'
-                                        : order.status === 'baking'
-                                        ? 'ri-fire-line'
-                                        : order.status === 'decorating'
-                                        ? 'ri-brush-line'
-                                        : order.status === 'ready'
-                                        ? 'ri-check-line'
-                                        : order.status === 'completed'
-                                        ? 'ri-check-double-line'
-                                        : 'ri-close-line'
-                                    } mr-1`}
-                                  ></i>
-                                  {order.status === 'pending'
-                                    ? 'Pendiente'
-                                    : order.status === 'baking'
-                                    ? 'Horneando'
-                                    : order.status === 'decorating'
-                                    ? 'Decorando'
-                                    : order.status === 'ready'
-                                    ? 'Listo'
-                                    : order.status === 'completed'
-                                    ? 'Completado'
-                                    : 'Cancelado'}
-                                </span>
+                              <div className="text-right space-y-2">
+                                <p className="text-2xl font-bold text-pink-600">{formatOrderTotal(order)}</p>
+                                <div className="flex items-center justify-end gap-2">
+                                  <span
+                                    className={`px-3 py-1 rounded-full text-xs font-bold ${statusColors[order.status]} shadow-sm`}
+                                  >
+                                    <i
+                                      className={`${
+                                        order.status === 'pending'
+                                          ? 'ri-timer-line'
+                                          : order.status === 'baking'
+                                          ? 'ri-fire-line'
+                                          : order.status === 'decorating'
+                                          ? 'ri-brush-line'
+                                          : order.status === 'ready'
+                                          ? 'ri-check-line'
+                                          : order.status === 'completed'
+                                          ? 'ri-check-double-line'
+                                          : 'ri-close-line'
+                                      } mr-1`}
+                                    ></i>
+                                    {order.status === 'pending'
+                                      ? 'Pendiente'
+                                      : order.status === 'baking'
+                                      ? 'Horneando'
+                                      : order.status === 'decorating'
+                                      ? 'Decorando'
+                                      : order.status === 'ready'
+                                      ? 'Listo'
+                                      : order.status === 'completed'
+                                      ? 'Completado'
+                                      : 'Cancelado'}
+                                  </span>
+                                  {orderHasPendingPrice(order) && (
+                                    <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                                      <i className="ri-hourglass-2-line"></i>
+                                      Precio pendiente
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                               {/* Only show delete button for owners */}
                               {currentUser?.role === 'owner' && (
@@ -1074,7 +1371,7 @@ export default function DashboardPage() {
                                     </div>
                                     <span className="text-sm font-medium text-gray-700">{item.name}</span>
                                   </div>
-                                  <span className="text-sm font-bold text-gray-800">{item.price}</span>
+                                  <span className="text-sm font-bold text-gray-800">{formatOrderItemPrice(item)}</span>
                                 </div>
                               ))}
                             </div>
@@ -1092,11 +1389,22 @@ export default function DashboardPage() {
                             </div>
                           )}
 
-                          <div className="flex space-x-2">
+                          <div className="flex flex-wrap gap-2">
+                            {currentUser?.role === 'owner' && orderHasPendingPrice(order) && (
+                              <button
+                                onClick={() => openPriceModal(order)}
+                                className="flex-1 min-w-[200px] bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 px-4 rounded-xl text-sm font-bold !rounded-button hover:from-amber-600 hover:to-orange-600 transition-all transform hover:scale-105 shadow-lg"
+                                type="button"
+                              >
+                                <i className="ri-cash-line mr-2"></i>
+                                Someter precio
+                              </button>
+                            )}
                             {order.status === 'pending' && (
                               <button
                                 onClick={() => updateOrderStatus(order.id, 'baking')}
                                 className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 px-4 rounded-xl text-sm font-bold !rounded-button hover:from-orange-600 hover:to-red-600 transition-all transform hover:scale-105 shadow-lg"
+                                type="button"
                               >
                                 <i className="ri-fire-line mr-2"></i>
                                 Iniciar Horneado
@@ -1106,6 +1414,7 @@ export default function DashboardPage() {
                               <button
                                 onClick={() => updateOrderStatus(order.id, 'decorating')}
                                 className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 px-4 rounded-xl text-sm font-bold !rounded-button hover:from-purple-600 hover:to-pink-600 transition-all transform hover:scale-105 shadow-lg"
+                                type="button"
                               >
                                 <i className="ri-brush-line mr-2"></i>
                                 Iniciar Decoración
@@ -1115,6 +1424,7 @@ export default function DashboardPage() {
                               <button
                                 onClick={() => updateOrderStatus(order.id, 'ready')}
                                 className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white py-3 px-4 rounded-xl text-sm font-bold !rounded-button hover:from-green-600 hover:to-emerald-600 transition-all transform hover:scale-105 shadow-lg"
+                                type="button"
                               >
                                 <i className="ri-check-line mr-2"></i>
                                 Marcar Listo
@@ -1124,6 +1434,7 @@ export default function DashboardPage() {
                               <button
                                 onClick={() => updateOrderStatus(order.id, 'completed')}
                                 className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-500 text-white py-3 px-4 rounded-xl text-sm font-bold !rounded-button hover:from-blue-600 hover:to-indigo-600 transition-all transform hover:scale-105 shadow-lg"
+                                type="button"
                               >
                                 <i className="ri-check-double-line mr-2"></i>
                                 Completar Pedido
@@ -1136,17 +1447,25 @@ export default function DashboardPage() {
                                 onClick={() => updateOrderStatus(order.id, 'cancelled')}
                                 className="bg-gradient-to-r from-red-500 to-red-600 text-white py-3 px-4 rounded-xl text-sm font-bold !rounded-button hover:from-red-600 hover:to-red-700 transition-all transform hover:scale-105 shadow-lg"
                                 title={currentUser?.role === 'employee' ? 'Solicitar cancelación al propietario' : 'Cancelar pedido'}
+                                type="button"
                               >
                                 <i className="ri-close-line mr-2"></i>
                                 {currentUser?.role === 'employee' ? 'Solicitar Cancelar' : 'Cancelar'}
                               </button>
                             )}
-                            
+
                             <button
-                              onClick={() => window.open(`tel:${order.customer_phone}`, '_self')}
-                              className="bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 py-3 px-4 rounded-xl text-sm font-bold !rounded-button hover:from-gray-200 hover:to-gray-300 transition-all transform hover:scale-105 shadow-lg"
+                              onClick={() => {
+                                if (order.customer_phone) {
+                                  window.open(`tel:${order.customer_phone}`, '_self');
+                                }
+                              }}
+                              className="flex items-center justify-center gap-2 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 py-3 px-4 rounded-xl text-sm font-bold !rounded-button hover:from-gray-200 hover:to-gray-300 transition-all transform hover:scale-105 shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
+                              disabled={!order.customer_phone}
+                              type="button"
                             >
                               <i className="ri-phone-line text-lg"></i>
+                              <span>Llamar</span>
                             </button>
                           </div>
                         </div>
@@ -1242,6 +1561,139 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {priceApprovalOrder && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 px-4 py-6"
+          onClick={closePriceModal}
+        >
+          <div
+            className="relative w-full max-w-2xl rounded-2xl bg-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              onClick={closePriceModal}
+              className="absolute right-4 top-4 rounded-full bg-gray-100 p-2 text-gray-500 hover:bg-gray-200 hover:text-gray-700"
+              type="button"
+            >
+              <i className="ri-close-line text-lg"></i>
+            </button>
+
+            <div className="space-y-6 p-6">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Definir precio final</h3>
+                <p className="mt-1 text-sm text-gray-600">
+                  Ingresa el precio por artículo para aprobar la orden y permitir que el cliente pague.
+                </p>
+              </div>
+
+              {priceError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  {priceError}
+                </div>
+              )}
+
+              {pendingPriceItems.length === 0 ? (
+                <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-700">
+                  No se detectaron artículos pendientes de precio en esta orden.
+                </div>
+              ) : (
+                <div className="max-h-64 space-y-3 overflow-y-auto pr-1">
+                  {pendingPriceItems.map(({ item, index }) => (
+                    <div
+                      key={`${priceApprovalOrder.id}-item-${index}`}
+                      className="rounded-xl border border-amber-200 bg-amber-50 p-4"
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-amber-800">{item.name}</p>
+                          <p className="text-xs text-amber-700">Cantidad: {item.quantity}</p>
+                          {item.details && (
+                            <p className="mt-2 whitespace-pre-line text-xs text-amber-700">{item.details}</p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <label className="mb-1 block text-xs font-medium text-amber-700">
+                            Precio unitario ($)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={priceInputs[String(index)] ?? ''}
+                            onChange={(event) =>
+                              setPriceInputs((prev) => ({ ...prev, [String(index)]: event.target.value }))
+                            }
+                            className="w-32 rounded-lg border border-amber-300 px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Impuestos adicionales ($)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={taxInput}
+                    onChange={(event) => setTaxInput(event.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-200"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Ingresa 0 si el impuesto ya está incluido.</p>
+                </div>
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Subtotal estimado:</span>
+                    <span className="font-semibold text-gray-900">${previewSubtotalRounded.toFixed(2)}</span>
+                  </div>
+                  <div className="mt-1 flex justify-between">
+                    <span className="text-gray-600">Impuestos:</span>
+                    <span className="font-semibold text-gray-900">${previewTaxRounded.toFixed(2)}</span>
+                  </div>
+                  <div className="mt-2 flex justify-between border-t pt-2">
+                    <span className="text-gray-700">Total al cliente:</span>
+                    <span className="text-lg font-bold text-pink-600">${previewTotalRounded.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  onClick={closePriceModal}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-100 sm:w-auto"
+                  type="button"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={submitPriceApproval}
+                  className="w-full rounded-lg bg-gradient-to-r from-pink-500 to-purple-500 px-4 py-3 text-sm font-bold text-white shadow-lg transition-all hover:from-pink-600 hover:to-purple-600 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                  disabled={isPriceSaveDisabled || pendingPriceItems.length === 0}
+                  type="button"
+                >
+                  {isSavingPrice ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                      Guardando...
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      <i className="ri-send-plane-fill"></i>
+                      Guardar y notificar
+                    </span>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <TabBar />
     </div>
   );

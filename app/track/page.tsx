@@ -6,6 +6,16 @@ import { supabase } from '../../lib/supabase';
 import Header from '../../components/Header';
 import TabBar from '../../components/TabBar';
 
+interface OrderItem {
+  name: string;
+  quantity: number;
+  price?: number | string | null;
+  details?: string;
+  photoUrl?: string;
+  isPricePending?: boolean;
+  price_label?: string;
+}
+
 interface Order {
   id: string;
   p2p_reference?: string | null;
@@ -13,7 +23,7 @@ interface Order {
   customer_name: string;
   customer_phone: string;
   customer_email?: string;
-  items: any[];
+  items: OrderItem[];
   subtotal: number;
   tax: number;
   total: number;
@@ -122,6 +132,78 @@ export default function TrackOrderPage() {
 
   const normalizeStatus = (status: string) =>
     status === 'baking' || status === 'decorating' ? 'pending' : status;
+
+  const getNumericPrice = (value: number | string | null | undefined) => {
+    if (typeof value === 'number') {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const normalized = value.toLowerCase();
+      if (normalized.includes('pendiente') || normalized.includes('cotiza')) {
+        return 0;
+      }
+
+      const parsed = parseFloat(value.replace(/[^0-9.,-]/g, '').replace(',', '.'));
+      return Number.isNaN(parsed) ? 0 : parsed;
+    }
+
+    return 0;
+  };
+
+  const isItemPricePending = (item: OrderItem) => {
+    if (item?.isPricePending) {
+      return true;
+    }
+
+    if (item?.price === null || typeof item?.price === 'undefined') {
+      return true;
+    }
+
+    if (typeof item.price === 'string') {
+      const normalized = item.price.toLowerCase();
+      if (normalized.includes('pendiente') || normalized.includes('cotiza')) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  const hasPendingPrice = (order: Order) => {
+    if (!Array.isArray(order.items)) {
+      return order.total <= 0;
+    }
+
+    const pendingItems = order.items.some((item) => isItemPricePending(item));
+    return pendingItems || !order.total || order.total <= 0;
+  };
+
+  const formatItemPrice = (item: OrderItem) => {
+    if (isItemPricePending(item)) {
+      return item.price_label || 'Pendiente de aprobación';
+    }
+
+    if (typeof item.price === 'number') {
+      return `$${item.price.toFixed(2)}`;
+    }
+
+    if (typeof item.price === 'string') {
+      const normalized = item.price.trim();
+      if (!normalized) {
+        return '$0.00';
+      }
+
+      if (normalized.startsWith('$')) {
+        return normalized;
+      }
+
+      const parsed = getNumericPrice(normalized);
+      return `$${parsed.toFixed(2)}`;
+    }
+
+    return '$0.00';
+  };
 
   const getStatusColor = (status: string) => {
     const normalized = normalizeStatus(status);
@@ -280,7 +362,11 @@ export default function TrackOrderPage() {
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-2xl font-bold text-pink-600">${order.total.toFixed(2)}</p>
+                        <p className="text-2xl font-bold text-pink-600">
+                          {hasPendingPrice(order)
+                            ? 'Precio pendiente'
+                            : `$${order.total.toFixed(2)}`}
+                        </p>
                         <div className={`px-4 py-2 rounded-full text-sm font-bold border ${getStatusColor(order.status)}`}>
                           <i className={`${getStatusIcon(order.status)} mr-2`}></i>
                           {getStatusLabel(order.status)}
@@ -381,7 +467,7 @@ export default function TrackOrderPage() {
                                 )}
                               </div>
                             </div>
-                            <span className="font-bold text-gray-800">{typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : item.price}</span>
+                            <span className="font-bold text-gray-800">{formatItemPrice(item)}</span>
                           </div>
                         ))}
                       </div>
@@ -400,23 +486,39 @@ export default function TrackOrderPage() {
                     )}
 
                     <div className="border-t pt-4 space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Subtotal:</span>
-                        <span>${order.subtotal.toFixed(2)}</span>
-                      </div>
-                      {order.tax > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Tax (3%):</span>
-                          <span>${order.tax.toFixed(2)}</span>
+                      {hasPendingPrice(order) ? (
+                        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800">
+                          <div className="flex items-start space-x-3">
+                            <i className="ri-hourglass-2-line mt-0.5 text-lg"></i>
+                            <div>
+                              <p className="font-semibold">Precio pendiente de aprobación</p>
+                              <p className="text-xs text-amber-700">
+                                La panadería está revisando tu orden. Te avisaremos cuando el precio esté listo para realizar el pago.
+                              </p>
+                            </div>
+                          </div>
                         </div>
+                      ) : (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Subtotal:</span>
+                            <span>${order.subtotal.toFixed(2)}</span>
+                          </div>
+                          {order.tax > 0 && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Impuestos:</span>
+                              <span>${order.tax.toFixed(2)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between font-bold text-lg border-t pt-2">
+                            <span>Total:</span>
+                            <span className="text-pink-600">${order.total.toFixed(2)}</span>
+                          </div>
+                        </>
                       )}
-                      <div className="flex justify-between font-bold text-lg border-t pt-2">
-                        <span>Total:</span>
-                        <span className="text-pink-600">${order.total.toFixed(2)}</span>
-                      </div>
                     </div>
 
-                    {order.payment_status === 'pending' && (
+                    {order.payment_status === 'pending' && !hasPendingPrice(order) && (
                       <div className="mt-4">
                         <a
                           href={`/order?orderId=${order.id}`}
