@@ -97,6 +97,80 @@ useEffect(() => {
   const requiresContactPhone = true;
   const shouldShowContactSection = hasPendingPrice && !existingOrder;
 
+  const isMissingBillingColumn = (error: any) =>
+    typeof error?.message === 'string' && error.message.includes("'billing_address'");
+
+  const persistPhoneToProfile = useCallback(
+    async (rawPhone: string) => {
+      const trimmedPhone = (rawPhone || '').trim();
+      if (!trimmedPhone) {
+        return;
+      }
+
+      const currentProfilePhone = (currentUser?.phone || '').trim();
+      if (currentProfilePhone === trimmedPhone) {
+        if (typeof window !== 'undefined') {
+          try {
+            const storedRaw = localStorage.getItem('bakery-user');
+            if (storedRaw) {
+              const stored = JSON.parse(storedRaw);
+              if (stored.phone !== trimmedPhone) {
+                localStorage.setItem('bakery-user', JSON.stringify({ ...stored, phone: trimmedPhone }));
+              }
+            }
+          } catch {
+            // ignore storage errors
+          }
+        }
+        return;
+      }
+
+      try {
+        if (currentUser?.id) {
+          const { error } = await supabase
+            .from('profiles')
+            .update({ phone: trimmedPhone, updated_at: new Date().toISOString() })
+            .eq('id', currentUser.id);
+
+          if (error) {
+            console.warn('No se pudo guardar el teléfono del perfil en Supabase:', error.message);
+          } else {
+            setCurrentUser((prev: any) => (prev ? { ...prev, phone: trimmedPhone } : prev));
+          }
+        } else if (typeof window !== 'undefined') {
+          const storedRaw = localStorage.getItem('bakery-user');
+          if (storedRaw) {
+            try {
+              const stored = JSON.parse(storedRaw);
+              localStorage.setItem('bakery-user', JSON.stringify({ ...stored, phone: trimmedPhone }));
+            } catch {
+              // ignore
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Error inesperado al actualizar el teléfono del perfil:', error);
+      }
+
+      if (typeof window !== 'undefined') {
+        try {
+          const storedRaw = localStorage.getItem('bakery-user');
+          if (storedRaw) {
+            const stored = JSON.parse(storedRaw);
+            if (stored.phone !== trimmedPhone) {
+              localStorage.setItem('bakery-user', JSON.stringify({ ...stored, phone: trimmedPhone }));
+            }
+          }
+        } catch {
+          // ignore storage errors
+        }
+      }
+
+      setCurrentUser((prev: any) => (prev ? { ...prev, phone: trimmedPhone } : prev));
+    },
+    [currentUser]
+  );
+
   const showNotification = useCallback(
     (type: 'success' | 'error' | 'warning' | 'info', title: string, message: string) => {
       const id = Date.now().toString();
@@ -647,6 +721,8 @@ const initSquareCard = useCallback(async () => {
         console.warn('No se pudo actualizar el perfil con los datos de contacto:', profileUpdateError);
       }
 
+      await persistPhoneToProfile(customerPhone);
+
       const formattedItems = cartItems.map((item) => {
         const numericPrice = getItemPrice(item);
         const priceLabel = item.priceLabel || (item.isPricePending ? 'Precio pendiente de aprobación' : undefined);
@@ -713,17 +789,40 @@ const initSquareCard = useCallback(async () => {
         orderPayload.user_id = supabaseUserId;
       }
 
-      const { data, error } = await supabase
+      const storedBillingValue = orderPayload.billing_address ?? null;
+
+      let {
+        data: insertedData,
+        error: insertError,
+      } = await supabase
         .from('orders')
         .insert([orderPayload])
         .select()
         .single();
 
-      if (error) {
-        throw new Error(error?.message || 'No se pudo guardar la orden personalizada.');
+      if (insertError && isMissingBillingColumn(insertError)) {
+        console.warn(
+          "La columna 'billing_address' no existe en la tabla orders. Reintentando sin esa columna."
+        );
+        const fallbackPayload = { ...orderPayload };
+        delete fallbackPayload.billing_address;
+        const retryResponse = await supabase
+          .from('orders')
+          .insert([fallbackPayload])
+          .select()
+          .single();
+
+        insertError = retryResponse.error;
+        insertedData = retryResponse.data
+          ? { ...retryResponse.data, billing_address: storedBillingValue }
+          : retryResponse.data;
       }
 
-      const insertedOrder = data || {};
+      if (insertError) {
+        throw new Error(insertError?.message || 'No se pudo guardar la orden personalizada.');
+      }
+
+      const insertedOrder = insertedData || {};
       const finalReference = referenceCode;
 
       try {
@@ -902,6 +1001,8 @@ const initSquareCard = useCallback(async () => {
         );
         return;
       }
+
+      await persistPhoneToProfile(customerPhone);
 
       if (saveBillingAddress && postalCode) {
         localStorage.setItem(
@@ -1090,6 +1191,8 @@ const initSquareCard = useCallback(async () => {
         );
         return;
       }
+
+      await persistPhoneToProfile(customerPhone);
 
       if (saveBillingAddress && postalCode) {
         localStorage.setItem(

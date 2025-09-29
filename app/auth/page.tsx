@@ -17,7 +17,8 @@ export default function AuthPage() {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    fullName: ''
+    fullName: '',
+    phone: ''
   });
   const router = useRouter();
   const { t } = useLanguage();
@@ -76,10 +77,13 @@ export default function AuthPage() {
           const userRole = profile?.role || 'customer';
           const isOwner = userRole === 'owner';
 
+          const userPhone = (profile?.phone || data.user.user_metadata?.phone || '').toString().trim();
+
           const userData = {
             id: data.user.id,
             email: normalizedEmail, // Usar email normalizado
             fullName: profile?.full_name || data.user.user_metadata?.full_name || normalizedEmail.split('@')[0],
+            phone: userPhone || undefined,
             isOwner: isOwner,
             role: userRole,
             loginTime: Date.now()
@@ -123,6 +127,16 @@ export default function AuthPage() {
           return;
         }
 
+        const rawPhone = formData.phone.trim();
+        const phoneDigits = rawPhone.replace(/\D/g, '');
+        if (phoneDigits.length < 7) {
+          setError('Por favor ingresa un número de teléfono válido (mínimo 7 dígitos).');
+          setLoading(false);
+          return;
+        }
+
+        const normalizedPhone = rawPhone;
+
         // Registro con Supabase
         const { data, error } = await supabase.auth.signUp({
           email: normalizedEmail,
@@ -130,6 +144,7 @@ export default function AuthPage() {
           options: {
             data: {
               full_name: formData.fullName.trim(),
+              phone: normalizedPhone,
             }
           }
         });
@@ -166,6 +181,7 @@ export default function AuthPage() {
                 id: data.user.id,
                 email: normalizedEmail, // Email normalizado
                 full_name: formData.fullName.trim(),
+                phone: normalizedPhone,
                 role: userRole,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
@@ -180,9 +196,9 @@ export default function AuthPage() {
 
           setError('');
           setSuccess('¡Cuenta creada exitosamente! Revisa tu email para confirmar tu cuenta, luego puedes iniciar sesión.');
-          
+
           // Limpiar formulario
-          setFormData({ email: '', password: '', fullName: '' });
+          setFormData({ email: '', password: '', fullName: '', phone: '' });
           
           // Cambiar a modo login después de 3 segundos
           setTimeout(() => {
@@ -273,22 +289,41 @@ export default function AuthPage() {
               </div>
 
               {!isLogin && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {t('fullName')}
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.fullName}
-                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                    required
-                    minLength={2}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"
-                    placeholder="Tu nombre completo"
-                    autoComplete="name"
-                    disabled={loading}
-                  />
-                </div>
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      {t('fullName')}
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.fullName}
+                      onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                      required
+                      minLength={2}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"
+                      placeholder="Tu nombre completo"
+                      autoComplete="name"
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      {t('phone')}
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"
+                      placeholder="Tu número de teléfono"
+                      autoComplete="tel"
+                      disabled={loading}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Usaremos este número para tus pedidos y notificaciones.</p>
+                  </div>
+                </>
               )}
 
               <button
@@ -313,7 +348,7 @@ export default function AuthPage() {
                   setIsLogin(!isLogin);
                   setError('');
                   setSuccess('');
-                  setFormData({ email: '', password: '', fullName: '' });
+                  setFormData({ email: '', password: '', fullName: '', phone: '' });
                 }}
                 className="text-pink-600 hover:text-pink-700 text-sm font-medium"
                 disabled={loading}
