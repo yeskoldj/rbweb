@@ -583,12 +583,15 @@ const initSquareCard = useCallback(async () => {
 
     setIsSubmitting(true);
 
+    let supabaseUserId: string | null = null;
+
     try {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         const contactUpdates: Record<string, string> = {};
 
         if (user?.id) {
+          supabaseUserId = user.id;
           if (providedEmail && providedEmail !== profileEmail) {
             contactUpdates.email = providedEmail;
           }
@@ -660,37 +663,75 @@ const initSquareCard = useCallback(async () => {
       const summary = `Resumen de personalización:\n${cakeSummaries.join('\n\n')}${pickupLine}${specialLine}`;
       const referenceCode = `CAKE-${Date.now()}`;
 
-      const baseQuotePayload = {
+      const subtotalValue = cartItems.reduce((total, item) => {
+        return total + getItemPrice(item) * item.quantity;
+      }, 0);
+      const taxValue = 0;
+      const totalValue = subtotalValue + taxValue;
+
+      const specialRequestSections = [
+        summary,
+        '---',
+        `Referencia interna: ${referenceCode}`,
+        'Estado: Esperando confirmación de precio personalizado.',
+      ];
+
+      const orderPayload: Record<string, any> = {
         customer_name: customerName,
         customer_phone: customerPhone || '',
         customer_email: customerEmail || null,
-        occasion: 'custom-cake',
-        status: 'pending',
-        created_at: new Date().toISOString(),
-        requires_cake_quote: true,
+        billing_address: billingAddress.trim() ? billingAddress.trim() : null,
+        items: formattedItems,
+        subtotal: Number(subtotalValue.toFixed(2)),
+        tax: Number(taxValue.toFixed(2)),
+        total: Number(totalValue.toFixed(2)),
         pickup_time: formData.pickupTime || null,
-        special_requests: formData.specialRequests.trim() || null,
-        reference_code: referenceCode,
+        special_requests: specialRequestSections.join('\n\n'),
+        status: 'pending',
+        payment_status: 'pending',
+        payment_type: 'manual_quote',
+        order_date: new Date().toISOString().split('T')[0],
       };
 
-      const preferredQuotePayload = {
-        ...baseQuotePayload,
-        event_details: summary,
-        cart_items: formattedItems,
-      };
+      if (supabaseUserId) {
+        orderPayload.user_id = supabaseUserId;
+      }
 
       const { data, error } = await supabase
-        .from('quotes')
-        .insert([preferredQuotePayload])
+        .from('orders')
+        .insert([orderPayload])
         .select()
         .single();
 
       if (error) {
-        throw new Error(error?.message || 'No se pudo guardar la cotización.');
+        throw new Error(error?.message || 'No se pudo guardar la orden personalizada.');
       }
 
-      const insertedQuote = data || {};
-      const finalReference = insertedQuote.reference_code || referenceCode;
+      const insertedOrder = data || {};
+      const finalReference = referenceCode;
+
+      try {
+        await notifyBusinessAboutOrder({
+          id: insertedOrder.id || finalReference,
+          status: insertedOrder.status || 'pending',
+          customerName: customerName,
+          customerPhone: customerPhone || undefined,
+          customerEmail: customerEmail || undefined,
+          pickupTime: formData.pickupTime || null,
+          specialRequests: orderPayload.special_requests,
+          subtotal: orderPayload.subtotal,
+          tax: orderPayload.tax,
+          total: orderPayload.total,
+          items: cartItems.map((item) => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: getItemPrice(item),
+          })),
+          paymentMethod: 'manual_quote',
+        });
+      } catch (notificationError) {
+        console.log('No se pudo notificar al negocio sobre la orden personalizada:', notificationError);
+      }
 
       try {
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -703,18 +744,31 @@ const initSquareCard = useCallback(async () => {
             },
             body: JSON.stringify({
               to: 'rangerbakery@gmail.com',
-              type: 'new_quote',
+              type: 'business_new_order',
               language: 'es',
-              quoteData: {
-                ...insertedQuote,
-                cart_items: formattedItems,
-                reference_code: finalReference,
+              orderData: {
+                id: insertedOrder.id || finalReference,
+                status: insertedOrder.status || 'pending',
+                customer_name: customerName,
+                customer_phone: customerPhone || '',
+                customer_email: customerEmail || null,
+                pickup_time: formData.pickupTime || null,
+                special_requests: orderPayload.special_requests,
+                subtotal: orderPayload.subtotal,
+                tax: orderPayload.tax,
+                total: orderPayload.total,
+                items: cartItems.map((item) => ({
+                  name: item.name,
+                  quantity: item.quantity,
+                  price: getItemPrice(item),
+                })),
+                payment_method: 'manual_quote',
               },
             }),
           });
         }
       } catch (notificationError) {
-        console.log('Error enviando notificación de cotización:', notificationError);
+        console.log('Error enviando notificación de orden personalizada:', notificationError);
       }
 
       if (customerEmail) {
@@ -732,11 +786,11 @@ const initSquareCard = useCallback(async () => {
                 type: 'customer_quote_confirmation',
                 language: 'es',
                 quoteData: {
-                  ...insertedQuote,
                   customer_email: customerEmail,
                   customer_phone: customerPhone,
                   reference_code: finalReference,
                   cart_items: formattedItems,
+                  event_details: summary,
                 },
               }),
             });
@@ -759,15 +813,15 @@ const initSquareCard = useCallback(async () => {
 
       showNotification(
         'success',
-        'Cotización enviada',
-        'Tu solicitud fue enviada al propietario. Te contactaremos con el precio final pronto.'
+        'Orden enviada',
+        'Tu pedido personalizado fue enviado al propietario. Te contactaremos pronto con la confirmación del precio.'
       );
     } catch (err: any) {
-      console.error('Error enviando cotización de pastel:', err);
+      console.error('Error enviando orden personalizada:', err);
       showNotification(
         'error',
-        'Error al enviar la cotización',
-        err?.message || 'Ocurrió un error al enviar la cotización. Intenta nuevamente.'
+        'Error al enviar la orden',
+        err?.message || 'Ocurrió un error al enviar tu pedido personalizado. Intenta nuevamente.'
       );
     } finally {
       setIsSubmitting(false);
@@ -1274,9 +1328,9 @@ const initSquareCard = useCallback(async () => {
         <div className="w-16 h-16 flex items-center justify-center bg-pink-100 rounded-full mx-auto mb-4">
           <i className="ri-customer-service-2-line text-pink-500 text-2xl"></i>
         </div>
-        <h3 className="text-xl font-bold text-pink-600 mb-2">¡Solicitud enviada!</h3>
+        <h3 className="text-xl font-bold text-pink-600 mb-2">¡Pedido enviado!</h3>
         <p className="text-gray-600 mb-3">
-          El propietario revisará tu personalización y se pondrá en contacto contigo con el precio final.
+          El propietario revisará tu personalización y se pondrá en contacto contigo con la confirmación del precio final.
         </p>
         {quoteReference && (
           <p className="text-sm text-gray-500 mb-4">
