@@ -194,6 +194,11 @@ export default function DashboardPage() {
     return pendingItem || !order.total || order.total <= 0;
   };
 
+  const isPaymentConfirmed = (order: Order) => {
+    const confirmedStatuses: Array<Order['payment_status']> = ['completed', 'paid'];
+    return confirmedStatuses.includes(order.payment_status);
+  };
+
   const formatOrderItemPrice = (item: OrderItem) => {
     if (isItemPricePending(item)) {
       return item.price_label || 'Precio pendiente de aprobación';
@@ -1286,9 +1291,12 @@ export default function DashboardPage() {
                       </p>
                     </div>
                   ) : (
-                    orders.map((order) => (
-                      <div key={order.id} className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
-                        <div className="p-5">
+                    orders.map((order) => {
+                      const paymentConfirmed = isPaymentConfirmed(order);
+
+                      return (
+                        <div key={order.id} className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+                          <div className="p-5">
                           <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center space-x-4">
                               <div className="w-14 h-14 bg-gradient-to-br from-pink-400 via-purple-400 to-teal-400 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md">
@@ -1401,14 +1409,29 @@ export default function DashboardPage() {
                               </button>
                             )}
                             {order.status === 'pending' && (
-                              <button
-                                onClick={() => updateOrderStatus(order.id, 'baking')}
-                                className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 px-4 rounded-xl text-sm font-bold !rounded-button hover:from-orange-600 hover:to-red-600 transition-all transform hover:scale-105 shadow-lg"
-                                type="button"
-                              >
-                                <i className="ri-fire-line mr-2"></i>
-                                Iniciar Horneado
-                              </button>
+                              <div className="flex-1 min-w-[200px]">
+                                <button
+                                  onClick={() => {
+                                    if (!paymentConfirmed) return;
+                                    void updateOrderStatus(order.id, 'baking');
+                                  }}
+                                  disabled={!paymentConfirmed}
+                                  className={`w-full py-3 px-4 rounded-xl text-sm font-bold !rounded-button transition-all ${
+                                    paymentConfirmed
+                                      ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 transform hover:scale-105 shadow-lg'
+                                      : 'bg-gray-200 text-gray-500 cursor-not-allowed opacity-80'
+                                  }`}
+                                  type="button"
+                                >
+                                  <i className="ri-fire-line mr-2"></i>
+                                  Iniciar Horneado
+                                </button>
+                                {!paymentConfirmed && (
+                                  <p className="mt-2 text-xs font-semibold text-orange-600">
+                                    Confirma el pago antes de iniciar el horneado.
+                                  </p>
+                                )}
+                              </div>
                             )}
                             {order.status === 'baking' && (
                               <button
@@ -1470,7 +1493,8 @@ export default function DashboardPage() {
                           </div>
                         </div>
                       </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               )}
