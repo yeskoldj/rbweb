@@ -46,7 +46,7 @@ export default function MenuPreview() {
     {
       id: 4,
       name: 'Cake de Cumpleaños',
-      price: 'Desde $20.00',
+      price: 'Cotización personalizada',
       description: 'Cake personalizado con decoración especial',
       image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/58a3f870af7fe55c1b2733bc57137538.png',
       category: 'cake',
@@ -145,7 +145,9 @@ export default function MenuPreview() {
               <h4 className="font-semibold text-gray-800 mb-1">{item.name}</h4>
               <p className="text-gray-600 text-sm mb-2 line-clamp-2">{item.description}</p>
               <div className="flex items-center justify-between">
-                <span className="text-lg font-bold text-pink-600">{item.price}</span>
+                <span className={`text-lg font-bold ${item.type === 'cake' ? 'text-amber-600' : 'text-pink-600'}`}>
+                  {item.type === 'cake' ? 'Precio definido por la panadería' : item.price}
+                </span>
                 <button 
                   className="bg-gradient-to-r from-pink-400 to-teal-400 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:shadow-md transition-all"
                   onClick={() => handleAddToCart(item)}

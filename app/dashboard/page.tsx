@@ -372,18 +372,26 @@ export default function DashboardPage() {
         },
       ];
 
-      const orderItems = quote.cart_items && quote.cart_items.length > 0
+      const orderItems = (quote.cart_items && quote.cart_items.length > 0
         ? quote.cart_items
-        : fallbackItems;
+        : fallbackItems).map((item: any) => ({
+          ...item,
+          price_label: item?.price_label || item?.priceLabel || 'Incluido en total',
+          isPricePending: item?.isPricePending ?? true,
+        }));
+
+      const subtotal = quote.estimated_price || 0;
+      const tax = Number((subtotal * 0.03).toFixed(2));
+      const total = Number((subtotal + tax).toFixed(2));
 
       const orderData = {
         customer_name: quote.customer_name,
         customer_phone: quote.customer_phone || '',
         customer_email: quote.customer_email || '',
         items: orderItems,
-        subtotal: quote.estimated_price || 0,
-        tax: 0,
-        total: quote.estimated_price || 0,
+        subtotal,
+        tax,
+        total,
         status: 'pending',
         payment_status: 'pending',
         order_date: now,
@@ -1314,6 +1322,10 @@ function QuoteCard({ quote, onStatusUpdate, onFinalize, onDelete }: { quote: Quo
               />
             </div>
           </div>
+
+          <p className="text-xs text-gray-500">
+            El sistema añadirá automáticamente un 3% adicional si el cliente paga con tarjeta.
+          </p>
 
           <div className="flex space-x-2">
             <button
