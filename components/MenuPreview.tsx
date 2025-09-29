@@ -19,36 +19,36 @@ export default function MenuPreview() {
   const featuredItems = [
     {
       id: 1,
-      name: 'Tres Leches en Vaso',
+      name: t('productTresLechesVasoName'),
       price: '$5.00',
-      description: 'Tradicional tres leches dominicano servido en vaso',
+      description: t('productTresLechesVasoDescription'),
       image: tresLechesVasoImg.src,
       category: 'dessert',
       type: 'dessert'
     },
     {
       id: 2,
-      name: 'Flan',
+      name: t('productFlanName'),
       price: '$4.00',
-      description: 'Cremoso flan casero dominicano con caramelo',
+      description: t('productFlanDescription'),
       image: flanImg.src,
       category: 'dessert',
       type: 'dessert'
     },
     {
       id: 3,
-      name: 'Cheesecake',
+      name: t('productCheesecakeName'),
       price: '$5.00',
-      description: 'Cremoso cheesecake estilo dominicano',
+      description: t('productCheesecakeDescription'),
       image: cheesecakeImg.src,
       category: 'dessert',
       type: 'dessert'
     },
     {
       id: 4,
-      name: 'Cake de Cumpleaños',
-      price: 'Cotización personalizada',
-      description: 'Cake personalizado con decoración especial',
+      name: t('productBirthdayCakeName'),
+      price: t('priceCustomQuote'),
+      description: t('productBirthdayCakeDescription'),
       image: 'https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/58a3f870af7fe55c1b2733bc57137538.png',
       category: 'cake',
       type: 'cake',
@@ -56,18 +56,18 @@ export default function MenuPreview() {
     },
     {
       id: 5,
-      name: 'Mini Pasteles',
+      name: t('productMiniPastelesName'),
       price: '$2.50',
-      description: 'Pequeños pasteles dominicanos con frutas variadas',
+      description: t('productMiniPastelesDescription'),
       image: miniPastelesImg.src,
       category: 'dessert',
       type: 'dessert'
     },
     {
       id: 6,
-      name: 'Tres Leches de Oreo',
+      name: t('productTresLechesOreoName'),
       price: '$5.00',
-      description: 'Nuestra versión especial dominicana con galletas Oreo',
+      description: t('productTresLechesOreoDescription'),
       image: tresLechesOreoImg.src,
       category: 'dessert',
       type: 'dessert'
@@ -78,7 +78,7 @@ export default function MenuPreview() {
     // Verificar autenticación primero
     const user = getUser();
     if (!user) {
-      alert('Necesitas crear una cuenta para agregar productos al carrito');
+      alert(t('loginRequiredForCart'));
       return;
     }
 
@@ -113,11 +113,11 @@ export default function MenuPreview() {
       localStorage.setItem('bakery-cart', JSON.stringify(cart));
       
       // Mostrar confirmación con animación consistente
-      showCartNotification(`${item.name} agregado al carrito`);
-      
+      showCartNotification(t('itemAddedToCart').replace('{item}', item.name));
+
     } catch (error) {
       console.error('Error agregando al carrito:', error);
-      alert('Error al agregar al carrito. Intenta de nuevo.');
+      alert(t('addToCartError'));
     }
   };
 
@@ -145,13 +145,13 @@ export default function MenuPreview() {
               <p className="text-gray-600 text-sm mb-2 line-clamp-2">{item.description}</p>
               <div className="flex items-center justify-between">
                 <span className={`text-lg font-bold ${item.type === 'cake' ? 'text-amber-600' : 'text-pink-600'}`}>
-                  {item.type === 'cake' ? 'Precio definido por la panadería' : item.price}
+                  {item.type === 'cake' ? t('priceDefinedByBakery') : item.price}
                 </span>
-                <button 
+                <button
                   className="bg-gradient-to-r from-pink-400 to-teal-400 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:shadow-md transition-all"
                   onClick={() => handleAddToCart(item)}
                 >
-                  {item.type === 'cake' ? 'Personalizar' : t('addToCart')}
+                  {item.type === 'cake' ? t('customize') : t('addToCart')}
                 </button>
               </div>
             </div>

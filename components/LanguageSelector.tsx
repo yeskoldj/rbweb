@@ -12,7 +12,7 @@ interface LanguageSelectorProps {
 }
 
 export default function LanguageSelector({ showWelcome = false, onComplete }: LanguageSelectorProps) {
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const [showDropdown, setShowDropdown] = useState(false);
 
   const handleLanguageSelect = (langCode: string) => {
@@ -40,10 +40,10 @@ export default function LanguageSelector({ showWelcome = false, onComplete }: La
           </div>
           
           <h2 className="text-xl font-bold text-amber-800 mb-2">
-            Welcome to Ranger&apos;s Bakery
+            {t('languageWelcomeTitle')}
           </h2>
           <p className="text-gray-600 mb-6 text-sm">
-            Please select your preferred language / Por favor selecciona tu idioma preferido
+            {t('languageWelcomeDescription')}
           </p>
           
           <div className="space-y-3">
