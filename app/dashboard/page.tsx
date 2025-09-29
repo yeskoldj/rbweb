@@ -58,6 +58,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [showSuccessMessage, setShowSuccessMessage] = useState('');
+  const [showTodayView, setShowTodayView] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<string | null>(null);
   const [deletingQuote, setDeletingQuote] = useState<string | null>(null);
   const [deleteOrderConfirmation, setDeleteOrderConfirmation] = useState<string | null>(null);
@@ -892,11 +893,99 @@ export default function DashboardPage() {
                           </div>
                         </div>
                       </button>
+                  </div>
+                </div>
+
+                {showTodayView && (
+                  <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+                    onClick={() => setShowTodayView(false)}
+                  >
+                    <div
+                      className="relative w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <div className="flex items-center justify-between border-b border-gray-100 bg-gradient-to-r from-pink-500 to-teal-400 px-6 py-5 text-white">
+                        <div>
+                          <h3 className="text-lg font-semibold">Pedidos programados para hoy</h3>
+                          <p className="text-sm text-white/90">
+                            {getTodayOrders().length === 0
+                              ? 'No tienes pedidos pendientes para el día de hoy.'
+                              : `Tienes ${getTodayOrders().length} pedido${getTodayOrders().length === 1 ? '' : 's'} agendado${getTodayOrders().length === 1 ? '' : 's'}.`}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowTodayView(false)}
+                          className="rounded-full bg-white/20 p-2 text-white transition-colors hover:bg-white/30"
+                          aria-label="Cerrar vista de pedidos de hoy"
+                        >
+                          <i className="ri-close-line text-xl" />
+                        </button>
+                      </div>
+
+                      <div className="max-h-[60vh] space-y-4 overflow-y-auto p-6">
+                        {getTodayOrders().length === 0 ? (
+                          <div className="flex flex-col items-center justify-center gap-3 py-10 text-center text-gray-500">
+                            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 text-3xl text-gray-400">
+                              <i className="ri-sun-line" />
+                            </div>
+                            <p className="text-lg font-medium text-gray-700">No hay pedidos para hoy</p>
+                            <p className="text-sm text-gray-500">
+                              Cuando lleguen órdenes programadas para hoy las verás en esta vista rápida.
+                            </p>
+                          </div>
+                        ) : (
+                          getTodayOrders().map((order) => (
+                            <div
+                              key={order.id}
+                              className="space-y-3 rounded-2xl border border-gray-100 bg-gray-50 p-5 shadow-sm"
+                            >
+                              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                <div>
+                                  <p className="text-sm font-semibold text-gray-600">Cliente</p>
+                                  <p className="text-lg font-bold text-gray-900">{order.customer_name}</p>
+                                  <p className="text-sm text-gray-500">{order.customer_phone}</p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total</p>
+                                  <p className="text-lg font-bold text-pink-600">
+                                    ${typeof order.total === 'number' ? order.total.toFixed(2) : order.total}
+                                  </p>
+                                  <span className="mt-2 inline-flex items-center justify-center rounded-full bg-white px-3 py-1 text-xs font-semibold capitalize text-gray-700 shadow">
+                                    {order.status}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
+                                <div className="flex items-center gap-2">
+                                  <i className="ri-time-line text-pink-500"></i>
+                                  <span>{order.pickup_time || 'Horario por confirmar'}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <i className="ri-map-pin-line text-pink-500"></i>
+                                  <span>{order.billing_address || 'Retiro en tienda'}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <i className="ri-mail-line text-pink-500"></i>
+                                  <span>{order.customer_email || 'Sin correo'}</span>
+                                </div>
+                              </div>
+                              {order.special_requests && (
+                                <p className="rounded-2xl bg-white px-4 py-3 text-sm text-gray-700 shadow-inner">
+                                  {order.special_requests}
+                                </p>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
                     </div>
                   </div>
+                )}
 
-                  {/* Orders list or empty state */}
-                  {orders.length === 0 ? (
+                {/* Orders list or empty state */}
+                {orders.length === 0 ? (
                     <div className="text-center py-8">
                       <div className="w-16 h-16 flex items-center justify-center bg-gray-100 rounded-full mx-auto mb-4">
                         <i className="ri-shopping-bag-line text-gray-400 text-2xl"></i>
