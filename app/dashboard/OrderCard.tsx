@@ -25,6 +25,8 @@ interface Order {
   payment_type?: string;
   payment_status: 'pending' | 'completed' | 'paid' | 'failed';
   created_at: string;
+  quote_reference?: string | null;
+  awaiting_quote?: boolean;
 }
 
 interface OrderCardProps {
@@ -113,20 +115,27 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
             </div>
             <div>
               <h4 className="font-semibold text-gray-900">{customerName}</h4>
-              <p className="text-sm text-gray-500">#{order.p2p_reference ?? order.id.slice(-8)}</p>
+              <p className="text-sm text-gray-500">
+                #{order.quote_reference ?? order.p2p_reference ?? order.id.slice(-8)}
+              </p>
             </div>
           </div>
           
           <div className="text-right">
             <div className="font-bold text-lg text-gray-900">${order.total}</div>
-            <div className="flex items-center space-x-2">
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                {getStatusText(order.status)}
-              </span>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPaymentStatusColor(order.payment_status)}`}>
-                {getPaymentStatusText(order.payment_status)}
-              </span>
-              {order.payment_type === 'zelle' && (
+              <div className="flex items-center space-x-2">
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                  {getStatusText(order.status)}
+                </span>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPaymentStatusColor(order.payment_status)}`}>
+                  {getPaymentStatusText(order.payment_status)}
+                </span>
+                {order.awaiting_quote && (
+                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                    Cotización pendiente
+                  </span>
+                )}
+                {order.payment_type === 'zelle' && (
                 <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                   Pagado con Zelle
                 </span>

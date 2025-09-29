@@ -631,6 +631,22 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
       .filter(Boolean)
       .join(', ');
 
+    const summaryParts = [
+      selectedOptions.shape ? `Forma: ${shapeOptions.find(s => s.id === selectedOptions.shape)?.name}` : null,
+      layerDescriptions ? `Capas: ${layerDescriptions}` : null,
+      flavorNames ? `Sabores: ${flavorNames}` : null,
+      selectedOptions.colors.length ? `Colores: ${selectedOptions.colors.map(id => colorOptions.find(c => c.id === id)?.name).filter(Boolean).join(', ')}` : null,
+      customizerMode === 'advanced' && selectedOptions.fillings.length
+        ? `Rellenos: ${selectedOptions.fillings.map(id => fillingOptions.find(f => f.id === id)?.name).filter(Boolean).join(', ')}`
+        : null,
+      customizerMode === 'advanced' && decorationNames ? `Decoraciones: ${decorationNames}` : null,
+      selectedOptions.inscription ? `Mensaje: ${selectedOptions.inscription}` : null,
+      selectedOptions.specialRequests ? `Notas: ${selectedOptions.specialRequests}` : null,
+      selectedOptions.photoUrl ? 'Incluye foto de referencia' : null
+    ].filter(Boolean);
+
+    const customizationSummary = summaryParts.join('\n');
+
     const cartItem = {
       id: `cake-${Date.now()}`,
       name: `${currentProduct?.name} Personalizado`,
@@ -638,6 +654,7 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
       quantity: quantity,
       image: currentProduct?.image || '',
       photoUrl: selectedOptions.photoUrl || undefined,
+      details: customizationSummary,
       type: 'cake',
       customization: {
         mode: customizerMode,
@@ -655,7 +672,8 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
         decorations: customizerMode === 'advanced' ? decorationNames : '',
         inscription: selectedOptions.inscription,
         specialRequests: selectedOptions.specialRequests,
-        photoUrl: selectedOptions.photoUrl || undefined
+        photoUrl: selectedOptions.photoUrl || undefined,
+        summary: customizationSummary
       }
     };
 

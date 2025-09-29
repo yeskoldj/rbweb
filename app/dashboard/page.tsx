@@ -33,6 +33,11 @@ interface Quote {
   admin_notes?: string | null;
   responded_at?: string | null;
   updated_at?: string | null;
+  cart_items?: any[];
+  requires_cake_quote?: boolean;
+  pickup_time?: string | null;
+  special_requests?: string | null;
+  reference_code?: string | null;
 }
 
 const quoteStatusColors: Record<QuoteStatus, string> = {
@@ -354,40 +359,84 @@ export default function DashboardPage() {
   const finalizeQuote = async (quote: Quote) => {
     try {
       const now = new Date().toISOString();
-      const orderData = {
-        customer_name: quote.customer_name,
-        customer_phone: quote.customer_phone || '',
-        customer_email: quote.customer_email || '',
-        items: [],
+      const reference = quote.reference_code || `CAKE-${quote.id.slice(0, 8)}`;
+
+      const { data: existingOrder, error: fetchError } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('quote_reference', reference)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error('Error locating pending order for quote:', fetchError);
+      }
+
+      const orderPayload: any = {
+        items: quote.cart_items || [],
         subtotal: quote.estimated_price || 0,
         tax: 0,
         total: quote.estimated_price || 0,
         status: 'pending',
         payment_status: 'pending',
-        order_date: now,
-        created_at: now,
+        pickup_time: quote.pickup_time || null,
+        special_requests: quote.special_requests || quote.event_details || null,
+        awaiting_quote: false,
+        quote_reference: reference,
         updated_at: now,
-      } as any;
+      };
 
-      const { data: insertedOrder, error: orderError } = await supabase
-        .from('orders')
-        .insert(orderData)
-        .select()
-        .single();
+      let updatedOrder: Order | null = null;
 
-      if (orderError) {
-        console.error('Error creating order from quote:', orderError);
-        return;
+      if (existingOrder) {
+        const { data: updated, error: updateError } = await supabase
+          .from('orders')
+          .update(orderPayload)
+          .eq('id', existingOrder.id)
+          .select('*')
+          .single();
+
+        if (updateError) {
+          console.error('Error updating pending order from quote:', updateError);
+          return;
+        }
+
+        updatedOrder = updated as Order;
+      } else {
+        const insertPayload = {
+          customer_name: quote.customer_name,
+          customer_phone: quote.customer_phone || '',
+          customer_email: quote.customer_email || '',
+          order_date: now.split('T')[0],
+          created_at: now,
+          ...orderPayload,
+        } as any;
+
+        const { data: insertedOrder, error: orderError } = await supabase
+          .from('orders')
+          .insert(insertPayload)
+          .select('*')
+          .single();
+
+        if (orderError) {
+          console.error('Error creating order from quote:', orderError);
+          return;
+        }
+
+        updatedOrder = insertedOrder as Order;
       }
 
       await supabase
         .from('quotes')
-        .update({ status: 'accepted', updated_at: now })
+        .update({ status: 'accepted', updated_at: now, reference_code: reference })
         .eq('id', quote.id);
 
       setQuotes((prev) => prev.filter((q) => q.id !== quote.id));
-      setOrders((prev) => [insertedOrder as Order, ...prev]);
-      setShowSuccessMessage('✅ Cotización finalizada, orden creada');
+      setOrders((prev) => {
+        if (!updatedOrder) return prev;
+        const otherOrders = prev.filter((order) => order.id !== updatedOrder!.id);
+        return [updatedOrder, ...otherOrders];
+      });
+      setShowSuccessMessage('✅ Cotización finalizada, orden actualizada');
       setTimeout(() => setShowSuccessMessage(''), 3000);
     } catch (error) {
       console.error('Error finalizing quote:', error);
@@ -1218,6 +1267,45 @@ function QuoteCard({ quote, onStatusUpdate, onFinalize, onDelete }: { quote: Quo
         <div className="mb-4 p-3 bg-amber-50 rounded-lg border-l-4 border-amber-400">
           <p className="text-sm font-medium text-amber-800 mb-1">Detalles del Evento:</p>
           <p className="text-sm text-amber-700">{quote.event_details}</p>
+        </div>
+      )}
+
+      {quote.requires_cake_quote && (
+        <div className="mb-4 p-3 bg-pink-50 rounded-lg border-l-4 border-pink-400">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-semibold text-pink-800">Personalización del pastel</p>
+            {quote.reference_code && (
+              <span className="text-xs font-medium text-pink-600">Ref: {quote.reference_code}</span>
+            )}
+          </div>
+          <div className="space-y-2">
+            {(quote.cart_items || []).map((item, index) => (
+              <div key={`${quote.id}-item-${index}`} className="bg-white rounded-md p-2 shadow-sm border border-pink-100">
+                <p className="text-sm font-semibold text-gray-800">
+                  {item.quantity || 1}x {item.name}
+                </p>
+                {item.details && (
+                  <p className="text-xs text-gray-600 whitespace-pre-line mt-1">{item.details}</p>
+                )}
+                {!item.details && item.customization && (
+                  <p className="text-xs text-gray-600 mt-1">
+                    {Object.entries(item.customization)
+                      .filter(([key, value]) => value && typeof value === 'string')
+                      .map(([key, value]) => `${key}: ${value}`)
+                      .join(' | ')}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+          {quote.pickup_time && (
+            <p className="text-xs text-pink-700 mt-2">
+              Hora preferida de recogida: <span className="font-semibold">{quote.pickup_time}</span>
+            </p>
+          )}
+          {quote.special_requests && (
+            <p className="text-xs text-pink-700 mt-1 whitespace-pre-line">Notas: {quote.special_requests}</p>
+          )}
         </div>
       )}
 

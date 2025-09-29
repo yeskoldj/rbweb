@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { supabase, Order } from '@/lib/supabase';
 import { squareConfig } from '@/lib/square/config';
 import { createSquarePayment } from '@/lib/square/payments';
 import { createP2POrder, p2pPaymentConfig } from '@/lib/square/p2p';
@@ -16,6 +16,8 @@ interface CartItem {
   quantity: number;
   image?: string;
   photoUrl?: string;
+  type?: string;
+  details?: string;
   customization?: any;
 }
 
@@ -26,10 +28,17 @@ interface Notification {
   message: string;
 }
 
-export default function OrderForm() {
+interface OrderFormProps {
+  orderId?: string;
+}
+
+export default function OrderForm({ orderId }: OrderFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [quoteSubmitted, setQuoteSubmitted] = useState(false);
+  const [quoteReference, setQuoteReference] = useState<string | null>(null);
+  const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
   const [showPayment, setShowPayment] = useState(false);
   const [showCardForm, setShowCardForm] = useState(false);
 
@@ -55,6 +64,7 @@ useEffect(() => {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'card' | 'zelle'>('card');
   const [p2pInstructions, setP2PInstructions] = useState<any>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [existingOrder, setExistingOrder] = useState<Order | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -70,6 +80,166 @@ useEffect(() => {
     .filter(Boolean)
     .join(', ');
   const [saveBillingAddress, setSaveBillingAddress] = useState(true);
+
+  const showNotification = useCallback(
+    (type: 'success' | 'error' | 'warning' | 'info', title: string, message: string) => {
+      const id = Date.now().toString();
+      const notification: Notification = { id, type, title, message };
+
+      setNotifications(prev => [...prev, notification]);
+
+      setTimeout(() => {
+        setNotifications(prev => prev.filter(n => n.id !== id));
+      }, 5000);
+    },
+    []
+  );
+
+  const dismissNotification = useCallback((id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  }, []);
+
+  const loadExistingOrder = useCallback(
+    async (id: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (error || !data) {
+          throw new Error(error?.message || 'Order not found');
+        }
+
+        const normalizedItems: CartItem[] = Array.isArray(data.items)
+          ? data.items.map((item: any, index: number) => {
+              const rawPrice = item?.price ?? 0;
+              const numericPrice = typeof rawPrice === 'number'
+                ? rawPrice
+                : parseFloat(String(rawPrice).replace(/[^0-9.,]/g, '').replace(',', '.')) || 0;
+
+              return {
+                id: item?.id || `${id}-${index}`,
+                name: item?.name || `Producto ${index + 1}`,
+                price: numericPrice,
+                quantity: item?.quantity ?? 1,
+                image: item?.image,
+                photoUrl: item?.photoUrl,
+                details: item?.details || item?.customization?.summary || '',
+                customization: item?.customization,
+                type: item?.type,
+              };
+            })
+          : [];
+
+        setExistingOrder(data as Order);
+        setCartItems(normalizedItems);
+        setFormData({
+          specialRequests: data.special_requests || '',
+          pickupTime: data.pickup_time || '',
+        });
+      } catch (err: any) {
+        console.error('Error loading existing order:', err);
+        showNotification(
+          'error',
+          'Orden no disponible',
+          'No pudimos cargar tu orden. Por favor verifica el enlace o contacta a la panadería.'
+        );
+      }
+    },
+    [showNotification]
+  );
+
+  const normalizeDetailValue = (value: any) => {
+    if (!value) return '';
+    if (Array.isArray(value)) {
+      return value
+        .map((entry) => {
+          if (!entry) return '';
+          if (typeof entry === 'string') {
+            return entry.trim();
+          }
+          if (typeof entry === 'object') {
+            const label = entry.name || entry.label || entry.id || '';
+            const size = entry.size ? `${entry.size}\"` : '';
+            const extra = entry.serves ? ` (${entry.serves})` : '';
+            return `${label || size ? `${label}${label && size ? ' ' : ''}${size}` : ''}${extra}`.trim();
+          }
+          return String(entry);
+        })
+        .filter(Boolean)
+        .join(', ');
+    }
+    if (typeof value === 'object') {
+      if (typeof value.summary === 'string') {
+        return value.summary;
+      }
+      if (typeof value.name === 'string') {
+        return value.name;
+      }
+      return Object.values(value)
+        .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
+        .filter(Boolean)
+        .join(', ');
+    }
+    return String(value);
+  };
+
+  const getCustomizationDetails = (item: CartItem): string => {
+    if (item.details && String(item.details).trim().length > 0) {
+      return item.details;
+    }
+
+    const customization = item.customization || {};
+    const details: string[] = [];
+
+    const shape = normalizeDetailValue(customization.shape);
+    if (shape) {
+      details.push(`Forma: ${shape}`);
+    }
+
+    const layers = normalizeDetailValue(customization.layers);
+    if (layers) {
+      details.push(`Capas: ${layers}`);
+    }
+
+    const flavors = normalizeDetailValue(customization.flavors);
+    if (flavors) {
+      details.push(`Sabores: ${flavors}`);
+    }
+
+    const colors = normalizeDetailValue(customization.colors);
+    if (colors) {
+      details.push(`Colores: ${colors}`);
+    }
+
+    const fillings = normalizeDetailValue(customization.fillings);
+    if (fillings) {
+      details.push(`Rellenos: ${fillings}`);
+    }
+
+    const decorations = normalizeDetailValue(customization.decorations);
+    if (decorations) {
+      details.push(`Decoraciones: ${decorations}`);
+    }
+
+    const inscription = normalizeDetailValue(customization.inscription);
+    if (inscription) {
+      details.push(`Mensaje: ${inscription}`);
+    }
+
+    const specialRequests = normalizeDetailValue(customization.specialRequests);
+    if (specialRequests) {
+      details.push(`Notas: ${specialRequests}`);
+    }
+
+    if (customization.photoUrl) {
+      details.push('Incluye foto de referencia');
+    }
+
+    return details.join(' | ');
+  };
 
   const appId = process.env.NEXT_PUBLIC_SQUARE_APPLICATION_ID || '';
   const locationId = process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID || '';
@@ -164,37 +334,31 @@ const initSquareCard = useCallback(async () => {
     }
   }, [showCardForm, card, initSquareCard]);
 
-  // Función para mostrar notificaciones modernas
-  const showNotification = (type: 'success' | 'error' | 'warning' | 'info', title: string, message: string) => {
-    const id = Date.now().toString();
-    const notification: Notification = { id, type, title, message };
-    
-    setNotifications(prev => [...prev, notification]);
-    
-    // Auto-remove después de 5 segundos
-    setTimeout(() => {
-      setNotifications(prev => prev.filter(n => n.id !== id));
-    }, 5000);
-  };
-
-  // Función para cerrar notificación manualmente
-  const dismissNotification = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  };
-
   useEffect(() => {
-    const savedCart = localStorage.getItem('bakery-cart');
-    if (savedCart) {
-      setCartItems(JSON.parse(savedCart));
-    }
+    if (orderId) {
+      loadExistingOrder(orderId);
+    } else {
+      const savedCart = localStorage.getItem('bakery-cart');
+      if (savedCart) {
+        try {
+          setCartItems(JSON.parse(savedCart));
+        } catch {
+          setCartItems([]);
+        }
+      }
 
-    const savedForm = localStorage.getItem('bakery-order-form');
-    if (savedForm) {
-      const parsed = JSON.parse(savedForm);
-      setFormData({
-        specialRequests: parsed.specialRequests || '',
-        pickupTime: parsed.pickupTime || ''
-      });
+      const savedForm = localStorage.getItem('bakery-order-form');
+      if (savedForm) {
+        try {
+          const parsed = JSON.parse(savedForm);
+          setFormData({
+            specialRequests: parsed.specialRequests || '',
+            pickupTime: parsed.pickupTime || ''
+          });
+        } catch {
+          setFormData({ specialRequests: '', pickupTime: '' });
+        }
+      }
     }
 
     const savedBilling = localStorage.getItem('bakery-billing-address');
@@ -213,7 +377,7 @@ const initSquareCard = useCallback(async () => {
     }
 
     checkCurrentUser();
-  }, []);
+  }, [orderId, loadExistingOrder]);
 
   useEffect(() => {
     localStorage.setItem('bakery-order-form', JSON.stringify(formData));
@@ -245,12 +409,25 @@ const initSquareCard = useCallback(async () => {
   };
 
   const addToCart = (item: CartItem) => {
+    if (existingOrder) {
+      showNotification(
+        'warning',
+        'Orden bloqueada',
+        'Esta orden ya fue creada. Si necesitas cambios, contacta a la panadería.'
+      );
+      return;
+    }
+
     const cartItem = {
       id: `${item.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
       name: item.name,
       price: item.price,
       quantity: 1,
-      image: item.image
+      image: item.image,
+      photoUrl: item.photoUrl,
+      details: item.details || getCustomizationDetails(item),
+      customization: item.customization,
+      type: item.type,
     };
 
     const existingCart = localStorage.getItem('bakery-cart');
@@ -282,6 +459,15 @@ const initSquareCard = useCallback(async () => {
   };
 
   const removeFromCart = (id: string, name: string) => {
+    if (existingOrder) {
+      showNotification(
+        'warning',
+        'Orden bloqueada',
+        'Esta orden ya fue creada. Si necesitas cambios, contacta a la panadería.'
+      );
+      return;
+    }
+
     const existingCart = localStorage.getItem('bakery-cart');
     let cart = existingCart ? JSON.parse(existingCart) : [];
     cart = cart.filter((cartItem: any) => cartItem.id !== id);
@@ -315,18 +501,217 @@ const initSquareCard = useCallback(async () => {
   };
 
   const calculateSubtotal = () => {
+    if (existingOrder) {
+      return existingOrder.subtotal ?? 0;
+    }
+
     return cartItems.reduce((total, item) => {
       const price = getItemPrice(item);
-      return total + (price * item.quantity);
+      return total + price * item.quantity;
     }, 0);
   };
 
   const calculateTax = () => {
+    if (existingOrder) {
+      return existingOrder.tax ?? 0;
+    }
+
     return selectedPaymentMethod === 'zelle' ? 0 : calculateSubtotal() * 0.03;
   };
 
+  const calculateTotalValue = () => {
+    return calculateSubtotal() + calculateTax();
+  };
+
   const calculateTotal = () => {
-    return (calculateSubtotal() + calculateTax()).toFixed(2);
+    return calculateTotalValue().toFixed(2);
+  };
+
+  const submitCakeQuote = async () => {
+    const cakeItems = cartItems.filter(
+      (item) => (item.type === 'cake' || item.customization) && !existingOrder
+    );
+
+    if (cakeItems.length === 0) {
+      showNotification('error', 'Sin pasteles personalizados', 'No se detectaron pasteles personalizados en tu carrito.');
+      return;
+    }
+
+    const customerName = (currentUser?.full_name || currentUser?.fullName || '').trim() || 'Cliente';
+    const customerEmail = (currentUser?.email || currentUser?.emailAddress || '').trim();
+    const customerPhone = (currentUser?.phone || '').trim();
+
+    if (!customerEmail && !customerPhone) {
+      showNotification(
+        'warning',
+        'Información de contacto requerida',
+        'Por favor, actualiza tu perfil con un email o teléfono para que podamos contactarte sobre tu cotización.'
+      );
+      return;
+    }
+
+    setCreatedOrderId(null);
+    setIsSubmitting(true);
+
+    try {
+      const formattedItems = cartItems.map((item) => ({
+        name: item.name,
+        quantity: item.quantity,
+        price: getItemPrice(item),
+        details: getCustomizationDetails(item),
+        customization: item.customization || null,
+        type: item.type || null,
+        photoUrl: item.photoUrl || null,
+      }));
+
+      const cakeSummaries = cakeItems.map((item, index) => {
+        const detail = getCustomizationDetails(item);
+        return `Pastel ${index + 1}: ${item.name}${detail ? `\n${detail}` : ''}`;
+      });
+
+      const pickupLine = formData.pickupTime
+        ? `\nHora preferida de recogida: ${formData.pickupTime}`
+        : '';
+      const specialLine = formData.specialRequests.trim()
+        ? `\nSolicitudes especiales: ${formData.specialRequests.trim()}`
+        : '';
+
+      const summary = `Resumen de personalización:\n${cakeSummaries.join('\n\n')}${pickupLine}${specialLine}`;
+      const referenceCode = `CAKE-${Date.now()}`;
+
+      const { data, error } = await supabase
+        .from('quotes')
+        .insert([
+          {
+            customer_name: customerName,
+            customer_phone: customerPhone || '',
+            customer_email: customerEmail || null,
+            occasion: 'custom-cake',
+            event_details: summary,
+            status: 'pending',
+            created_at: new Date().toISOString(),
+            cart_items: formattedItems,
+            requires_cake_quote: true,
+            pickup_time: formData.pickupTime || null,
+            special_requests: formData.specialRequests.trim() || null,
+            reference_code: referenceCode,
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      const insertedQuote = data || {};
+      const finalReference = insertedQuote.reference_code || referenceCode;
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id || currentUser?.id || null;
+
+      const { data: existingPendingOrder, error: fetchPendingError } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('quote_reference', finalReference)
+        .maybeSingle();
+
+      if (fetchPendingError) {
+        console.error('Error verificando orden existente para la cotización:', fetchPendingError);
+      }
+
+      if (!existingPendingOrder) {
+        const pendingOrderPayload: Record<string, any> = {
+          customer_name: customerName,
+          customer_phone: customerPhone || '',
+          customer_email: customerEmail || null,
+          items: formattedItems,
+          subtotal: 0,
+          tax: 0,
+          total: 0,
+          status: 'pending',
+          payment_status: 'pending',
+          payment_type: 'quote',
+          order_date: new Date().toISOString().split('T')[0],
+          pickup_time: formData.pickupTime || null,
+          special_requests: formData.specialRequests.trim() || null,
+          quote_reference: finalReference,
+          awaiting_quote: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        if (userId) {
+          pendingOrderPayload.user_id = userId;
+        }
+
+        const { data: insertedOrder, error: orderError } = await supabase
+          .from('orders')
+          .insert([pendingOrderPayload])
+          .select('id')
+          .single();
+
+        if (orderError) {
+          console.error('Error creando orden pendiente para la cotización:', orderError);
+          throw new Error('No se pudo registrar la orden en la panadería. Intenta nuevamente.');
+        }
+
+        setCreatedOrderId(insertedOrder?.id || null);
+      } else {
+        setCreatedOrderId(existingPendingOrder.id);
+      }
+
+      try {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        if (supabaseUrl) {
+          await fetch(`${supabaseUrl}/functions/v1/send-notification-email`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({
+              to: 'rangerbakery@gmail.com',
+              type: 'new_quote',
+              language: 'es',
+              quoteData: {
+                ...insertedQuote,
+                cart_items: formattedItems,
+                reference_code: finalReference,
+              },
+            }),
+          });
+        }
+      } catch (notificationError) {
+        console.log('Error enviando notificación de cotización:', notificationError);
+      }
+
+      localStorage.removeItem('bakery-cart');
+      localStorage.removeItem('bakery-order-form');
+
+      setQuoteSubmitted(true);
+      setQuoteReference(finalReference);
+      setShowPayment(false);
+      setCartItems([]);
+      setFormData({ specialRequests: '', pickupTime: '' });
+      setShowCardForm(false);
+      setShowP2PInstructions(false);
+
+      showNotification(
+        'success',
+        'Cotización enviada',
+        'Tu solicitud fue enviada al propietario. Te contactaremos con el precio final pronto.'
+      );
+    } catch (err: any) {
+      console.error('Error enviando cotización de pastel:', err);
+      showNotification(
+        'error',
+        'Error al enviar la cotización',
+        err?.message || 'Ocurrió un error al enviar la cotización. Intenta nuevamente.'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -336,8 +721,28 @@ const initSquareCard = useCallback(async () => {
       return;
     }
 
+    if (existingOrder?.awaiting_quote) {
+      showNotification(
+        'warning',
+        'Precio en revisión',
+        'Estamos esperando que la panadería confirme el total de tu pastel. Te avisaremos cuando puedas completar el pago.'
+      );
+      return;
+    }
+
     if (!formData.pickupTime) {
       showNotification('warning', 'Hora de Recogida', 'Por favor selecciona una hora de recogida antes de continuar.');
+      return;
+    }
+
+    if (existingOrder) {
+      setShowPayment(true);
+      return;
+    }
+
+    const containsCake = cartItems.some((item) => item.type === 'cake' || item.customization);
+    if (containsCake) {
+      await submitCakeQuote();
       return;
     }
 
@@ -369,9 +774,10 @@ const initSquareCard = useCallback(async () => {
       }
 
       if (selectedPaymentMethod === 'zelle') {
+        const totalAmount = Number(calculateTotalValue().toFixed(2));
         setP2PInstructions({
           method: 'zelle',
-          amount: parseFloat(calculateTotal()),
+          amount: totalAmount,
           email: p2pPaymentConfig.zelle.email,
           name: p2pPaymentConfig.zelle.name,
           instructions: p2pPaymentConfig.zelle.instructions,
@@ -407,26 +813,36 @@ const initSquareCard = useCallback(async () => {
       }
 
       // Crear pago con Square usando el token
+      const subtotal = Number(calculateSubtotal().toFixed(2));
+      const tax = Number(calculateTax().toFixed(2));
+      const total = Number(calculateTotalValue().toFixed(2));
+
       const paymentResult = await createSquarePayment({
-        amount: parseFloat(calculateTotal()),
+        amount: total,
+        subtotal,
+        tax,
         items: cartItems.map(item => ({
           name: item.name,
           price: getItemPrice(item),
           quantity: item.quantity,
-          photoUrl: item.photoUrl
+          photoUrl: item.photoUrl,
+          details: getCustomizationDetails(item),
+          type: item.type,
+          customization: item.customization,
         })),
         customerInfo: {
           name: (currentUser?.full_name || currentUser?.fullName || '').trim(),
           phone: (currentUser?.phone || '').trim(),
           email: currentUser?.email || '',
-          billingAddress
+          billingAddress,
         },
         paymentMethod: 'card',
         sourceId,
         currency: 'USD',
         userId,
-        pickupTime: formData.pickupTime || undefined,
-        specialRequests: formData.specialRequests?.trim() || undefined
+        pickupTime: (existingOrder?.pickup_time || formData.pickupTime) || undefined,
+        specialRequests: (existingOrder?.special_requests || formData.specialRequests)?.trim() || undefined,
+        orderId: existingOrder?.id,
       });
 
       if (paymentResult.success) {
@@ -439,10 +855,30 @@ const initSquareCard = useCallback(async () => {
         setShowPayment(false);
         setShowCardForm(false);
 
+        if (existingOrder) {
+          setExistingOrder({
+            ...existingOrder,
+            payment_status: 'completed',
+            payment_type: 'card',
+            subtotal,
+            tax,
+            total,
+            items: cartItems.map(item => ({
+              name: item.name,
+              quantity: item.quantity,
+              price: getItemPrice(item),
+              photoUrl: item.photoUrl,
+              details: getCustomizationDetails(item),
+              customization: item.customization,
+              type: item.type,
+            })),
+          } as Order);
+        }
+
         // Redirigir al dashboard
         setTimeout(() => {
           setShowSuccess(false);
-          router.push('/dashboard');
+          router.push(existingOrder ? '/track' : '/dashboard');
         }, 3000);
       }
 
@@ -488,23 +924,27 @@ const initSquareCard = useCallback(async () => {
       }
 
       const result = await createP2POrder({
-        amount: calculateSubtotal(),
+        amount: existingOrder ? existingOrder.total ?? calculateSubtotal() : calculateSubtotal(),
         items: cartItems.map(item => ({
           name: item.name,
           price: getItemPrice(item),
           quantity: item.quantity,
-          photoUrl: item.photoUrl
+          photoUrl: item.photoUrl,
+          details: getCustomizationDetails(item),
+          type: item.type,
+          customization: item.customization,
         })),
         customerInfo: {
           name: (currentUser?.full_name || currentUser?.fullName || '').trim(),
           phone: (currentUser?.phone || '').trim(),
           email: currentUser?.email || '',
-          billingAddress
+          billingAddress,
         },
         paymentMethod: 'zelle',
         userId,
-        pickupTime: formData.pickupTime || undefined,
-        specialRequests: formData.specialRequests?.trim() || undefined
+        pickupTime: (existingOrder?.pickup_time || formData.pickupTime) || undefined,
+        specialRequests: (existingOrder?.special_requests || formData.specialRequests)?.trim() || undefined,
+        orderId: existingOrder?.id,
       });
 
       if (!result || !result.success) {
@@ -518,9 +958,26 @@ const initSquareCard = useCallback(async () => {
       setShowSuccess(true);
       setShowP2PInstructions(false);
 
+      if (existingOrder) {
+        setExistingOrder({
+          ...existingOrder,
+          payment_status: 'pending',
+          payment_type: 'zelle',
+          items: cartItems.map(item => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: getItemPrice(item),
+            photoUrl: item.photoUrl,
+            details: getCustomizationDetails(item),
+            customization: item.customization,
+            type: item.type,
+          })),
+        } as Order);
+      }
+
       setTimeout(() => {
         setShowSuccess(false);
-        router.push('/dashboard');
+        router.push(existingOrder ? '/track' : '/dashboard');
       }, 3000);
     } catch (err: any) {
       console.error('❌ Error confirmando pago P2P:', err);
@@ -531,6 +988,15 @@ const initSquareCard = useCallback(async () => {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    if (existingOrder) {
+      showNotification(
+        'warning',
+        'Pedido en revisión',
+        'Si necesitas cambiar la hora o notas, contacta directamente a la panadería.'
+      );
+      return;
+    }
+
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
@@ -694,6 +1160,36 @@ const initSquareCard = useCallback(async () => {
         <h3 className="text-xl font-bold text-green-600 mb-2">¡Pedido Realizado Exitosamente!</h3>
         <p className="text-gray-600 mb-4">Gracias por tu pedido. Lo tendremos listo para recoger pronto.</p>
         <p className="text-sm text-gray-500">Redirigiendo al dashboard...</p>
+      </div>
+    );
+  }
+
+  if (quoteSubmitted) {
+    return (
+      <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+        <div className="w-16 h-16 flex items-center justify-center bg-pink-100 rounded-full mx-auto mb-4">
+          <i className="ri-customer-service-2-line text-pink-500 text-2xl"></i>
+        </div>
+        <h3 className="text-xl font-bold text-pink-600 mb-2">¡Solicitud enviada!</h3>
+        <p className="text-gray-600 mb-3">
+          El propietario revisará tu personalización y se pondrá en contacto contigo con el precio final.
+        </p>
+        {quoteReference && (
+          <p className="text-sm text-gray-500 mb-4">
+            Código de referencia: <span className="font-mono text-pink-600">{quoteReference}</span>
+          </p>
+        )}
+        {createdOrderId && (
+          <p className="text-sm text-gray-500 mb-4">
+            Número de orden temporal: <span className="font-mono text-pink-600">{createdOrderId.slice(0, 8)}...</span>
+          </p>
+        )}
+        <button
+          onClick={() => router.push('/track')}
+          className="w-full bg-gradient-to-r from-pink-400 to-teal-400 text-white py-3 rounded-lg font-medium"
+        >
+          Ver mis órdenes
+        </button>
       </div>
     );
   }
@@ -1044,6 +1540,19 @@ const initSquareCard = useCallback(async () => {
       />
       <NotificationSystem />
       <form id="bakery-order" onSubmit={handleSubmit} className="bg-white rounded-xl shadow-lg p-6">
+        {existingOrder?.awaiting_quote && (
+          <div className="mb-4 p-4 border border-amber-200 bg-amber-50 rounded-lg flex items-start">
+            <div className="w-10 h-10 flex items-center justify-center bg-amber-100 rounded-full mr-3">
+              <i className="ri-notification-3-line text-amber-600 text-lg"></i>
+            </div>
+            <div>
+              <p className="font-semibold text-amber-800">Tu pedido está en revisión</p>
+              <p className="text-sm text-amber-700 mt-1">
+                El propietario confirmará el precio final antes de habilitar el pago. Te enviaremos una notificación cuando esté listo.
+              </p>
+            </div>
+          </div>
+        )}
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Resumen del Pedido</h3>
@@ -1053,27 +1562,36 @@ const initSquareCard = useCallback(async () => {
                   <div className="flex-1">
                     <span className="font-medium text-sm">{item.name}</span>
                     <span className="text-pink-600 text-sm ml-2">{formatPrice(item)}</span>
+                    {getCustomizationDetails(item) && (
+                      <p className="text-xs text-gray-500 mt-1 whitespace-pre-line">
+                        {getCustomizationDetails(item)}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center space-x-2">
                     <span className="text-sm text-gray-600">x{item.quantity}</span>
-                    <button
-                      type="button"
-                      onClick={() => addToCart(item)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                        addedItems.has(item.id)
-                          ? 'bg-green-500 text-white'
-                          : 'bg-gradient-to-r from-pink-400 to-teal-400 text-white hover:shadow-md'
-                      }`}
-                    >
-                      {addedItems.has(item.id) ? '¡Agregado!' : 'Agregar'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => removeFromCart(item.id, item.name)}
-                      className="px-3 py-1 rounded-full text-xs font-medium bg-red-500 text-white hover:bg-red-600"
-                    >
-                      Eliminar
-                    </button>
+                    {!existingOrder && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => addToCart(item)}
+                          className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                            addedItems.has(item.id)
+                              ? 'bg-green-500 text-white'
+                              : 'bg-gradient-to-r from-pink-400 to-teal-400 text-white hover:shadow-md'
+                          }`}
+                        >
+                          {addedItems.has(item.id) ? '¡Agregado!' : 'Agregar'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeFromCart(item.id, item.name)}
+                          className="px-3 py-1 rounded-full text-xs font-medium bg-red-500 text-white hover:bg-red-600"
+                        >
+                          Eliminar
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
@@ -1081,7 +1599,11 @@ const initSquareCard = useCallback(async () => {
             <div className="space-y-2 pt-2 border-t">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Subtotal:</span>
-                <span>${calculateSubtotal().toFixed(2)}</span>
+                <span>
+                  {existingOrder?.awaiting_quote
+                    ? 'Por definir'
+                    : `$${calculateSubtotal().toFixed(2)}`}
+                </span>
               </div>
               {calculateTax() > 0 && (
                 <div className="flex justify-between text-sm">
@@ -1091,7 +1613,9 @@ const initSquareCard = useCallback(async () => {
               )}
               <div className="flex justify-between">
                 <span className="text-lg font-bold text-gray-800">Total:</span>
-                <span className="text-lg font-bold text-pink-600">${calculateTotal()}</span>
+                <span className="text-lg font-bold text-pink-600">
+                  {existingOrder?.awaiting_quote ? 'Por definir' : `$${calculateTotal()}`}
+                </span>
               </div>
             </div>
           </div>
@@ -1105,7 +1629,10 @@ const initSquareCard = useCallback(async () => {
               value={formData.pickupTime}
               onChange={handleInputChange}
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"
+              disabled={Boolean(existingOrder)}
+              className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm ${
+                existingOrder ? 'bg-gray-100 cursor-not-allowed' : ''
+              }`}
             >
               <option value="">Seleccionar hora de recogida</option>
               <option value="9:00 AM">9:00 AM</option>
@@ -1129,7 +1656,10 @@ const initSquareCard = useCallback(async () => {
               value={formData.specialRequests}
               onChange={handleInputChange}
               maxLength={500}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm h-20 resize-none"
+              disabled={Boolean(existingOrder)}
+              className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm h-20 resize-none ${
+                existingOrder ? 'bg-gray-100 cursor-not-allowed' : ''
+              }`}
               placeholder="¿Alguna instrucción especial o requerimientos dietéticos?"
             />
             <p className="text-xs text-gray-500 mt-1">{formData.specialRequests.length}/500 caracteres</p>
@@ -1137,9 +1667,18 @@ const initSquareCard = useCallback(async () => {
 
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-pink-400 to-teal-400 text-white py-3 rounded-lg font-medium"
+            disabled={isSubmitting || Boolean(existingOrder?.awaiting_quote)}
+            className={`w-full py-3 rounded-lg font-medium transition-colors ${
+              existingOrder?.awaiting_quote
+                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                : 'bg-gradient-to-r from-pink-400 to-teal-400 text-white hover:shadow-md'
+            } ${isSubmitting ? 'opacity-70 cursor-wait' : ''}`}
           >
-            Continuar al Pago - ${calculateTotal()}
+            {existingOrder
+              ? existingOrder.awaiting_quote
+                ? 'Esperando confirmación de precio'
+                : `Continuar con el pago - $${calculateTotal()}`
+              : `Continuar al Pago - $${calculateTotal()}`}
           </button>
         </div>
 

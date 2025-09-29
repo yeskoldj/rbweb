@@ -24,6 +24,8 @@ interface Order {
   order_date: string;
   created_at: string;
   updated_at?: string;
+  quote_reference?: string | null;
+  awaiting_quote?: boolean;
 }
 
 export default function TrackOrderPage() {
@@ -280,7 +282,11 @@ export default function TrackOrderPage() {
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-2xl font-bold text-pink-600">${order.total.toFixed(2)}</p>
+                        <p className="text-2xl font-bold text-pink-600">
+                          {order.awaiting_quote
+                            ? 'Por definir'
+                            : `$${Number(order.total ?? 0).toFixed(2)}`}
+                        </p>
                         <div className={`px-4 py-2 rounded-full text-sm font-bold border ${getStatusColor(order.status)}`}>
                           <i className={`${getStatusIcon(order.status)} mr-2`}></i>
                           {getStatusLabel(order.status)}
@@ -289,6 +295,22 @@ export default function TrackOrderPage() {
                     </div>
 
                     <div className="mb-6">
+                      {order.awaiting_quote && (
+                        <div className="mb-4 p-4 border border-amber-200 bg-amber-50 rounded-xl flex items-start">
+                          <div className="w-10 h-10 flex items-center justify-center bg-amber-100 rounded-full mr-3">
+                            <i className="ri-customer-service-2-line text-amber-600 text-lg"></i>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-amber-800">Estamos calculando tu cotización</p>
+                            <p className="text-sm text-amber-700 mt-1">
+                              El equipo de Ranger&apos;s Bakery revisará tu pastel personalizado y asignará el total. Te avisaremos cuando el pago esté disponible.
+                              {order.quote_reference && (
+                                <span className="block mt-2 text-xs font-mono text-amber-600">Ref: {order.quote_reference}</span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                       <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
                         <i className="ri-route-line text-pink-500 mr-2"></i>
                         Order Progress
@@ -369,14 +391,19 @@ export default function TrackOrderPage() {
                       </h4>
                       <div className="bg-gray-50 rounded-xl p-4 space-y-3">
                         {order.items.map((item, idx) => (
-                          <div key={idx} className="flex justify-between items-center">
-                            <div className="flex items-center space-x-3">
+                          <div key={idx} className="flex justify-between items-start space-x-3">
+                            <div className="flex items-start space-x-3">
                               <div className="w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center text-pink-600 font-bold text-sm">
                                 {item.quantity}
                               </div>
-                              <span className="font-medium text-gray-700">{item.name}</span>
+                              <div>
+                                <span className="font-medium text-gray-700 block">{item.name}</span>
+                                {item.details && (
+                                  <p className="text-xs text-gray-500 whitespace-pre-line mt-1">{item.details}</p>
+                                )}
+                              </div>
                             </div>
-                            <span className="font-bold text-gray-800">{item.price}</span>
+                            <span className="font-bold text-gray-800">{typeof item.price === 'number' ? `$${item.price.toFixed(2)}` : item.price}</span>
                           </div>
                         ))}
                       </div>

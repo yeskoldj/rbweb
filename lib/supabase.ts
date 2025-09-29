@@ -43,6 +43,8 @@ export interface Order {
   order_date: string
   payment_id?: string | null
   payment_reference?: string | null
+  quote_reference?: string | null
+  awaiting_quote?: boolean
   created_at: string
   updated_at: string
 }

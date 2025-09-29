@@ -128,10 +128,68 @@ serve(async (req) => {
         throw new Error('Payment not completed');
       }
 
-      // === Guardar orden en DB ===
       const paymentId: string | undefined = paymentResult.id;
+      const amountValue = typeof orderData.amount === 'number' ? orderData.amount : 0;
+      const normalizedSubtotal =
+        typeof orderData?.subtotal === 'number' && !Number.isNaN(orderData.subtotal)
+          ? Math.round(orderData.subtotal * 100) / 100
+          : Math.round((amountValue - amountValue * 0.03) * 100) / 100;
+      const normalizedTax =
+        typeof orderData?.tax === 'number' && !Number.isNaN(orderData.tax)
+          ? Math.round(orderData.tax * 100) / 100
+          : Math.round((amountValue * 0.03) * 100) / 100;
 
-      // Validate userId before constructing order record
+      const existingOrderId = orderData?.orderId;
+      if (existingOrderId && isValidUUID(existingOrderId)) {
+        const updateData: Record<string, any> = {
+          items: orderData.items || [],
+          subtotal: normalizedSubtotal,
+          tax: normalizedTax,
+          total: Math.round(amountValue * 100) / 100,
+          payment_status: 'completed',
+          payment_type: orderData.paymentMethod || 'square',
+          payment_reference: paymentId,
+          payment_id: null,
+          updated_at: new Date().toISOString(),
+          awaiting_quote: false,
+        };
+
+        if (orderData.pickupTime !== undefined) {
+          updateData.pickup_time = orderData.pickupTime || null;
+        }
+
+        if (orderData.specialRequests !== undefined) {
+          updateData.special_requests = orderData.specialRequests?.trim() || null;
+        }
+
+        const { error: updateError } = await supabaseAdmin
+          .from('orders')
+          .update(updateData)
+          .eq('id', existingOrderId)
+          .select('id')
+          .single();
+
+        if (updateError) {
+          console.error('❌ Database update error:', updateError);
+          throw new Error(`Payment ok but DB update error: ${updateError.message}`);
+        }
+
+        console.log('✅ Orden Square actualizada:', existingOrderId);
+
+        return new Response(JSON.stringify({
+          success: true,
+          paymentId: paymentResult.id,
+          orderId: existingOrderId,
+          status: 'completed',
+          amount: amountValue,
+          currency: 'USD',
+          environment: ENV,
+          paymentMethod: orderData.paymentMethod,
+          isSimulated: !ACCESS_TOKEN || !APPLICATION_ID,
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      // === Guardar orden nueva en DB ===
       const userId = orderData?.userId;
       if (!userId || !isValidUUID(userId)) {
         throw new Error('Invalid or missing userId');
@@ -148,33 +206,31 @@ serve(async (req) => {
       }
 
       const orderRecord: Record<string, any> = {
-        // NO establezcas 'id' si tu columna es uuid con default
         user_id: profile.id,
-        // Ensure a non-null customer_name to satisfy DB constraints
         customer_name: orderData.customerInfo?.name?.trim() || 'Cliente',
         customer_phone: orderData.customerInfo?.phone?.trim() || '',
         customer_email: orderData.customerInfo?.email?.trim() || null,
         billing_address: orderData.customerInfo?.billingAddress?.trim() || null,
-        items: orderData.items,
-        subtotal: +(orderData.amount - orderData.amount * 0.03).toFixed(2),
-        tax: +(orderData.amount * 0.03).toFixed(2),
-        total: +orderData.amount.toFixed(2),
+        items: orderData.items || [],
+        subtotal: normalizedSubtotal,
+        tax: normalizedTax,
+        total: Math.round(amountValue * 100) / 100,
         pickup_time: orderData.pickupTime || null,
         special_requests: orderData.specialRequests?.trim() || null,
-        status: 'pending', // pendiente de producción
+        status: 'pending',
         order_date: new Date().toISOString().split('T')[0],
-        // Para payment_id, usar TEXT siempre (Square puede devolver IDs no-UUID)
-        payment_id: null,  // Deja null si no es UUID válido
-        payment_reference: paymentId, // Guarda el ID original aquí como TEXT
+        payment_id: null,
+        payment_reference: paymentId,
         payment_type: orderData.paymentMethod || 'square',
         payment_status: 'completed',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        };
+        awaiting_quote: false,
+      };
       console.log('📋 Insertando orden Square:', {
         payment_reference: paymentId,
         user_id: orderRecord.user_id,
-        total: orderRecord.total
+        total: orderRecord.total,
       });
 
       const { data: insertedOrder, error: dbError } = await supabaseAdmin
@@ -193,9 +249,9 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         success: true,
         paymentId: paymentResult.id,
-        orderId: insertedOrder.id, // ← id generado por la DB
+        orderId: insertedOrder.id,
         status: 'completed',
-        amount: orderData.amount,
+        amount: amountValue,
         currency: 'USD',
         environment: ENV,
         paymentMethod: orderData.paymentMethod,
