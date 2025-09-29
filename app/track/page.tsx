@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import Header from '../../components/Header';
 import TabBar from '../../components/TabBar';
@@ -32,11 +32,36 @@ export default function TrackOrderPage() {
   const [loading, setLoading] = useState(true);
   const [searchPhone, setSearchPhone] = useState('');
 
-  useEffect(() => {
-    checkUserAndLoadOrders();
+  const loadOrdersFromLocal = useCallback((userEmail: string) => {
+    const savedOrders = JSON.parse(localStorage.getItem('bakery-orders') || '[]');
+    const userOrders = savedOrders.filter((order: Order) =>
+      order.customer_email === userEmail
+    );
+    setOrders(userOrders);
   }, []);
 
-  const checkUserAndLoadOrders = async () => {
+  const loadUserOrders = useCallback(async (userEmail: string) => {
+    try {
+      const { data: orders, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('customer_email', userEmail)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading orders from Supabase:', error);
+        loadOrdersFromLocal(userEmail);
+        return;
+      }
+
+      setOrders(orders || []);
+    } catch (error) {
+      console.error('Supabase connection error:', error);
+      loadOrdersFromLocal(userEmail);
+    }
+  }, [loadOrdersFromLocal]);
+
+  const checkUserAndLoadOrders = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -64,36 +89,11 @@ export default function TrackOrderPage() {
       console.error('Error checking user:', error);
     }
     setLoading(false);
-  };
+  }, [loadUserOrders]);
 
-  const loadUserOrders = async (userEmail: string) => {
-    try {
-      const { data: orders, error } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('customer_email', userEmail)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error loading orders from Supabase:', error);
-        loadOrdersFromLocal(userEmail);
-        return;
-      }
-
-      setOrders(orders || []);
-    } catch (error) {
-      console.error('Supabase connection error:', error);
-      loadOrdersFromLocal(userEmail);
-    }
-  };
-
-  const loadOrdersFromLocal = (userEmail: string) => {
-    const savedOrders = JSON.parse(localStorage.getItem('bakery-orders') || '[]');
-    const userOrders = savedOrders.filter((order: Order) => 
-      order.customer_email === userEmail
-    );
-    setOrders(userOrders);
-  };
+  useEffect(() => {
+    checkUserAndLoadOrders();
+  }, [checkUserAndLoadOrders]);
 
   const searchOrdersByPhone = async () => {
     if (!searchPhone.trim()) return;

@@ -3,6 +3,7 @@
 
 import Link from 'next/link';
 import { useLanguage } from '../lib/languageContext';
+import SafeImage from './SafeImage';
 
 export default function Hero() {
   const { t } = useLanguage();
@@ -18,11 +19,16 @@ export default function Hero() {
         4. Formatos recomendados: .jpg, .jpeg, .png, .webp
         5. Tamaño recomendado: 400x200px para mejor rendimiento
         */}
-        <img 
-          src="https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/7dcef81fde0fb6f04a4c79a29f1041e7.jfif"
-          alt="Artisanal Cakes"
-          className="w-full h-48 object-cover rounded-2xl shadow-xl mb-6"
-        />
+        <div className="relative w-full h-48 mb-6 overflow-hidden rounded-2xl shadow-xl">
+          <SafeImage
+            src="https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/7dcef81fde0fb6f04a4c79a29f1041e7.jfif"
+            alt="Artisanal Cakes"
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 90vw, 400px"
+            priority
+          />
+        </div>
         
         {/* 
         📝 CÓMO CAMBIAR LOS TEXTOS PRINCIPALES:

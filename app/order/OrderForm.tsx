@@ -275,7 +275,7 @@ const initSquareCard = useCallback(async () => {
     setCardMountState('error');
     showNotification('error', 'Square no cargó', e?.message || 'Permite web.squarecdn.com o revisa IDs/domains');
   }
-}, [appId, locationId]);
+}, [appId, locationId, showNotification]);
 
 
   // Inicializar Square para otros métodos de pago

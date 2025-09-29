@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import SafeImage from '@/components/SafeImage';
 
 interface Order {
   id: string;
@@ -213,11 +214,15 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
                         rel="noopener noreferrer"
                         className="block mt-2 ml-6"
                       >
-                        <img
-                          src={item.photoUrl}
-                          alt={item.name}
-                          className="h-24 w-24 object-cover rounded"
-                        />
+                        <div className="relative h-24 w-24 overflow-hidden rounded">
+                          <SafeImage
+                            src={item.photoUrl}
+                            alt={item.name}
+                            fill
+                            className="object-cover"
+                            sizes="96px"
+                          />
+                        </div>
                       </a>
                     )}
                   </div>

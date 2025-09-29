@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../lib/languageContext';
+import SafeImage from './SafeImage';
 
 export default function PWAInstallPrompt() {
   const [showPrompt, setShowPrompt] = useState(false);
@@ -55,11 +56,15 @@ export default function PWAInstallPrompt() {
     <div className="fixed bottom-20 left-4 right-4 bg-gradient-to-r from-pink-500 to-teal-500 rounded-xl p-4 shadow-lg z-40">
       <div className="flex items-start space-x-3">
         <div className="w-12 h-12 flex items-center justify-center bg-white rounded-full flex-shrink-0">
-          <img 
-            src="https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/3c3401df8a967b2c425ed28b75bf5296.png"
-            alt="App Icon"
-            className="w-10 h-10 object-contain"
-          />
+          <div className="relative w-10 h-10">
+            <SafeImage
+              src="https://static.readdy.ai/image/9733c14590fa269b3349cd88bac6322e/3c3401df8a967b2c425ed28b75bf5296.png"
+              alt="App Icon"
+              fill
+              className="object-contain"
+              sizes="40px"
+            />
+          </div>
         </div>
         
         <div className="flex-1 min-w-0">
