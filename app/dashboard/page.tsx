@@ -78,7 +78,6 @@ export default function DashboardPage() {
   const [pendingCancelRequests, setPendingCancelRequests] = useState<{[key: string]: any}>({});
   const [priceApprovalOrder, setPriceApprovalOrder] = useState<Order | null>(null);
   const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
-  const [taxInput, setTaxInput] = useState('0.00');
   const [isSavingPrice, setIsSavingPrice] = useState(false);
   const [priceError, setPriceError] = useState<string | null>(null);
   const router = useRouter();
@@ -279,14 +278,12 @@ export default function DashboardPage() {
 
     setPriceApprovalOrder(order);
     setPriceInputs(inputs);
-    setTaxInput(order.tax ? order.tax.toFixed(2) : '0.00');
     setPriceError(null);
   };
 
   const closePriceModal = () => {
     setPriceApprovalOrder(null);
     setPriceInputs({});
-    setTaxInput('0.00');
     setPriceError(null);
     setIsSavingPrice(false);
   };
@@ -317,12 +314,6 @@ export default function DashboardPage() {
       }
     }
 
-    const parsedTax = parseInputToNumber(taxInput);
-    if (parsedTax !== null && parsedTax < 0) {
-      setPriceError('El impuesto no puede ser negativo.');
-      return;
-    }
-
     const updatedItems = items.map((item, index) => {
       if (!isItemPricePending(item)) {
         return item;
@@ -344,7 +335,7 @@ export default function DashboardPage() {
 
     const subtotal = computeSubtotalPreview(priceApprovalOrder, priceInputs);
     const roundedSubtotal = Number(subtotal.toFixed(2));
-    const taxValue = parsedTax ? Number(parsedTax.toFixed(2)) : 0;
+    const taxValue = Number((roundedSubtotal * 0.03).toFixed(2));
     const totalValue = Number((roundedSubtotal + taxValue).toFixed(2));
 
     const pendingMessage = 'Estado: Esperando confirmación de precio personalizado.';
@@ -906,8 +897,7 @@ export default function DashboardPage() {
     ? computeSubtotalPreview(priceApprovalOrder, priceInputs)
     : 0;
   const previewSubtotalRounded = Number(previewSubtotal.toFixed(2));
-  const parsedPreviewTax = parseInputToNumber(taxInput);
-  const previewTaxRounded = parsedPreviewTax ? Number(parsedPreviewTax.toFixed(2)) : 0;
+  const previewTaxRounded = Number((previewSubtotalRounded * 0.03).toFixed(2));
   const previewTotalRounded = Number((previewSubtotalRounded + previewTaxRounded).toFixed(2));
 
   const isPriceSaveDisabled =
@@ -1658,17 +1648,12 @@ export default function DashboardPage() {
               )}
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Impuestos adicionales ($)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={taxInput}
-                    onChange={(event) => setTaxInput(event.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-200"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">Ingresa 0 si el impuesto ya está incluido.</p>
+                <div className="rounded-xl border border-pink-100 bg-pink-50 p-4 text-sm text-pink-900">
+                  <p className="font-semibold">Impuesto automático (3%)</p>
+                  <p className="mt-1">
+                    El sistema calcula y añade automáticamente un recargo del 3% a todas las órdenes para pagos con tarjeta.
+                  </p>
+                  <p className="mt-2 text-xs text-pink-800">Este valor no requiere ajustes manuales.</p>
                 </div>
                 <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm">
                   <div className="flex justify-between">
