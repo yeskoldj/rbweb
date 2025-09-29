@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useLanguage } from '../../lib/languageContext';
 
@@ -38,75 +38,7 @@ export default function UserManagement() {
   });
   const { t } = useLanguage();
 
-  useEffect(() => {
-    checkUserRole();
-  }, []);
-
-  const checkUserRole = async () => {
-    try {
-      const localUser = localStorage.getItem('bakery-user');
-      if (localUser) {
-        const userData = JSON.parse(localUser);
-        setCurrentUser({
-          role: userData.role || (userData.isOwner ? 'owner' : 'customer'),
-          email: userData.email,
-          full_name: userData.fullName || userData.email.split('@')[0],
-          phone: userData.phone || ''
-        });
-        setProfileData({
-          full_name: userData.fullName || userData.email.split('@')[0],
-          phone: userData.phone || '',
-          currentPassword: '',
-          newPassword: '',
-          confirmPassword: ''
-        });
-        
-        if (userData.role === 'owner' || userData.role === 'employee') {
-          await loadUsersFromDatabase();
-        }
-        setLoading(false);
-        return;
-      }
-
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-      if (authError || !user) {
-        setLoading(false);
-        return;
-      }
-
-      const { data: userData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      if (profileError) {
-        console.log('No se pudo cargar el perfil, usando datos por defecto');
-        setLoading(false);
-        return;
-      }
-
-      setCurrentUser(userData);
-      setProfileData({
-        full_name: userData.full_name || '',
-        phone: userData.phone || '',
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-      });
-
-      if (userData?.role === 'owner' || userData?.role === 'employee') {
-        await loadUsersFromDatabase();
-      }
-    } catch (error) {
-      console.log('Error en la autenticación, usando modo local');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadUsersFromDatabase = async () => {
+  const loadUsersFromDatabase = useCallback(async () => {
     try {
       const {
         data: { session },
@@ -166,7 +98,75 @@ export default function UserManagement() {
       }
       setErrorMessage('Error de conexión al cargar usuarios.');
     }
-  };
+  }, []);
+
+  const checkUserRole = useCallback(async () => {
+    try {
+      const localUser = localStorage.getItem('bakery-user');
+      if (localUser) {
+        const userData = JSON.parse(localUser);
+        setCurrentUser({
+          role: userData.role || (userData.isOwner ? 'owner' : 'customer'),
+          email: userData.email,
+          full_name: userData.fullName || userData.email.split('@')[0],
+          phone: userData.phone || ''
+        });
+        setProfileData({
+          full_name: userData.fullName || userData.email.split('@')[0],
+          phone: userData.phone || '',
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+        
+        if (userData.role === 'owner' || userData.role === 'employee') {
+          await loadUsersFromDatabase();
+        }
+        setLoading(false);
+        return;
+      }
+
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        setLoading(false);
+        return;
+      }
+
+      const { data: userData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) {
+        console.log('No se pudo cargar el perfil, usando datos por defecto');
+        setLoading(false);
+        return;
+      }
+
+      setCurrentUser(userData);
+      setProfileData({
+        full_name: userData.full_name || '',
+        phone: userData.phone || '',
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+
+      if (userData?.role === 'owner' || userData?.role === 'employee') {
+        await loadUsersFromDatabase();
+      }
+    } catch (error) {
+      console.error('Error en la autenticación, usando modo local', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [loadUsersFromDatabase]);
+
+  useEffect(() => {
+    checkUserRole();
+  }, [checkUserRole]);
 
   const updateUserRole = async (userId: string, newRole: string) => {
     try {
@@ -246,7 +246,7 @@ export default function UserManagement() {
             }
           }
         } catch (supabaseError) {
-          console.log('Supabase no disponible, guardado localmente');
+          console.log('Supabase no disponible, guardado localmente', supabaseError);
           alert(t('profileUpdated'));
         }
       } else {

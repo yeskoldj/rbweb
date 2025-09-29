@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { supabase, Order } from '../../lib/supabase';
 import Header from '../../components/Header';
 import TabBar from '../../components/TabBar';
-import OrderCard from './OrderCard';
 import CalendarView from './CalendarView';
 import UserManagement from './UserManagement';
 
@@ -54,7 +53,6 @@ export default function DashboardPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [activeTab, setActiveTab] = useState('orders');
-  const [showTodayView, setShowTodayView] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -79,11 +77,10 @@ export default function DashboardPage() {
     try {
       const {
         data: { user },
-        error: authError,
       } = await supabase.auth.getUser();
 
       if (user) {
-        const { data: userData, error: profileError } = await supabase
+        const { data: userData } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', user.id)
@@ -1121,10 +1118,6 @@ export default function DashboardPage() {
     return orders.filter((order) => order.status === status);
   }
 
-  function getQuotesByStatus(status: QuoteStatus) {
-    return quotes.filter((quote) => quote.status === status);
-  }
-
   function getPendingQuotes() {
     return quotes.filter((quote) => quote.status === 'pending');
   }
@@ -1273,7 +1266,7 @@ function QuoteCard({ quote, onStatusUpdate, onFinalize, onDelete }: { quote: Quo
                 {!item.details && item.customization && (
                   <p className="text-xs text-gray-600 mt-1">
                     {Object.entries(item.customization)
-                      .filter(([key, value]) => value && typeof value === 'string')
+                      .filter(([, value]) => value && typeof value === 'string')
                       .map(([key, value]) => `${key}: ${value}`)
                       .join(' | ')}
                   </p>

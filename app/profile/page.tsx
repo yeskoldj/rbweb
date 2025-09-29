@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
-import { useLanguage } from '../../lib/languageContext';
 import Header from '../../components/Header';
 import TabBar from '../../components/TabBar';
 
@@ -27,8 +26,6 @@ export default function ProfilePage() {
     securityAnswer: ''
   });
   const router = useRouter();
-  const { t } = useLanguage();
-
   useEffect(() => {
     checkUser();
   }, []);
@@ -134,7 +131,7 @@ export default function ProfilePage() {
           if (!error) {
             console.log('Perfil actualizado en Supabase');
           }
-        } catch (supabaseError) {
+        } catch {
           console.log('Error actualizando en Supabase, guardado localmente');
         }
       }

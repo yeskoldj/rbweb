@@ -2,7 +2,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useLanguage } from '../lib/languageContext';
 import Header from '../components/Header';
 import Hero from '../components/Hero';
 import MenuPreview from '../components/MenuPreview';
@@ -15,8 +14,6 @@ import PWAInstallPrompt from '../components/PWAInstallPrompt';
 
 export default function Home() {
   const [showLanguageWelcome, setShowLanguageWelcome] = useState(false);
-  const { language } = useLanguage();
-
   useEffect(() => {
     const hasSelectedLanguage = localStorage.getItem('bakery-language');
     if (!hasSelectedLanguage) {

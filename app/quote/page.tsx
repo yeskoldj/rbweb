@@ -8,7 +8,7 @@ import { useLanguage } from '../../lib/languageContext';
 import { supabase } from '../../lib/supabase';
 
 export default function QuotePage() {
-  const { language, t } = useLanguage();
+  const { language } = useLanguage();
   const [currentStep, setCurrentStep] = useState(0);
   const [uploadedPhoto, setUploadedPhoto] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
