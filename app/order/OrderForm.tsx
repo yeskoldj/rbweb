@@ -527,32 +527,76 @@ const initSquareCard = useCallback(async () => {
       const summary = `Resumen de personalización:\n${cakeSummaries.join('\n\n')}${pickupLine}${specialLine}`;
       const referenceCode = `CAKE-${Date.now()}`;
 
+      const baseQuotePayload = {
+        customer_name: customerName,
+        customer_phone: customerPhone || '',
+        customer_email: customerEmail || null,
+        occasion: 'custom-cake',
+        status: 'pending',
+        created_at: new Date().toISOString(),
+        requires_cake_quote: true,
+        pickup_time: formData.pickupTime || null,
+        special_requests: formData.specialRequests.trim() || null,
+        reference_code: referenceCode,
+      };
+
+      const preferredQuotePayload = {
+        ...baseQuotePayload,
+        event_details: summary,
+        cart_items: formattedItems,
+      };
+
+      const fallbackCartSummary = formattedItems
+        .map(
+          (item) =>
+            `• ${item.quantity || 1} x ${item.name || 'Artículo'}${
+              item.price ? ` ($${item.price})` : ''
+            }${item.details ? `\n   Detalles: ${item.details}` : ''}`
+        )
+        .join('\n');
+
+      const fallbackQuotePayload = {
+        ...baseQuotePayload,
+        event_details: `${summary}\n\nResumen del carrito (guardado automáticamente):\n${fallbackCartSummary}`.trim(),
+      };
+
       const { data, error } = await supabase
         .from('quotes')
-        .insert([
-          {
-            customer_name: customerName,
-            customer_phone: customerPhone || '',
-            customer_email: customerEmail || null,
-            occasion: 'custom-cake',
-            event_details: summary,
-            status: 'pending',
-            created_at: new Date().toISOString(),
-            cart_items: formattedItems,
-            requires_cake_quote: true,
-            pickup_time: formData.pickupTime || null,
-            special_requests: formData.specialRequests.trim() || null,
-            reference_code: referenceCode,
-          },
-        ])
+        .insert([preferredQuotePayload])
         .select()
         .single();
 
-      if (error) {
-        throw new Error(error.message);
-      }
+      let insertedQuote = data || {};
 
-      const insertedQuote = data || {};
+      if (error) {
+        const message = error?.message || '';
+        const missingCartColumn =
+          message.includes('cart_items') && message.includes('quotes');
+
+        if (!missingCartColumn) {
+          throw new Error(message);
+        }
+
+        console.warn(
+          'Supabase quotes table missing cart_items column; retrying insert sin snapshot',
+          error
+        );
+
+        const {
+          data: fallbackData,
+          error: fallbackError,
+        } = await supabase
+          .from('quotes')
+          .insert([fallbackQuotePayload])
+          .select()
+          .single();
+
+        if (fallbackError) {
+          throw new Error(fallbackError.message);
+        }
+
+        insertedQuote = fallbackData || {};
+      }
       const finalReference = insertedQuote.reference_code || referenceCode;
 
       try {

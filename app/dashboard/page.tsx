@@ -359,11 +359,28 @@ export default function DashboardPage() {
   const finalizeQuote = async (quote: Quote) => {
     try {
       const now = new Date().toISOString();
+      const fallbackItems = [
+        {
+          name: quote.occasion
+            ? `Cotización ${quote.occasion}`
+            : 'Cotización personalizada',
+          quantity: 1,
+          price: quote.estimated_price || 0,
+          details:
+            quote.event_details ||
+            'Detalle de cotización sin lista de carrito disponible.',
+        },
+      ];
+
+      const orderItems = quote.cart_items && quote.cart_items.length > 0
+        ? quote.cart_items
+        : fallbackItems;
+
       const orderData = {
         customer_name: quote.customer_name,
         customer_phone: quote.customer_phone || '',
         customer_email: quote.customer_email || '',
-        items: quote.cart_items || [],
+        items: orderItems,
         subtotal: quote.estimated_price || 0,
         tax: 0,
         total: quote.estimated_price || 0,
