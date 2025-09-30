@@ -65,6 +65,8 @@ useEffect(() => {
 }, []);
 
 
+  const isP2PEnabled = false;
+
   const [showP2PInstructions, setShowP2PInstructions] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'card' | 'zelle'>('card');
   const [p2pInstructions, setP2PInstructions] = useState<any>(null);
@@ -628,6 +630,10 @@ const initSquareCard = useCallback(async () => {
       return existingOrder.tax ?? 0;
     }
 
+    if (!isP2PEnabled) {
+      return calculateSubtotal() * 0.03;
+    }
+
     return selectedPaymentMethod === 'zelle' ? 0 : calculateSubtotal() * 0.03;
   };
 
@@ -972,7 +978,7 @@ const initSquareCard = useCallback(async () => {
         localStorage.removeItem('bakery-billing-address');
       }
 
-      if (selectedPaymentMethod === 'zelle') {
+      if (isP2PEnabled && selectedPaymentMethod === 'zelle') {
         const totalAmount = Number(calculateTotalValue().toFixed(2));
         setP2PInstructions({
           method: 'zelle',
@@ -1701,40 +1707,42 @@ const initSquareCard = useCallback(async () => {
 
               {/* Apple Pay y Google Pay deshabilitados */}
 
-              <div className="border-t pt-4">
-                <h5 className="font-medium text-gray-800 mb-3">Transferencias P2P</h5>
-                
-                {/* Zelle */}
-                <button
-                  onClick={() => setSelectedPaymentMethod('zelle')}
-                  className={`w-full p-4 rounded-xl border-2 transition-all mb-3 ${
-                    selectedPaymentMethod === 'zelle' 
-                      ? 'border-purple-500 bg-purple-50' 
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center">
-                    <div className="w-12 h-12 flex items-center justify-center bg-purple-100 rounded-full mr-4">
-                      <i className="ri-bank-line text-purple-600 text-xl"></i>
-                    </div>
-                    <div className="text-left">
-                      <h5 className="font-medium text-gray-800">Zelle</h5>
-                      <p className="text-sm text-gray-600">Transferencia bancaria instantánea</p>
-                    </div>
-                    {selectedPaymentMethod === 'zelle' && (
-                      <i className="ri-check-line text-purple-600 text-xl ml-auto"></i>
-                    )}
-                  </div>
-                </button>
+              {isP2PEnabled && (
+                <div className="border-t pt-4">
+                  <h5 className="font-medium text-gray-800 mb-3">Transferencias P2P</h5>
 
-              </div>
+                  {/* Zelle */}
+                  <button
+                    onClick={() => setSelectedPaymentMethod('zelle')}
+                    className={`w-full p-4 rounded-xl border-2 transition-all mb-3 ${
+                      selectedPaymentMethod === 'zelle'
+                        ? 'border-purple-500 bg-purple-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <div className="w-12 h-12 flex items-center justify-center bg-purple-100 rounded-full mr-4">
+                        <i className="ri-bank-line text-purple-600 text-xl"></i>
+                      </div>
+                      <div className="text-left">
+                        <h5 className="font-medium text-gray-800">Zelle</h5>
+                        <p className="text-sm text-gray-600">Transferencia bancaria instantánea</p>
+                      </div>
+                      {selectedPaymentMethod === 'zelle' && (
+                        <i className="ri-check-line text-purple-600 text-xl ml-auto"></i>
+                      )}
+                    </div>
+                  </button>
+
+                </div>
+              )}
             </div>
           </div>
 
           <div className="space-y-3">
             <button
               onClick={() => {
-                if (selectedPaymentMethod === 'card') {
+                if (!isP2PEnabled || selectedPaymentMethod === 'card') {
                   setShowCardForm(true);
                 } else {
                   processPayment();
@@ -1751,8 +1759,9 @@ const initSquareCard = useCallback(async () => {
               ) : (
                 <div className="flex items-center justify-center">
                   <i className="ri-arrow-right-line text-xl mr-2"></i>
-                  {selectedPaymentMethod === 'card' ? 'Ingresar Datos de Tarjeta' :
-                   'Continuar con Zelle'}
+                  {isP2PEnabled && selectedPaymentMethod === 'zelle'
+                    ? 'Continuar con Zelle'
+                    : 'Ingresar Datos de Tarjeta'}
                 </div>
               )}
             </button>
