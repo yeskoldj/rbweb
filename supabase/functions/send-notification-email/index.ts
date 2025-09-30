@@ -10,11 +10,15 @@ import type {
   WhatsAppTemplateComponentParameter,
 } from '../_shared/whatsapp.ts'
 import { requireUser, isStaffRole } from '../_shared/auth.ts'
+import {
+  getAllowedOrigins,
+  getCorsConfigError,
+  getCorsHeaders,
+  isOriginAllowed,
+} from '../_shared/cors.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
-const ENVIRONMENT = Deno.env.get('NODE_ENV') || 'development'
-const ALLOWED_ORIGIN =
-  Deno.env.get('ALLOWED_ORIGIN') || (ENVIRONMENT === 'development' ? '*' : '')
+const corsConfigurationError = getCorsConfigError()
 const DEFAULT_APP_BASE_URL = 'https://app.rangersbakery.com'
 const RAW_APP_BASE_URL = Deno.env.get('PUBLIC_APP_BASE_URL') || DEFAULT_APP_BASE_URL
 const NORMALIZED_APP_BASE_URL = RAW_APP_BASE_URL.replace(/\/$/, '') || DEFAULT_APP_BASE_URL
@@ -25,32 +29,11 @@ const WHATSAPP_TEMPLATE_CUSTOMER_PAYMENT_READY = Deno.env.get('WHATSAPP_TEMPLATE
 const WHATSAPP_TEMPLATE_CUSTOMER_READY_FOR_PICKUP = Deno.env.get('WHATSAPP_TEMPLATE_CUSTOMER_ORDER_READY_FOR_PICKUP') || ''
 const WHATSAPP_TEMPLATE_BUSINESS_ORDER_ALERT = Deno.env.get('WHATSAPP_TEMPLATE_BUSINESS_ORDER_ALERT') || ''
 const WHATSAPP_TEMPLATE_BUSINESS_QUOTE_ALERT = Deno.env.get('WHATSAPP_TEMPLATE_BUSINESS_QUOTE_ALERT') || ''
-const corsHeaders = {
-  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
 const ensureAppUrl = (value: string | null | undefined): string | null => {
   if (typeof value !== 'string') return null
   const trimmed = value.trim()
   if (!trimmed) return null
   return trimmed.startsWith(NORMALIZED_APP_BASE_URL) ? trimmed : null
-}
-
-const buildCorsHeaders = (origin: string | null) => {
-  if (ALLOWED_ORIGIN === '*') {
-    return { ...corsHeaders, 'Access-Control-Allow-Origin': '*' }
-  }
-
-  if (origin && origin === ALLOWED_ORIGIN) {
-    return { ...corsHeaders, 'Access-Control-Allow-Origin': origin }
-  }
-
-  return {
-    ...corsHeaders,
-    'Access-Control-Allow-Origin': ALLOWED_ORIGIN || 'null',
-  }
 }
 
 const supabaseAdmin = createClient(
@@ -328,11 +311,27 @@ async function dispatchWhatsAppNotifications(
 
 serve(async (req) => {
   const origin = req.headers.get('origin')
-  const responseCorsHeaders = buildCorsHeaders(origin)
+  const responseCorsHeaders = getCorsHeaders(origin)
 
-  if (ALLOWED_ORIGIN !== '*' && origin !== ALLOWED_ORIGIN) {
-    console.warn(`Blocked request from origin: ${origin || 'unknown'}`)
-    return new Response('Forbidden', { status: 403, headers: responseCorsHeaders })
+  if (corsConfigurationError) {
+    return new Response(
+      JSON.stringify({ error: corsConfigurationError }),
+      {
+        status: 500,
+        headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' },
+      },
+    )
+  }
+
+  if (!isOriginAllowed(origin)) {
+    console.warn(`Blocked request from origin: ${origin || 'unknown'}. Allowed origins: ${getAllowedOrigins().join(', ')}`)
+    return new Response(
+      JSON.stringify({ error: 'Forbidden origin' }),
+      {
+        status: 403,
+        headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' },
+      },
+    )
   }
 
   // Handle CORS

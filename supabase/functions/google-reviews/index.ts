@@ -1,18 +1,33 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import {
+  getAllowedOrigins,
+  getCorsConfigError,
+  getCorsHeaders,
+  isOriginAllowed,
+} from '../_shared/cors.ts'
 
-const ENVIRONMENT = Deno.env.get('NODE_ENV') || 'development'
-const ALLOWED_ORIGIN =
-  Deno.env.get('ALLOWED_ORIGIN') || (ENVIRONMENT === 'development' ? '*' : '')
-const corsHeaders = {
-  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+const corsConfigurationError = getCorsConfigError()
 
 serve(async (req) => {
-  const origin = req.headers.get('origin') || ''
-  if (ALLOWED_ORIGIN !== '*' && origin && origin !== ALLOWED_ORIGIN) {
-    console.warn(`Blocked request from origin: ${origin}`)
-    return new Response('Forbidden', { status: 403, headers: corsHeaders })
+  const origin = req.headers.get('origin')
+  const corsHeaders = getCorsHeaders(origin)
+
+  if (corsConfigurationError) {
+    return new Response(
+      JSON.stringify({ error: corsConfigurationError }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      },
+    )
+  }
+
+  if (!isOriginAllowed(origin)) {
+    console.warn(`Blocked request from origin: ${origin || 'unknown'}. Allowed origins: ${getAllowedOrigins().join(', ')}`)
+    return new Response(
+      JSON.stringify({ error: 'Forbidden origin' }),
+      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    )
   }
 
   if (req.method === 'OPTIONS') {

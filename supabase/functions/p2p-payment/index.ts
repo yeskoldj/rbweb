@@ -1,6 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { requireUser, isStaffRole } from '../_shared/auth.ts'
+import {
+  getAllowedOrigins,
+  getCorsConfigError,
+  getCorsHeaders,
+  isOriginAllowed,
+} from '../_shared/cors.ts'
 
 // Cliente Supabase con service_role para insertar sin RLS
 const supabaseAdmin = createClient(
@@ -8,29 +14,7 @@ const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
 )
 
-const ENVIRONMENT = Deno.env.get('NODE_ENV') || 'development'
-const ALLOWED_ORIGIN =
-  Deno.env.get('ALLOWED_ORIGIN') || (ENVIRONMENT === 'development' ? '*' : '')
-const corsHeaders = {
-  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-const buildCorsHeaders = (origin: string | null) => {
-  if (ALLOWED_ORIGIN === '*') {
-    return { ...corsHeaders, 'Access-Control-Allow-Origin': '*' }
-  }
-
-  if (origin && origin === ALLOWED_ORIGIN) {
-    return { ...corsHeaders, 'Access-Control-Allow-Origin': origin }
-  }
-
-  return {
-    ...corsHeaders,
-    'Access-Control-Allow-Origin': ALLOWED_ORIGIN || 'null',
-  }
-}
+const corsConfigurationError = getCorsConfigError()
 
 // Helper to verify if a string is a valid UUID
 const isValidUUID = (value: string | undefined | null): boolean => {
@@ -45,11 +29,29 @@ const isMissingBillingColumn = (error: any): boolean => {
 
 serve(async (req) => {
   const origin = req.headers.get('origin')
-  const responseCorsHeaders = buildCorsHeaders(origin)
+  const responseCorsHeaders = getCorsHeaders(origin)
 
-  if (ALLOWED_ORIGIN !== '*' && origin !== ALLOWED_ORIGIN) {
-    console.warn(`Blocked request from origin: ${origin || 'unknown'}`)
-    return new Response('Forbidden', { status: 403, headers: responseCorsHeaders })
+  if (corsConfigurationError) {
+    return new Response(
+      JSON.stringify({ error: corsConfigurationError }),
+      {
+        status: 500,
+        headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' },
+      },
+    )
+  }
+
+  if (!isOriginAllowed(origin)) {
+    console.warn(
+      `Blocked request from origin: ${origin || 'unknown'}. Allowed origins: ${getAllowedOrigins().join(', ')}`,
+    )
+    return new Response(
+      JSON.stringify({ error: 'Forbidden origin' }),
+      {
+        status: 403,
+        headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' },
+      },
+    )
   }
 
   // CORS preflight
