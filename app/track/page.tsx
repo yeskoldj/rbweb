@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import Header from '../../components/Header';
 import TabBar from '../../components/TabBar';
+import { parseSpecialRequestSections } from '@/lib/specialRequestParser';
 
 interface OrderItem {
   name: string;
@@ -32,6 +33,7 @@ interface Order {
   pickup_time?: string;
   special_requests?: string;
   order_date: string;
+  pickup_date?: string;
   created_at: string;
   updated_at?: string;
 }
@@ -42,21 +44,24 @@ interface SpecialRequestEntry {
 }
 
 const formatSpecialRequests = (specialRequests?: string): SpecialRequestEntry[] => {
-  if (!specialRequests) {
+  const parsed = parseSpecialRequestSections(specialRequests);
+  const content = parsed.userRequests;
+
+  if (!content) {
     return [];
   }
 
-  const pieces = specialRequests
-    .split(/[\n;]+/)
-    .map((piece) => piece.trim())
+  const lines = content
+    .split('\n')
+    .map((line) => line.trim())
     .filter(Boolean);
 
-  if (pieces.length === 0) {
+  if (lines.length === 0) {
     return [];
   }
 
-  const entries = pieces.map((piece) => {
-    const [label, ...rest] = piece.split(':');
+  const entries = lines.map((line) => {
+    const [label, ...rest] = line.split(':');
 
     if (rest.length === 0) {
       return { value: label.trim() };
@@ -79,6 +84,36 @@ const formatSpecialRequests = (specialRequests?: string): SpecialRequestEntry[] 
     seen.add(key);
     return true;
   });
+};
+
+const getPickupDisplay = (date?: string | null, time?: string | null, locale = 'en-US') => {
+  const formatDate = (value?: string | null) => {
+    if (!value) {
+      return '';
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      const parsed = new Date(`${value}T00:00:00`);
+      if (!Number.isNaN(parsed.getTime())) {
+        try {
+          return parsed.toLocaleDateString(locale, { dateStyle: 'medium' });
+        } catch {
+          return value;
+        }
+      }
+    }
+
+    return value;
+  };
+
+  const dateLabel = formatDate(date);
+  const timeLabel = (time || '').trim();
+
+  if (dateLabel && timeLabel) {
+    return `${dateLabel} • ${timeLabel}`;
+  }
+
+  return dateLabel || timeLabel || '';
 };
 
 export default function TrackOrderPage() {
@@ -392,6 +427,7 @@ export default function TrackOrderPage() {
             ) : (
               orders.map(order => {
                 const specialRequests = formatSpecialRequests(order.special_requests);
+                const pickupDisplay = getPickupDisplay(order.pickup_date, order.pickup_time);
 
                 return (
                   <div key={order.id} className="bg-white rounded-xl shadow-lg overflow-hidden">
@@ -482,15 +518,15 @@ export default function TrackOrderPage() {
                         </div>
                       </div>
 
-                      {order.pickup_time && (
+                      {pickupDisplay && (
                         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 mb-4 border border-blue-200">
                           <div className="flex items-center">
                             <div className="w-10 h-10 flex items-center justify-center bg-blue-100 rounded-full mr-3">
                               <i className="ri-calendar-line text-blue-600"></i>
                             </div>
                             <div>
-                              <p className="font-semibold text-blue-800">Pickup Time</p>
-                              <p className="text-blue-700">{order.pickup_time}</p>
+                              <p className="font-semibold text-blue-800">Pickup Details</p>
+                              <p className="text-blue-700">{pickupDisplay}</p>
                             </div>
                           </div>
                         </div>

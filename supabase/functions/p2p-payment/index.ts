@@ -133,6 +133,10 @@ serve(async (req) => {
           updateData.pickup_time = orderData.pickupTime || null
         }
 
+        if (orderData.pickupDate !== undefined) {
+          updateData.pickup_date = orderData.pickupDate || null
+        }
+
         if (customerPhoneValue) {
           updateData.customer_phone = customerPhoneValue
         }
@@ -188,6 +192,7 @@ serve(async (req) => {
         tax,
         total,
         pickup_time: orderData.pickupTime || null,
+        pickup_date: orderData.pickupDate || null,
         special_requests: orderData.specialRequests
           ? `${orderData.specialRequests}\n[Pagado con Zelle | Ref: ${p2pRef}]`
           : `[Pagado con Zelle | Ref: ${p2pRef}]`,

@@ -8,6 +8,7 @@ import { createSquarePayment } from '@/lib/square/payments';
 import { createP2POrder, p2pPaymentConfig } from '@/lib/square/p2p';
 import { showCartNotification } from '@/lib/cartNotification';
 import { notifyBusinessAboutOrder } from '@/lib/orderNotifications';
+import { parseSpecialRequestSections } from '@/lib/specialRequestParser';
 import Script from 'next/script';
 
 interface CartItem {
@@ -34,82 +35,6 @@ interface Notification {
 interface OrderFormProps {
   orderId?: string;
 }
-
-const parseSpecialRequestSections = (raw: string | null | undefined) => {
-  if (!raw || typeof raw !== 'string') {
-    return {
-      summary: null as string | null,
-      userRequests: '',
-      referenceCode: null as string | null,
-      statusMessage: null as string | null,
-    };
-  }
-
-  const sections = raw
-    .split('\n\n')
-    .map((section) => section.trim())
-    .filter(Boolean)
-    .filter((section) => section !== '---');
-
-  let referenceCode: string | null = null;
-  let statusMessage: string | null = null;
-  const summaryParts: string[] = [];
-  const metadataMatchers = [/^referencia interna/i, /^estado:/i];
-
-  sections.forEach((section) => {
-    const normalized = section.toLowerCase();
-
-    if (normalized.startsWith('referencia interna')) {
-      const code = section.split(':').slice(1).join(':').trim();
-      referenceCode = code || null;
-      return;
-    }
-
-    if (normalized.startsWith('estado:')) {
-      const message = section.split(':').slice(1).join(':').trim();
-      statusMessage = message || null;
-      return;
-    }
-
-    summaryParts.push(section);
-  });
-
-  const summary = summaryParts.length > 0
-    ? summaryParts
-        .map((part) =>
-          part
-            .split('\n')
-            .filter((line) => !metadataMatchers.some((pattern) => pattern.test(line.trim())))
-            .join('\n')
-            .trim()
-        )
-        .filter(Boolean)
-        .join('\n\n')
-    : null;
-
-  let userRequests = '';
-
-  if (summary) {
-    const specialRequestMatch = summary.match(/Solicitudes especiales:\s*([\s\S]*)/i);
-    if (specialRequestMatch) {
-      userRequests = (specialRequestMatch[1] || '').trim();
-    }
-  }
-
-  const sanitizedUserRequests = userRequests
-    .split('\n')
-    .map((line) => line.trimEnd())
-    .filter((line) => !metadataMatchers.some((pattern) => pattern.test(line.trim())))
-    .join('\n')
-    .trim();
-
-  return {
-    summary,
-    userRequests: sanitizedUserRequests,
-    referenceCode,
-    statusMessage,
-  };
-};
 
 export default function OrderForm({ orderId }: OrderFormProps) {
   const router = useRouter();
@@ -150,7 +75,8 @@ useEffect(() => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [formData, setFormData] = useState({
     specialRequests: '',
-    pickupTime: ''
+    pickupTime: '',
+    pickupDate: '',
   });
   const [contactInfo, setContactInfo] = useState({
     email: '',
@@ -159,6 +85,39 @@ useEffect(() => {
   const [billingPostalCode, setBillingPostalCode] = useState('');
   const billingAddress = billingPostalCode.trim();
   const [saveBillingAddress, setSaveBillingAddress] = useState(true);
+  const normalizeDateInputValue = (value?: string | null) => {
+    if (!value) {
+      return '';
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return value;
+    }
+
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toISOString().split('T')[0];
+    }
+
+    return '';
+  };
+
+  const formatPickupDateForSummary = (value: string) => {
+    if (!value) {
+      return '';
+    }
+
+    const parsed = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) {
+      return value;
+    }
+
+    try {
+      return parsed.toLocaleDateString('es-ES', { dateStyle: 'long' });
+    } catch {
+      return value;
+    }
+  };
   const hasPendingPrice = cartItems.some(item => {
     if (existingOrder) return false;
     if (item.isPricePending) return true;
@@ -336,12 +295,16 @@ useEffect(() => {
           : [];
 
         const parsedSpecial = parseSpecialRequestSections(data.special_requests || '');
+        const orderWithPickupDate = data as Order & { pickup_date?: string | null };
 
         setExistingOrder(data as Order);
         setCartItems(normalizedItems);
         setFormData({
           specialRequests: parsedSpecial.userRequests || '',
-          pickupTime: data.pickup_time || '',
+          pickupTime: data.pickup_time || parsedSpecial.pickupTime || '',
+          pickupDate: normalizeDateInputValue(
+            orderWithPickupDate.pickup_date ?? parsedSpecial.pickupDate ?? ''
+          ),
         });
         setSystemSummary(parsedSpecial.summary);
         setSystemStatusMessage(parsedSpecial.statusMessage);
@@ -526,7 +489,7 @@ const initSquareCard = useCallback(async () => {
             pickupTime: parsed.pickupTime || ''
           });
         } catch {
-          setFormData({ specialRequests: '', pickupTime: '' });
+          setFormData({ specialRequests: '', pickupTime: '', pickupDate: '' });
         }
       }
     }
@@ -833,14 +796,17 @@ const initSquareCard = useCallback(async () => {
         return `Pastel ${index + 1}: ${item.name}${detail ? `\n${detail}` : ''}`;
       });
 
-      const pickupLine = formData.pickupTime
+      const pickupDateLine = formData.pickupDate
+        ? `\nFecha preferida de recogida: ${formatPickupDateForSummary(formData.pickupDate)}`
+        : '';
+      const pickupTimeLine = formData.pickupTime
         ? `\nHora preferida de recogida: ${formData.pickupTime}`
         : '';
       const specialLine = formData.specialRequests.trim()
         ? `\nSolicitudes especiales: ${formData.specialRequests.trim()}`
         : '';
 
-      const summary = `Resumen de personalización:\n${cakeSummaries.join('\n\n')}${pickupLine}${specialLine}`;
+      const summary = `Resumen de personalización:\n${cakeSummaries.join('\n\n')}${pickupDateLine}${pickupTimeLine}${specialLine}`;
       const referenceCode = `CAKE-${Date.now()}`;
 
       const subtotalValue = cartItems.reduce((total, item) => {
@@ -866,6 +832,7 @@ const initSquareCard = useCallback(async () => {
         tax: Number(taxValue.toFixed(2)),
         total: Number(totalValue.toFixed(2)),
         pickup_time: formData.pickupTime || null,
+        pickup_date: formData.pickupDate || null,
         special_requests: specialRequestSections.join('\n\n'),
         status: 'pending',
         payment_status: 'pending',
@@ -921,6 +888,7 @@ const initSquareCard = useCallback(async () => {
           customerPhone: customerPhone,
           customerEmail: customerEmail || undefined,
           pickupTime: formData.pickupTime || null,
+          pickupDate: formData.pickupDate || null,
           specialRequests: orderPayload.special_requests,
           subtotal: orderPayload.subtotal,
           tax: orderPayload.tax,
@@ -971,7 +939,7 @@ const initSquareCard = useCallback(async () => {
       setQuoteSubmitted(true);
       setQuoteReference(finalReference);
       setCartItems([]);
-      setFormData({ specialRequests: '', pickupTime: '' });
+      setFormData({ specialRequests: '', pickupTime: '', pickupDate: '' });
       setShowPayment(false);
       setShowCardForm(false);
       setShowP2PInstructions(false);
@@ -1000,8 +968,12 @@ const initSquareCard = useCallback(async () => {
       return;
     }
 
-    if (!formData.pickupTime) {
-      showNotification('warning', 'Hora de Recogida', 'Por favor selecciona una hora de recogida antes de continuar.');
+    if (!formData.pickupDate || !formData.pickupTime) {
+      showNotification(
+        'warning',
+        'Fecha y Hora de Recogida',
+        'Por favor selecciona la fecha y la hora de recogida antes de continuar.'
+      );
       return;
     }
 
@@ -1141,6 +1113,10 @@ const initSquareCard = useCallback(async () => {
         currency: 'USD',
         userId,
         pickupTime: (existingOrder?.pickup_time || formData.pickupTime) || undefined,
+        pickupDate:
+          normalizeDateInputValue(existingOrder?.pickup_date ?? formData.pickupDate) || undefined,
+        pickupDate:
+          normalizeDateInputValue(existingOrder?.pickup_date ?? formData.pickupDate) || undefined,
         specialRequests: (existingOrder?.special_requests || formData.specialRequests)?.trim() || undefined,
         orderId: existingOrder?.id,
       });
@@ -1157,6 +1133,7 @@ const initSquareCard = useCallback(async () => {
           customerPhone: customerPhone,
           customerEmail: currentUser?.email || undefined,
           pickupTime: formData.pickupTime || null,
+          pickupDate: formData.pickupDate || null,
           specialRequests: formData.specialRequests?.trim() || null,
           subtotal,
           tax,
@@ -1297,6 +1274,7 @@ const initSquareCard = useCallback(async () => {
         customerPhone: customerPhone,
         customerEmail: currentUser?.email || undefined,
         pickupTime: formData.pickupTime || null,
+        pickupDate: formData.pickupDate || null,
         specialRequests: formData.specialRequests?.trim() || null,
         subtotal,
         tax: 0,
@@ -1409,6 +1387,8 @@ const initSquareCard = useCallback(async () => {
       ))}
     </div>
   );
+
+  const minPickupDate = new Date().toISOString().split('T')[0];
 
   // Componente de instrucciones P2P para Zelle
   const P2PInstructionsModal = () => {
@@ -1966,31 +1946,51 @@ const initSquareCard = useCallback(async () => {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Hora Preferida de Recogida
-            </label>
-            <select
-              name="pickupTime"
-              value={formData.pickupTime}
-              onChange={handleInputChange}
-              required
-              disabled={Boolean(existingOrder)}
-              className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm ${
-                existingOrder ? 'bg-gray-100 cursor-not-allowed' : ''
-              }`}
-            >
-              <option value="">Seleccionar hora de recogida</option>
-              <option value="9:00 AM">9:00 AM</option>
-              <option value="10:00 AM">10:00 AM</option>
-              <option value="11:00 AM">11:00 AM</option>
-              <option value="12:00 PM">12:00 PM</option>
-              <option value="1:00 PM">1:00 PM</option>
-              <option value="2:00 PM">2:00 PM</option>
-              <option value="3:00 PM">3:00 PM</option>
-              <option value="4:00 PM">4:00 PM</option>
-              <option value="5:00 PM">5:00 PM</option>
-            </select>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Fecha Preferida de Recogida
+              </label>
+              <input
+                type="date"
+                name="pickupDate"
+                value={formData.pickupDate}
+                onChange={handleInputChange}
+                min={minPickupDate}
+                required
+                disabled={Boolean(existingOrder)}
+                className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm ${
+                  existingOrder ? 'bg-gray-100 cursor-not-allowed' : ''
+                }`}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Hora Preferida de Recogida
+              </label>
+              <select
+                name="pickupTime"
+                value={formData.pickupTime}
+                onChange={handleInputChange}
+                required
+                disabled={Boolean(existingOrder)}
+                className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm ${
+                  existingOrder ? 'bg-gray-100 cursor-not-allowed' : ''
+                }`}
+              >
+                <option value="">Seleccionar hora de recogida</option>
+                <option value="9:00 AM">9:00 AM</option>
+                <option value="10:00 AM">10:00 AM</option>
+                <option value="11:00 AM">11:00 AM</option>
+                <option value="12:00 PM">12:00 PM</option>
+                <option value="1:00 PM">1:00 PM</option>
+                <option value="2:00 PM">2:00 PM</option>
+                <option value="3:00 PM">3:00 PM</option>
+                <option value="4:00 PM">4:00 PM</option>
+                <option value="5:00 PM">5:00 PM</option>
+              </select>
+            </div>
           </div>
 
           {shouldShowContactSection && (

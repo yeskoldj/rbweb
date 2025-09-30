@@ -13,6 +13,36 @@ export default function CalendarView({ orders, onStatusUpdate }: CalendarViewPro
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
 
+  const formatPickupDisplay = (date?: string | null, time?: string | null) => {
+    const formatDate = (value?: string | null) => {
+      if (!value) {
+        return '';
+      }
+
+      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        const parsed = new Date(`${value}T00:00:00`);
+        if (!Number.isNaN(parsed.getTime())) {
+          try {
+            return parsed.toLocaleDateString('es-ES', { dateStyle: 'short' });
+          } catch {
+            return value;
+          }
+        }
+      }
+
+      return value;
+    };
+
+    const dateLabel = formatDate(date);
+    const timeLabel = (time || '').trim();
+
+    if (dateLabel && timeLabel) {
+      return `${dateLabel} • ${timeLabel}`;
+    }
+
+    return dateLabel || timeLabel || 'Horario por confirmar';
+  };
+
   const getOrdersForDate = (date: string) => {
     return orders.filter(order => order.order_date === date);
   };
@@ -237,11 +267,13 @@ export default function CalendarView({ orders, onStatusUpdate }: CalendarViewPro
                     </div>
                   </div>
                   
-                  {order.pickup_time && (
+                  {(order.pickup_date || order.pickup_time) && (
                     <div className="mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
                       <div className="flex items-center text-blue-800">
                         <i className="ri-time-line mr-2"></i>
-                        <span className="text-sm font-medium">Hora de entrega: {order.pickup_time}</span>
+                        <span className="text-sm font-medium">
+                          {`Horario de entrega: ${formatPickupDisplay(order.pickup_date, order.pickup_time)}`}
+                        </span>
                       </div>
                     </div>
                   )}

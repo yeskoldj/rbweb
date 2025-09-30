@@ -18,8 +18,44 @@ import {
 import CalendarView from './CalendarView';
 import UserManagement from './UserManagement';
 import { openPhotoPrintWindow } from '@/lib/photoPrinting';
+import { parseSpecialRequestSections } from '@/lib/specialRequestParser';
 
 type QuoteStatus = 'pending' | 'responded' | 'accepted' | 'rejected';
+
+const formatDateValue = (value?: string | null, locale = 'es-ES') => {
+  if (!value) {
+    return '';
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const parsed = new Date(`${value}T00:00:00`);
+    if (!Number.isNaN(parsed.getTime())) {
+      try {
+        return parsed.toLocaleDateString(locale, { dateStyle: 'medium' });
+      } catch {
+        return value;
+      }
+    }
+  }
+
+  return value;
+};
+
+const getPickupTimeDisplay = (value?: string | null) =>
+  value && value.trim().length > 0 ? value.trim() : 'Hora por confirmar';
+
+const getPickupCombinedDisplay = (date?: string | null, time?: string | null, locale = 'es-ES') => {
+  const dateLabel = formatDateValue(date, locale);
+  const timeLabel = (time || '').trim();
+
+  if (dateLabel && timeLabel) {
+    return `${dateLabel} • ${timeLabel}`;
+  }
+
+  return dateLabel || timeLabel || '';
+};
+
+const getUserSpecialRequests = (raw?: string | null) => parseSpecialRequestSections(raw).userRequests;
 
 interface Quote {
   id: string;
@@ -45,6 +81,7 @@ interface Quote {
   cart_items?: OrderItem[] | null;
   requires_cake_quote?: boolean;
   pickup_time?: string | null;
+  pickup_date?: string | null;
   special_requests?: string | null;
   reference_code?: string | null;
 }
@@ -438,6 +475,7 @@ export default function DashboardPage() {
                 subtotal: roundedSubtotal,
                 tax: taxValue,
                 pickup_time: priceApprovalOrder.pickup_time,
+                pickup_date: priceApprovalOrder.pickup_date,
                 special_requests: updatedSpecialRequests,
                 items: updatedItems,
                 payment_url: paymentUrl,
@@ -642,6 +680,7 @@ export default function DashboardPage() {
                 customer_name: targetOrder.customer_name,
                 customer_email: targetOrder.customer_email,
                 pickup_time: targetOrder.pickup_time,
+                pickup_date: targetOrder.pickup_date,
                 total: targetOrder.total,
                 subtotal: targetOrder.subtotal,
                 tax: targetOrder.tax,
@@ -848,6 +887,7 @@ export default function DashboardPage() {
         payment_status: 'pending',
         order_date: now,
         pickup_time: quote.pickup_time || null,
+        pickup_date: quote.pickup_date || null,
         special_requests: quote.special_requests || quote.event_details || null,
         created_at: now,
         updated_at: now,
@@ -1380,48 +1420,54 @@ export default function DashboardPage() {
                             </p>
                           </div>
                         ) : (
-                          getTodayOrders().map((order) => (
-                            <div
-                              key={order.id}
-                              className="space-y-3 rounded-2xl border border-gray-100 bg-gray-50 p-5 shadow-sm"
-                            >
-                              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                                <div>
-                                  <p className="text-sm font-semibold text-gray-600">Cliente</p>
-                                  <p className="text-lg font-bold text-gray-900">{order.customer_name}</p>
-                                  <p className="text-sm text-gray-500">{order.customer_phone}</p>
+                          getTodayOrders().map((order) => {
+                            const pickupCombined = getPickupCombinedDisplay(order.pickup_date, order.pickup_time);
+                            const pickupLabel = pickupCombined || 'Fecha / hora por confirmar';
+                            const userRequests = getUserSpecialRequests(order.special_requests);
+
+                            return (
+                              <div
+                                key={order.id}
+                                className="space-y-3 rounded-2xl border border-gray-100 bg-gray-50 p-5 shadow-sm"
+                              >
+                                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                  <div>
+                                    <p className="text-sm font-semibold text-gray-600">Cliente</p>
+                                    <p className="text-lg font-bold text-gray-900">{order.customer_name}</p>
+                                    <p className="text-sm text-gray-500">{order.customer_phone}</p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total</p>
+                                    <p className="text-lg font-bold text-pink-600">
+                                      {formatOrderTotal(order)}
+                                    </p>
+                                    <span className="mt-2 inline-flex items-center justify-center rounded-full bg-white px-3 py-1 text-xs font-semibold capitalize text-gray-700 shadow">
+                                      {order.status}
+                                    </span>
+                                  </div>
                                 </div>
-                                <div className="text-right">
-                                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total</p>
-                                  <p className="text-lg font-bold text-pink-600">
-                                    {formatOrderTotal(order)}
+                                <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
+                                  <div className="flex items-center gap-2">
+                                    <i className="ri-time-line text-pink-500"></i>
+                                    <span>{pickupLabel}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <i className="ri-map-pin-line text-pink-500"></i>
+                                    <span>{order.billing_address || 'Retiro en tienda'}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <i className="ri-mail-line text-pink-500"></i>
+                                    <span>{order.customer_email || 'Sin correo'}</span>
+                                  </div>
+                                </div>
+                                {userRequests && (
+                                  <p className="rounded-2xl bg-white px-4 py-3 text-sm text-gray-700 shadow-inner whitespace-pre-line">
+                                    {userRequests}
                                   </p>
-                                  <span className="mt-2 inline-flex items-center justify-center rounded-full bg-white px-3 py-1 text-xs font-semibold capitalize text-gray-700 shadow">
-                                    {order.status}
-                                  </span>
-                                </div>
+                                )}
                               </div>
-                              <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
-                                <div className="flex items-center gap-2">
-                                  <i className="ri-time-line text-pink-500"></i>
-                                  <span>{order.pickup_time || 'Horario por confirmar'}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <i className="ri-map-pin-line text-pink-500"></i>
-                                  <span>{order.billing_address || 'Retiro en tienda'}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <i className="ri-mail-line text-pink-500"></i>
-                                  <span>{order.customer_email || 'Sin correo'}</span>
-                                </div>
-                              </div>
-                              {order.special_requests && (
-                                <p className="rounded-2xl bg-white px-4 py-3 text-sm text-gray-700 shadow-inner">
-                                  {order.special_requests}
-                                </p>
-                              )}
-                            </div>
-                          ))
+                            );
+                          })
                         )}
                       </div>
                     </div>
@@ -1447,6 +1493,9 @@ export default function DashboardPage() {
                         ? (order.items as OrderItem[])
                         : [];
                       const statusInfo = statusMeta[order.status];
+                      const pickupCombined = getPickupCombinedDisplay(order.pickup_date, order.pickup_time);
+                      const pickupTimeDisplay = getPickupTimeDisplay(order.pickup_time);
+                      const userRequests = getUserSpecialRequests(order.special_requests);
 
                       return (
                         <div key={order.id} className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
@@ -1460,7 +1509,7 @@ export default function DashboardPage() {
                                 <h3 className="font-bold text-gray-800 text-lg">{order.customer_name}</h3>
                                 <div className="flex items-center space-x-2 text-sm text-gray-600">
                                   <i className="ri-time-line"></i>
-                                  <span>{order.pickup_time || 'Hora no especificada'}</span>
+                                  <span>{pickupCombined || pickupTimeDisplay}</span>
                                 </div>
                               </div>
                             </div>
@@ -1572,13 +1621,13 @@ export default function DashboardPage() {
                             </div>
                           </div>
 
-                          {order.special_requests && (
+                          {userRequests && (
                             <div className="mb-4 p-3 bg-gradient-to-r from-yellow-50 to-amber-50 rounded-xl border-l-4 border-yellow-400">
                               <div className="flex items-start space-x-2">
                                 <i className="ri-lightbulb-line text-yellow-600 mt-0.5"></i>
                                 <div>
                                   <p className="text-sm font-bold text-yellow-800">Solicitud Especial:</p>
-                                  <p className="text-sm text-yellow-700">{order.special_requests}</p>
+                                  <p className="text-sm text-yellow-700 whitespace-pre-line">{userRequests}</p>
                                 </div>
                               </div>
                             </div>
@@ -1947,6 +1996,8 @@ function QuoteCard({ quote, onStatusUpdate, onFinalize, onDelete }: { quote: Quo
     quote.estimated_price ? String(quote.estimated_price) : ''
   );
   const [adminNotes, setAdminNotes] = useState(quote.admin_notes || '');
+  const pickupCombined = getPickupCombinedDisplay(quote.pickup_date, quote.pickup_time);
+  const userQuoteRequests = getUserSpecialRequests(quote.special_requests);
 
   const handlePhotoPrint = (event: MouseEvent<HTMLButtonElement>, photoUrl: string) => {
     event.stopPropagation();
@@ -2179,13 +2230,13 @@ function QuoteCard({ quote, onStatusUpdate, onFinalize, onDelete }: { quote: Quo
               );
             })}
           </div>
-          {quote.pickup_time && (
+          {pickupCombined && (
             <p className="text-xs text-pink-700 mt-2">
-              Hora preferida de recogida: <span className="font-semibold">{quote.pickup_time}</span>
+              Hora preferida de recogida: <span className="font-semibold">{pickupCombined}</span>
             </p>
           )}
-          {quote.special_requests && (
-            <p className="text-xs text-pink-700 mt-1 whitespace-pre-line">Notas: {quote.special_requests}</p>
+          {userQuoteRequests && (
+            <p className="text-xs text-pink-700 mt-1 whitespace-pre-line">Notas: {userQuoteRequests}</p>
           )}
         </div>
       )}

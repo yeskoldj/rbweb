@@ -11,6 +11,7 @@ export interface OrderNotificationPayload {
   customerPhone?: string;
   customerEmail?: string | null;
   pickupTime?: string | null;
+  pickupDate?: string | null;
   specialRequests?: string | null;
   subtotal: number;
   tax: number;
@@ -68,6 +69,7 @@ export async function notifyBusinessAboutOrder(payload: OrderNotificationPayload
               customer_phone: payload.customerPhone,
               customer_email: payload.customerEmail,
               pickup_time: payload.pickupTime,
+              pickup_date: payload.pickupDate,
               special_requests: payload.specialRequests,
               subtotal: payload.subtotal,
               tax: payload.tax,

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import SafeImage from '@/components/SafeImage';
 import { getItemPhotoUrl } from '@/lib/orderItemFormatting';
 import { openPhotoPrintWindow } from '@/lib/photoPrinting';
+import { parseSpecialRequestSections } from '@/lib/specialRequestParser';
 
 interface Order {
   id: string;
@@ -23,8 +24,8 @@ interface Order {
   }>;
   total: string;
   status: 'received' | 'ready' | 'delivered';
-  pickup_date: string;
-  pickup_time: string;
+  pickup_date?: string | null;
+  pickup_time?: string | null;
   special_requests?: string;
   payment_type?: string;
   payment_status: 'pending' | 'completed' | 'paid' | 'failed';
@@ -106,6 +107,32 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
   const customerName = order.customer_name || 'Cliente';
   const customerInitial = customerName.charAt(0).toUpperCase();
 
+  const formatPickupDate = (value?: string | null) => {
+    if (!value) {
+      return '';
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      const parsed = new Date(`${value}T00:00:00`);
+      if (!Number.isNaN(parsed.getTime())) {
+        try {
+          return parsed.toLocaleDateString('es-ES', { dateStyle: 'medium' });
+        } catch {
+          return value;
+        }
+      }
+    }
+
+    return value;
+  };
+
+  const pickupDateLabel = formatPickupDate(order.pickup_date);
+  const pickupTimeLabel = (order.pickup_time || '').trim();
+  const pickupDateDisplay = pickupDateLabel || 'Fecha por confirmar';
+  const pickupTimeDisplay = pickupTimeLabel || 'Hora por confirmar';
+  const parsedSpecial = parseSpecialRequestSections(order.special_requests);
+  const userSpecialRequests = parsedSpecial.userRequests;
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
       {/* Order Header */}
@@ -148,11 +175,11 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
           <div className="flex items-center space-x-4">
             <span>
               <i className="ri-calendar-line mr-1"></i>
-              {order.pickup_date}
+              {pickupDateDisplay}
             </span>
             <span>
               <i className="ri-time-line mr-1"></i>
-              {order.pickup_time}
+              {pickupTimeDisplay}
             </span>
           </div>
 
@@ -277,11 +304,11 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
           </div>
 
           {/* Special Instructions */}
-          {order.special_requests && (
+          {userSpecialRequests && (
             <div className="px-4 pb-4">
               <h5 className="font-medium text-gray-900 mb-2">Instrucciones Especiales</h5>
-              <p className="text-sm text-gray-600 bg-yellow-50 p-3 rounded-lg">
-                {order.special_requests}
+              <p className="text-sm text-gray-600 bg-yellow-50 p-3 rounded-lg whitespace-pre-line">
+                {userSpecialRequests}
               </p>
             </div>
           )}

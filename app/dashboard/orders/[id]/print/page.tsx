@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import SafeImage from '@/components/SafeImage';
 import { extractItemDetails, getItemPhotoUrl } from '@/lib/orderItemFormatting';
 import { withSignedPhotoUrls } from '@/lib/orderPhotoStorage';
+import { parseSpecialRequestSections } from '@/lib/specialRequestParser';
 
 interface OrderItem {
   name: string;
@@ -28,12 +29,43 @@ interface Order {
   total: number;
   order_date: string;
   pickup_time?: string;
+  pickup_date?: string;
   special_requests?: string;
 }
 
 export default function PrintOrderPage({ params }: { params: { id: string } }) {
   const [order, setOrder] = useState<Order | null>(null);
   const [hasAutoPrinted, setHasAutoPrinted] = useState(false);
+
+  const formatPickupDate = (value?: string | null) => {
+    if (!value) {
+      return '';
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      const parsed = new Date(`${value}T00:00:00`);
+      if (!Number.isNaN(parsed.getTime())) {
+        try {
+          return parsed.toLocaleDateString('es-ES', { dateStyle: 'long' });
+        } catch {
+          return value;
+        }
+      }
+    }
+
+    return value;
+  };
+
+  const getPickupDisplay = (date?: string | null, time?: string | null) => {
+    const dateLabel = formatPickupDate(date);
+    const timeLabel = (time || '').trim();
+
+    if (dateLabel && timeLabel) {
+      return `${dateLabel} • ${timeLabel}`;
+    }
+
+    return dateLabel || timeLabel || '';
+  };
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -107,6 +139,9 @@ export default function PrintOrderPage({ params }: { params: { id: string } }) {
 
   const printableItems = Array.isArray(order.items) ? order.items : [];
   const orderReference = order.p2p_reference ?? order.id.slice(-8);
+  const pickupDisplay = getPickupDisplay(order.pickup_date, order.pickup_time);
+  const parsedSpecial = parseSpecialRequestSections(order.special_requests);
+  const userSpecialRequests = parsedSpecial.userRequests;
 
   return (
     <div className="p-4 print:p-0">
@@ -144,9 +179,9 @@ export default function PrintOrderPage({ params }: { params: { id: string } }) {
           <p>
             <span className="font-semibold text-gray-900">Fecha de creación:</span> {order.order_date}
           </p>
-          {order.pickup_time && (
+          {pickupDisplay && (
             <p>
-              <span className="font-semibold text-gray-900">Hora de retiro:</span> {order.pickup_time}
+              <span className="font-semibold text-gray-900">Fecha y hora de retiro:</span> {pickupDisplay}
             </p>
           )}
         </div>
@@ -220,10 +255,10 @@ export default function PrintOrderPage({ params }: { params: { id: string } }) {
           </table>
         </div>
 
-        {order.special_requests && (
+        {userSpecialRequests && (
           <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
             <h2 className="text-lg font-semibold text-amber-800">Instrucciones adicionales</h2>
-            <p className="mt-2 whitespace-pre-line text-sm text-amber-800">{order.special_requests}</p>
+            <p className="mt-2 whitespace-pre-line text-sm text-amber-800">{userSpecialRequests}</p>
           </div>
         )}
 
