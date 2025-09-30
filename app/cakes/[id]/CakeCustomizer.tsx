@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '../../../components/Header';
 import TabBar from '../../../components/TabBar';
+import { buildOrderPhotoPath, PRIMARY_ORDER_PHOTO_BUCKET } from '../../../lib/orderPhotoConfig';
 import { supabase } from '../../../lib/supabase';
 import { showCartNotification } from '../../../lib/cartNotification';
 import SafeImage from '@/components/SafeImage';
@@ -574,9 +575,9 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
 
     setIsUploadingPhoto(true);
     try {
-      const filePath = `photo-cakes/${Date.now()}-${file.name}`;
+      const filePath = buildOrderPhotoPath(file.name);
       const { error } = await supabase.storage
-        .from('temp-uploads')
+        .from(PRIMARY_ORDER_PHOTO_BUCKET)
         .upload(filePath, file);
       if (error) {
         throw error;
