@@ -48,63 +48,54 @@ export async function notifyBusinessAboutOrder(payload: OrderNotificationPayload
 
   const recipients = Array.from(new Set([businessEmail, ...employeeEmails]));
 
-  const results = await Promise.all(
-    recipients.map(async (recipient) => {
-      try {
-        const response = await fetch(`${supabaseUrl}/functions/v1/send-notification-email`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${anonKey}`,
-          },
-          body: JSON.stringify({
-            to: recipient,
-            type: 'business_new_order',
-            language: 'es',
-            orderData: {
-              id: payload.id,
-              status: payload.status,
-              customer_name: payload.customerName,
-              customer_phone: payload.customerPhone,
-              customer_email: payload.customerEmail,
-              pickup_time: payload.pickupTime,
-              special_requests: payload.specialRequests,
-              subtotal: payload.subtotal,
-              tax: payload.tax,
-              total: payload.total,
-              items: payload.items,
-              payment_method: payload.paymentMethod,
-            },
-          }),
-        });
-
-        const result = await response.json();
-
-        if (!response.ok || !result?.success) {
-          throw new Error(result?.error || 'Failed to send business notification email');
-        }
-
-        return { recipient, success: true };
-      } catch (error: any) {
-        console.error(`Error sending business notification to ${recipient}:`, error);
-        return { recipient, success: false, error: error?.message || 'Unknown error' };
-      }
-    })
-  );
-
-  const failedRecipients = results.filter((result) => !result.success);
-
-  if (failedRecipients.length > 0) {
-    const errorMessage = `Failed to notify: ${failedRecipients
-      .map(({ recipient }) => recipient)
-      .join(', ')}`;
-
-    return {
-      success: false,
-      error: errorMessage,
-      details: results,
-    };
+  if (recipients.length === 0) {
+    return { success: false, error: 'No business notification recipients configured' };
   }
 
-  return { success: true, details: results };
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/send-notification-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${anonKey}`,
+      },
+      body: JSON.stringify({
+        to: recipients,
+        type: 'business_new_order',
+        language: 'es',
+        orderData: {
+          id: payload.id,
+          status: payload.status,
+          customer_name: payload.customerName,
+          customer_phone: payload.customerPhone,
+          customer_email: payload.customerEmail,
+          pickup_time: payload.pickupTime,
+          special_requests: payload.specialRequests,
+          subtotal: payload.subtotal,
+          tax: payload.tax,
+          total: payload.total,
+          items: payload.items,
+          payment_method: payload.paymentMethod,
+        },
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result?.success) {
+      throw new Error(result?.error || 'Failed to send business notification email');
+    }
+
+    return {
+      success: true,
+      details: recipients.map((recipient) => ({ recipient, success: true })),
+    };
+  } catch (error: any) {
+    console.error('Error sending business notification:', error);
+    return {
+      success: false,
+      error: error?.message || 'Unknown error',
+      details: recipients.map((recipient) => ({ recipient, success: false, error: error?.message || 'Unknown error' })),
+    };
+  }
 }
