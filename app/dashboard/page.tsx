@@ -395,6 +395,56 @@ export default function DashboardPage() {
         special_requests: updatedSpecialRequests,
       };
 
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      const customerEmail = priceApprovalOrder.customer_email;
+
+      if (supabaseUrl && anonKey && customerEmail) {
+        const origin =
+          typeof window !== 'undefined'
+            ? window.location.origin
+            : process.env.NEXT_PUBLIC_APP_BASE_URL || 'https://app.rangersbakery.com';
+
+        const paymentUrl = `${origin}/order?orderId=${priceApprovalOrder.id}`;
+        const trackingUrl = `${origin}/track?orderId=${priceApprovalOrder.id}`;
+
+        try {
+          const response = await fetch(`${supabaseUrl}/functions/v1/send-notification-email`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${anonKey}`,
+            },
+            body: JSON.stringify({
+              to: customerEmail,
+              type: 'customer_order_payment_ready',
+              language: 'es',
+              orderData: {
+                id: priceApprovalOrder.id,
+                customer_name: priceApprovalOrder.customer_name,
+                customer_email: customerEmail,
+                total: totalValue,
+                subtotal: roundedSubtotal,
+                tax: taxValue,
+                pickup_time: priceApprovalOrder.pickup_time,
+                special_requests: updatedSpecialRequests,
+                items: updatedItems,
+                payment_url: paymentUrl,
+                tracking_url: trackingUrl,
+              },
+            }),
+          });
+
+          const result = await response.json();
+
+          if (!response.ok || !result?.success) {
+            throw new Error(result?.error || 'Edge function error');
+          }
+        } catch (notificationError) {
+          console.error('Error sending payment ready notification:', notificationError);
+        }
+      }
+
       setOrders((prev) => prev.map((order) => (order.id === nextOrder.id ? nextOrder : order)));
       setShowSuccessMessage('✅ Precio aprobado y enviado al cliente.');
       setTimeout(() => setShowSuccessMessage(''), 3000);
@@ -509,6 +559,7 @@ export default function DashboardPage() {
       return;
     }
 
+    const targetOrder = orders.find((order) => order.id === orderId);
 
     try {
       const { error } = await supabase
@@ -531,6 +582,54 @@ export default function DashboardPage() {
           : order
       );
       setOrders(updatedOrders);
+
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+      if (newStatus === 'ready' && supabaseUrl && anonKey && targetOrder?.customer_email) {
+        const origin =
+          typeof window !== 'undefined'
+            ? window.location.origin
+            : process.env.NEXT_PUBLIC_APP_BASE_URL || 'https://app.rangersbakery.com';
+
+        const trackingUrl = `${origin}/track?orderId=${orderId}`;
+        const paymentUrl = `${origin}/order?orderId=${orderId}`;
+
+        try {
+          const response = await fetch(`${supabaseUrl}/functions/v1/send-notification-email`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${anonKey}`,
+            },
+            body: JSON.stringify({
+              to: targetOrder.customer_email,
+              type: 'customer_order_ready_for_pickup',
+              language: 'es',
+              orderData: {
+                id: targetOrder.id,
+                customer_name: targetOrder.customer_name,
+                customer_email: targetOrder.customer_email,
+                pickup_time: targetOrder.pickup_time,
+                total: targetOrder.total,
+                subtotal: targetOrder.subtotal,
+                tax: targetOrder.tax,
+                items: targetOrder.items,
+                tracking_url: trackingUrl,
+                payment_url: paymentUrl,
+              },
+            }),
+          });
+
+          const result = await response.json();
+
+          if (!response.ok || !result?.success) {
+            throw new Error(result?.error || 'Edge function error');
+          }
+        } catch (notificationError) {
+          console.error('Error sending ready for pickup notification:', notificationError);
+        }
+      }
 
       console.log(`Order ${orderId} updated to ${newStatus}`);
     } catch (error) {
