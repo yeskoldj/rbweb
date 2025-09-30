@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { getTranslation } from './languages';
 
 interface LanguageContextType {
@@ -13,12 +13,22 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [language, setLanguageState] = useState('es');
-  const [mounted, setMounted] = useState(false);
+  const [language, setLanguageState] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const savedLang = window.localStorage.getItem('bakery-language');
+      if (savedLang) {
+        return savedLang;
+      }
+    }
+    return 'es';
+  });
 
   useEffect(() => {
-    setMounted(true);
-    const savedLang = localStorage.getItem('bakery-language');
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const savedLang = window.localStorage.getItem('bakery-language');
     if (savedLang) {
       setLanguageState(savedLang);
     }
@@ -26,16 +36,12 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const setLanguage = (lang: string) => {
     setLanguageState(lang);
-    if (mounted) {
-      localStorage.setItem('bakery-language', lang);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('bakery-language', lang);
     }
   };
 
   const t = (key: string) => getTranslation(key, language);
-
-  if (!mounted) {
-    return null;
-  }
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>
