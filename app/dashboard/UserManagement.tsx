@@ -139,17 +139,22 @@ export default function UserManagement() {
         body: JSON.stringify({ userId, newRole }),
       });
 
+      const payload = await response.json().catch(() => null);
+
       if (!response.ok) {
-        console.error('Error actualizando usuario:', await response.text());
-        const updatedUsers = users.map(user =>
-          user.id === userId ? { ...user, role: newRole } : user
-        );
-        setUsers(updatedUsers);
-        alert(`Usuario actualizado a ${newRole}`);
+        const errorDetail =
+          payload && typeof payload.error === 'string'
+            ? payload.error
+            : 'No se pudo actualizar el usuario.';
+        console.error('Error actualizando usuario:', errorDetail);
+        alert(`Error actualizando el usuario: ${errorDetail}`);
         return;
       }
 
-      alert(`Usuario actualizado a ${newRole} exitosamente`);
+      const updatedRole =
+        payload && typeof payload.role === 'string' ? payload.role : newRole;
+
+      alert(`Usuario actualizado a ${updatedRole} exitosamente`);
       await loadUsersFromDatabase();
     } catch (error) {
       console.error('Error:', error);

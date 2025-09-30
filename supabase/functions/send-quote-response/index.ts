@@ -6,29 +6,14 @@ import {
   sendWhatsAppTextMessage,
 } from '../_shared/whatsapp.ts'
 import { requireUser, isStaffRole } from '../_shared/auth.ts'
+import {
+  getAllowedOrigins,
+  getCorsConfigError,
+  getCorsHeaders,
+  isOriginAllowed,
+} from '../_shared/cors.ts'
 
-const ENVIRONMENT = Deno.env.get('NODE_ENV') || 'development'
-const ALLOWED_ORIGIN =
-  Deno.env.get('ALLOWED_ORIGIN') || (ENVIRONMENT === 'development' ? '*' : '')
-const corsHeaders = {
-  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-const buildCorsHeaders = (origin: string | null) => {
-  if (ALLOWED_ORIGIN === '*') {
-    return { ...corsHeaders, 'Access-Control-Allow-Origin': '*' }
-  }
-
-  if (origin && origin === ALLOWED_ORIGIN) {
-    return { ...corsHeaders, 'Access-Control-Allow-Origin': origin }
-  }
-
-  return {
-    ...corsHeaders,
-    'Access-Control-Allow-Origin': ALLOWED_ORIGIN || 'null',
-  }
-}
+const corsConfigurationError = getCorsConfigError()
 
 const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_URL') || '',
@@ -43,11 +28,27 @@ const isValidUUID = (value: string | undefined | null): boolean => {
 
 serve(async (req) => {
   const origin = req.headers.get('origin')
-  const responseCorsHeaders = buildCorsHeaders(origin)
+  const responseCorsHeaders = getCorsHeaders(origin)
 
-  if (ALLOWED_ORIGIN !== '*' && origin !== ALLOWED_ORIGIN) {
-    console.warn(`Blocked request from origin: ${origin || 'unknown'}`)
-    return new Response('Forbidden', { status: 403, headers: responseCorsHeaders })
+  if (corsConfigurationError) {
+    return new Response(
+      JSON.stringify({ error: corsConfigurationError }),
+      {
+        status: 500,
+        headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' },
+      },
+    )
+  }
+
+  if (!isOriginAllowed(origin)) {
+    console.warn(`Blocked request from origin: ${origin || 'unknown'}. Allowed origins: ${getAllowedOrigins().join(', ')}`)
+    return new Response(
+      JSON.stringify({ error: 'Forbidden origin' }),
+      {
+        status: 403,
+        headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' },
+      },
+    )
   }
 
   if (req.method === 'OPTIONS') {

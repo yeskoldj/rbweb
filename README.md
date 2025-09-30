@@ -2,7 +2,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, create a `.env.local` file by copying `.env.example` and filling in the required environment variables. Supabase and Square credentials can be retrieved from your project settings. Set `ALLOWED_ORIGIN` to the URL of your frontend to control CORS for the Supabase Edge Functions (it defaults to `*` during development). When deploying the hardened notification functions you must also configure `BUSINESS_NOTIFICATION_ALLOWLIST` with a comma-separated list of every internal address that should be able to receive operational emails; requests to other recipients will now be rejected.
+First, create a `.env.local` file by copying `.env.example` and filling in the required environment variables. Supabase and Square credentials can be retrieved from your project settings. Set `ALLOWED_ORIGINS` to a comma-separated list of trusted frontend URLs to control CORS for the Supabase Edge Functions (it falls back to `*` during development). When deploying the hardened notification functions you must also configure `BUSINESS_NOTIFICATION_ALLOWLIST` with a comma-separated list of every internal address that should be able to receive operational emails; requests to other recipients will now be rejected. In production you should also provide `ALLOW_SQUARE_SIMULATION=false` to ensure payments fail fast if Square credentials are missing.
 
 After that, run the development server:
 

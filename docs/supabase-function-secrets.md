@@ -16,7 +16,7 @@ Set these first—they allow each Edge Function to talk to Supabase securely and
 | `SUPABASE_URL` | Base URL of your project. | `send-quote-response`, `send-notification-email`, `p2p-payment`, `square-payment`.【F:supabase/functions/send-quote-response/index.ts†L45-L85】【F:supabase/functions/send-notification-email/index.ts†L52-L96】【F:supabase/functions/p2p-payment/index.ts†L1-L47】【F:supabase/functions/square-payment/index.ts†L17-L90】 |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service role key with elevated permissions used by server-side helpers. | Same as above. |
 | `NODE_ENV` | Controls environment-sensitive defaults (e.g., logging, allowed origins). | All functions.【F:supabase/functions/send-quote-response/index.ts†L9-L33】【F:supabase/functions/send-notification-email/index.ts†L12-L43】【F:supabase/functions/google-reviews/index.ts†L3-L35】 |
-| `ALLOWED_ORIGIN` | Whitelisted domain for browser calls; falls back to `*` in development. | All HTTP handlers.【F:supabase/functions/send-quote-response/index.ts†L11-L43】【F:supabase/functions/send-notification-email/index.ts†L13-L43】【F:supabase/functions/google-reviews/index.ts†L3-L35】 |
+| `ALLOWED_ORIGINS` | Comma-separated list of trusted domains for browser calls; falls back to `*` outside production. | All HTTP handlers.【F:supabase/functions/send-quote-response/index.ts†L1-L44】【F:supabase/functions/send-notification-email/index.ts†L1-L46】【F:supabase/functions/google-reviews/index.ts†L1-L34】 |
 
 ## 2. Square payments
 Required for the `square-payment` function and any frontend requests that create Square orders.

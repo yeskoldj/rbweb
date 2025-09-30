@@ -1,6 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { requireUser, isStaffRole } from '../_shared/auth.ts'
+import {
+  getAllowedOrigins,
+  getCorsConfigError,
+  getCorsHeaders,
+  isOriginAllowed,
+} from '../_shared/cors.ts'
 
 // === CONFIG ===========
 const ENV = Deno.env.get("SQUARE_ENV") || "production";
@@ -20,29 +26,12 @@ const supabaseAdmin = createClient(
 );
 
 const ENVIRONMENT = Deno.env.get('NODE_ENV') || 'development';
-const ALLOWED_ORIGIN =
-  Deno.env.get('ALLOWED_ORIGIN') || (ENVIRONMENT === 'development' ? '*' : '');
-const corsHeaders = {
-  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
-};
+const corsConfigurationError = getCorsConfigError();
+const allowSquareSimulation =
+  (Deno.env.get('ALLOW_SQUARE_SIMULATION') || '').toLowerCase() === 'true';
 
-const buildCorsHeaders = (origin: string | null) => {
-  if (ALLOWED_ORIGIN === '*') {
-    return { ...corsHeaders, 'Access-Control-Allow-Origin': '*' };
-  }
-
-  if (origin && origin === ALLOWED_ORIGIN) {
-    return { ...corsHeaders, 'Access-Control-Allow-Origin': origin };
-  }
-
-  return {
-    ...corsHeaders,
-    'Access-Control-Allow-Origin': ALLOWED_ORIGIN || 'null',
-  };
-};
+const squareCredentialsAvailable = Boolean(ACCESS_TOKEN && APPLICATION_ID);
+const simulationEnabled = allowSquareSimulation || ENVIRONMENT !== 'production';
 
 const toCents = (amount: number) => Math.round(amount * 100);
 
@@ -61,11 +50,29 @@ const isMissingBillingColumn = (error: any): boolean => {
 
 serve(async (req) => {
   const origin = req.headers.get('origin');
-  const responseCorsHeaders = buildCorsHeaders(origin);
+  const responseCorsHeaders = getCorsHeaders(origin);
 
-  if (ALLOWED_ORIGIN !== '*' && origin !== ALLOWED_ORIGIN) {
-    console.warn(`Blocked request from origin: ${origin || 'unknown'}`);
-    return new Response('Forbidden', { status: 403, headers: responseCorsHeaders });
+  if (corsConfigurationError) {
+    return new Response(
+      JSON.stringify({ error: corsConfigurationError }),
+      {
+        status: 500,
+        headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' },
+      },
+    );
+  }
+
+  if (!isOriginAllowed(origin)) {
+    console.warn(
+      `Blocked request from origin: ${origin || 'unknown'}. Allowed origins: ${getAllowedOrigins().join(', ')}`,
+    );
+    return new Response(
+      JSON.stringify({ error: 'Forbidden origin' }),
+      {
+        status: 403,
+        headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' },
+      },
+    );
   }
 
   if (req.method === 'OPTIONS') {
@@ -106,11 +113,27 @@ serve(async (req) => {
       let paymentResult: any;
 
       // --- SIMULACIÓN si faltan credenciales ---
-      if (!ACCESS_TOKEN || !APPLICATION_ID) {
+      if (!squareCredentialsAvailable) {
+        if (!simulationEnabled) {
+          console.error('Square credentials are missing and simulation mode is disabled.');
+          return new Response(
+            JSON.stringify({
+              error:
+                'Square payment gateway is not configured. Please set SQUARE_ACCESS_TOKEN and SQUARE_APPLICATION_ID.',
+            }),
+            {
+              status: 500,
+              headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' },
+            },
+          );
+        }
+
+        console.warn('Square credentials missing. Returning simulated payment response.');
         paymentResult = {
           id: `SIM_${idempotencyKey}`,
           status: 'COMPLETED',
-          amount_money: { amount: toCents(orderData.amount), currency: 'USD' }
+          amount_money: { amount: toCents(orderData.amount), currency: 'USD' },
+          simulated: true,
         };
       } else {
         // Pago REAL: necesitamos el token del frontend

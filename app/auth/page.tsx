@@ -8,6 +8,28 @@ import { supabase } from '../../lib/supabase';
 import Header from '../../components/Header';
 import TabBar from '../../components/TabBar';
 
+const isDevMode = process.env.NODE_ENV !== 'production';
+
+const debugLog = (...args: unknown[]) => {
+  if (isDevMode) {
+    console.log(...args);
+  }
+};
+
+const warnLog = (...args: unknown[]) => {
+  if (isDevMode) {
+    console.warn(...args);
+  }
+};
+
+const errorLog = (message: string, detail?: unknown) => {
+  if (isDevMode) {
+    console.error(message, detail);
+  } else {
+    console.error(message);
+  }
+};
+
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -33,7 +55,7 @@ export default function AuthPage() {
       const normalizedEmail = formData.email.toLowerCase().trim();
       
       if (isLogin) {
-        console.log('🔐 Intentando login con email:', normalizedEmail);
+        debugLog('🔐 Intentando login');
         
         // Intentar login con Supabase
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -42,7 +64,7 @@ export default function AuthPage() {
         });
 
         if (error) {
-          console.error('❌ Error de Supabase Auth:', error.message);
+          errorLog('❌ Error de Supabase Auth', error.message);
           
           // Mejorar mensajes de error específicos
           if (error.message.includes('Invalid login credentials') || error.message.includes('invalid_credentials')) {
@@ -59,7 +81,7 @@ export default function AuthPage() {
         }
 
         if (data.user) {
-          console.log('✅ Login exitoso para usuario:', data.user.id);
+          debugLog('✅ Login exitoso');
           
           // Verificar que el usuario existe en la tabla profiles
           const { data: profile, error: profileError } = await supabase
@@ -69,7 +91,7 @@ export default function AuthPage() {
             .single();
 
           if (profileError && profileError.code !== 'PGRST116') {
-            console.warn('⚠️ Error al obtener perfil (puede ser normal):', profileError);
+            warnLog('⚠️ Error al obtener perfil (puede ser normal)', profileError);
           }
 
           // Determinar rol y permisos desde el servidor
@@ -84,7 +106,7 @@ export default function AuthPage() {
         }
       } else {
         // REGISTRO
-        console.log('📝 Intentando registro con email:', normalizedEmail);
+        debugLog('📝 Intentando registro');
         
         // Validar formato de email
         const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -131,7 +153,7 @@ export default function AuthPage() {
         });
 
         if (error) {
-          console.error('❌ Error en registro:', error.message);
+          errorLog('❌ Error en registro', error.message);
           
           if (error.message.includes('User already registered')) {
             setError('Este email ya está registrado. Intenta iniciar sesión.');
@@ -149,7 +171,7 @@ export default function AuthPage() {
         }
 
         if (data.user) {
-          console.log('✅ Registro exitoso para usuario:', data.user.id);
+          debugLog('✅ Registro exitoso');
           
           // Asignar rol por defecto para nuevos usuarios
           const userRole = 'customer';
@@ -172,7 +194,7 @@ export default function AuthPage() {
             });
 
           if (profileError) {
-            console.warn('⚠️ Error creando perfil (puede ser normal si ya existe):', profileError);
+            warnLog('⚠️ Error creando perfil (puede ser normal si ya existe)', profileError);
           }
 
           setError('');
@@ -189,7 +211,7 @@ export default function AuthPage() {
         }
       }
     } catch (err: any) {
-      console.error('💥 Error crítico en autenticación:', err);
+      errorLog('💥 Error crítico en autenticación', err);
       setError('Error de conexión. Verifica tu internet e intenta nuevamente.');
     }
     
