@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { showCartNotification } from '../../lib/cartNotification';
 import SafeImage from '@/components/SafeImage';
 import { useLanguage } from '../../lib/languageContext';
+import { supabase } from '../../lib/supabase';
 
 interface MenuItem {
   name: string;
@@ -22,7 +23,7 @@ export default function MenuSection({ category, items }: MenuSectionProps) {
   const { t } = useLanguage();
 
   useEffect(() => {
-    checkAuthentication();
+    void checkAuthentication();
 
     const initialQuantities: { [key: string]: number } = {};
     items.forEach(item => {
@@ -31,9 +32,16 @@ export default function MenuSection({ category, items }: MenuSectionProps) {
     setQuantities(initialQuantities);
   }, [items]);
 
-  const checkAuthentication = () => {
-    const userData = localStorage.getItem('bakery-user');
-    setIsAuthenticated(!!userData);
+  const checkAuthentication = async () => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session);
+    } catch (error) {
+      console.error('Error verificando autenticación:', error);
+      setIsAuthenticated(false);
+    }
   };
 
   const updateQuantity = (itemName: string, change: number) => {

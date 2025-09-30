@@ -135,24 +135,11 @@ useEffect(() => {
 
       const currentProfilePhone = (currentUser?.phone || '').trim();
       if (currentProfilePhone === trimmedPhone) {
-        if (typeof window !== 'undefined') {
-          try {
-            const storedRaw = localStorage.getItem('bakery-user');
-            if (storedRaw) {
-              const stored = JSON.parse(storedRaw);
-              if (stored.phone !== trimmedPhone) {
-                localStorage.setItem('bakery-user', JSON.stringify({ ...stored, phone: trimmedPhone }));
-              }
-            }
-          } catch {
-            // ignore storage errors
-          }
-        }
         return;
       }
 
-      try {
-        if (currentUser?.id) {
+      if (currentUser?.id) {
+        try {
           const { error } = await supabase
             .from('profiles')
             .update({ phone: trimmedPhone, updated_at: new Date().toISOString() })
@@ -163,36 +150,12 @@ useEffect(() => {
           } else {
             setCurrentUser((prev: any) => (prev ? { ...prev, phone: trimmedPhone } : prev));
           }
-        } else if (typeof window !== 'undefined') {
-          const storedRaw = localStorage.getItem('bakery-user');
-          if (storedRaw) {
-            try {
-              const stored = JSON.parse(storedRaw);
-              localStorage.setItem('bakery-user', JSON.stringify({ ...stored, phone: trimmedPhone }));
-            } catch {
-              // ignore
-            }
-          }
+        } catch (error) {
+          console.warn('Error inesperado al actualizar el teléfono del perfil:', error);
         }
-      } catch (error) {
-        console.warn('Error inesperado al actualizar el teléfono del perfil:', error);
+      } else {
+        setCurrentUser((prev: any) => (prev ? { ...prev, phone: trimmedPhone } : prev));
       }
-
-      if (typeof window !== 'undefined') {
-        try {
-          const storedRaw = localStorage.getItem('bakery-user');
-          if (storedRaw) {
-            const stored = JSON.parse(storedRaw);
-            if (stored.phone !== trimmedPhone) {
-              localStorage.setItem('bakery-user', JSON.stringify({ ...stored, phone: trimmedPhone }));
-            }
-          }
-        } catch {
-          // ignore storage errors
-        }
-      }
-
-      setCurrentUser((prev: any) => (prev ? { ...prev, phone: trimmedPhone } : prev));
     },
     [currentUser]
   );
@@ -517,12 +480,6 @@ const initSquareCard = useCallback(async () => {
         if (profile) {
           setCurrentUser(profile);
         }
-      } else {
-        const localUser = localStorage.getItem('bakery-user');
-        if (localUser) {
-          const userData = JSON.parse(localUser);
-          setCurrentUser(userData);
-        }
       }
     } catch (error) {
       console.log('Error checking user:', error);
@@ -737,22 +694,6 @@ const initSquareCard = useCallback(async () => {
               .eq('id', user.id);
 
             setCurrentUser((prev: any) => (prev ? { ...prev, ...contactUpdates } : prev));
-          }
-        } else if (providedEmail || providedPhone) {
-          const localUserRaw = localStorage.getItem('bakery-user');
-          if (localUserRaw) {
-            try {
-              const localUser = JSON.parse(localUserRaw);
-              const updatedUser = {
-                ...localUser,
-                ...(providedEmail ? { email: providedEmail } : {}),
-                ...(providedPhone ? { phone: providedPhone } : {}),
-              };
-              localStorage.setItem('bakery-user', JSON.stringify(updatedUser));
-              setCurrentUser((prev: any) => (prev ? { ...prev, ...updatedUser } : updatedUser));
-            } catch {
-              // Ignore local storage parse errors
-            }
           }
         }
       } catch (profileUpdateError) {

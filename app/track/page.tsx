@@ -87,14 +87,7 @@ export default function TrackOrderPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [searchPhone, setSearchPhone] = useState('');
-
-  const loadOrdersFromLocal = useCallback((userEmail: string) => {
-    const savedOrders = JSON.parse(localStorage.getItem('bakery-orders') || '[]');
-    const userOrders = savedOrders.filter((order: Order) =>
-      order.customer_email === userEmail
-    );
-    setOrders(userOrders);
-  }, []);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const loadUserOrders = useCallback(async (userEmail: string) => {
     try {
@@ -106,16 +99,17 @@ export default function TrackOrderPage() {
 
       if (error) {
         console.error('Error loading orders from Supabase:', error);
-        loadOrdersFromLocal(userEmail);
+        setErrorMessage('No se pudieron cargar tus órdenes.');
         return;
       }
 
       setOrders(orders || []);
+      setErrorMessage(null);
     } catch (error) {
       console.error('Supabase connection error:', error);
-      loadOrdersFromLocal(userEmail);
+      setErrorMessage('No se pudieron cargar tus órdenes.');
     }
-  }, [loadOrdersFromLocal]);
+  }, []);
 
   const checkUserAndLoadOrders = useCallback(async () => {
     try {
@@ -135,12 +129,6 @@ export default function TrackOrderPage() {
         }
       }
 
-      const localUser = localStorage.getItem('bakery-user');
-      if (localUser) {
-        const userData = JSON.parse(localUser);
-        setCurrentUser(userData);
-        await loadUserOrders(userData.email);
-      }
     } catch (error) {
       console.error('Error checking user:', error);
     }
@@ -161,19 +149,17 @@ export default function TrackOrderPage() {
         .eq('customer_phone', searchPhone.trim())
         .order('created_at', { ascending: false });
 
-      if (!error && orders) {
-        setOrders(orders);
-        return;
+      if (error) {
+        throw error;
       }
+
+      setOrders(orders || []);
+      setErrorMessage(null);
     } catch (error) {
       console.error('Error searching in Supabase:', error);
+      setErrorMessage('No se pudo buscar órdenes con ese teléfono.');
+      setOrders([]);
     }
-
-    const savedOrders = JSON.parse(localStorage.getItem('bakery-orders') || '[]');
-    const phoneOrders = savedOrders.filter((order: Order) => 
-      order.customer_phone === searchPhone.trim()
-    );
-    setOrders(phoneOrders);
   };
 
   const normalizeStatus = (status: string) =>
@@ -344,6 +330,12 @@ export default function TrackOrderPage() {
           <p className="text-gray-600 text-center mb-8">
             Track your order progress in real time
           </p>
+
+          {errorMessage && (
+            <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {errorMessage}
+            </div>
+          )}
 
           {!currentUser && (
             <div className="bg-white rounded-xl shadow-lg p-6 mb-6">

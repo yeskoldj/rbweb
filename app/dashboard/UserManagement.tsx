@@ -49,16 +49,6 @@ export default function UserManagement() {
 
       if (!response.ok) {
         console.error('Error al cargar usuarios:', await response.text());
-        try {
-          const cached = localStorage.getItem('bakery-users');
-          if (cached) {
-            setUsers(JSON.parse(cached));
-            setErrorMessage(null);
-            return;
-          }
-        } catch (storageError) {
-          console.error('Error leyendo usuarios desde cache:', storageError);
-        }
         setErrorMessage('No se pudieron cargar los usuarios. Revisa la consola para más detalles.');
         return;
       }
@@ -79,57 +69,22 @@ export default function UserManagement() {
       }));
 
       setUsers(cleanedUsers);
-      try {
-        localStorage.setItem('bakery-users', JSON.stringify(cleanedUsers));
-      } catch (storageError) {
-        console.error('Error guardando usuarios en cache:', storageError);
-      }
+      setErrorMessage(null);
     } catch (error) {
       console.error('Error de conexión al cargar usuarios:', error);
-      try {
-        const cached = localStorage.getItem('bakery-users');
-        if (cached) {
-          setUsers(JSON.parse(cached));
-          setErrorMessage(null);
-          return;
-        }
-      } catch (storageError) {
-        console.error('Error leyendo usuarios desde cache:', storageError);
-      }
       setErrorMessage('Error de conexión al cargar usuarios.');
     }
   }, []);
 
   const checkUserRole = useCallback(async () => {
     try {
-      const localUser = localStorage.getItem('bakery-user');
-      if (localUser) {
-        const userData = JSON.parse(localUser);
-        setCurrentUser({
-          role: userData.role || (userData.isOwner ? 'owner' : 'customer'),
-          email: userData.email,
-          full_name: userData.fullName || userData.email.split('@')[0],
-          phone: userData.phone || ''
-        });
-        setProfileData({
-          full_name: userData.fullName || userData.email.split('@')[0],
-          phone: userData.phone || '',
-          currentPassword: '',
-          newPassword: '',
-          confirmPassword: ''
-        });
-        
-        if (userData.role === 'owner' || userData.role === 'employee') {
-          await loadUsersFromDatabase();
-        }
-        setLoading(false);
-        return;
-      }
-
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
 
       if (authError || !user) {
-        setLoading(false);
+        setErrorMessage('No se pudo verificar tu sesión. Inicia sesión nuevamente.');
         return;
       }
 
@@ -139,9 +94,9 @@ export default function UserManagement() {
         .eq('id', user.id)
         .single();
 
-      if (profileError) {
-        console.log('No se pudo cargar el perfil, usando datos por defecto');
-        setLoading(false);
+      if (profileError || !userData) {
+        console.error('No se pudo cargar el perfil:', profileError);
+        setErrorMessage('No se pudo cargar tu perfil.');
         return;
       }
 
@@ -151,14 +106,15 @@ export default function UserManagement() {
         phone: userData.phone || '',
         currentPassword: '',
         newPassword: '',
-        confirmPassword: ''
+        confirmPassword: '',
       });
 
-      if (userData?.role === 'owner' || userData?.role === 'employee') {
+      if (userData.role === 'owner' || userData.role === 'employee') {
         await loadUsersFromDatabase();
       }
     } catch (error) {
-      console.error('Error en la autenticación, usando modo local', error);
+      console.error('Error en la autenticación', error);
+      setErrorMessage('Ocurrió un error verificando tu sesión.');
     } finally {
       setLoading(false);
     }
@@ -203,64 +159,54 @@ export default function UserManagement() {
 
   const updateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (profileData.newPassword && profileData.newPassword !== profileData.confirmPassword) {
       alert(t('passwordsMismatch'));
       return;
     }
 
     try {
-      const localUser = JSON.parse(localStorage.getItem('bakery-user') || '{}');
-      const updatedUser = {
-        ...localUser,
-        fullName: profileData.full_name,
-        phone: profileData.phone
-      };
-      localStorage.setItem('bakery-user', JSON.stringify(updatedUser));
-
-      if (currentUser?.id) {
-        try {
-          const { error } = await supabase
-            .from('profiles')
-            .update({
-              full_name: profileData.full_name,
-              phone: profileData.phone,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', currentUser.id);
-
-          if (error) {
-            console.log('Error actualizando en Supabase:', error);
-            alert(t('profileUpdated'));
-          } else {
-            alert(t('profileUpdated'));
-          }
-
-          if (profileData.newPassword) {
-            const { error: passwordError } = await supabase.auth.updateUser({
-              password: profileData.newPassword
-            });
-
-            if (passwordError) {
-              console.log('Error actualizando contraseña:', passwordError);
-            }
-          }
-        } catch (supabaseError) {
-          console.log('Supabase no disponible, guardado localmente', supabaseError);
-          alert(t('profileUpdated'));
-        }
-      } else {
-        alert(t('profileUpdated'));
+      if (!currentUser?.id) {
+        throw new Error('Usuario no encontrado');
       }
 
-      setCurrentUser({
-        ...currentUser,
-        full_name: profileData.full_name,
-        phone: profileData.phone
-      });
-      
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: profileData.full_name || null,
+          phone: profileData.phone || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', currentUser.id);
+
+      if (error) {
+        throw error;
+      }
+
+      if (profileData.newPassword) {
+        const { error: passwordError } = await supabase.auth.updateUser({
+          password: profileData.newPassword
+        });
+
+        if (passwordError) {
+          throw passwordError;
+        }
+      }
+
+      setCurrentUser((prev: any) =>
+        prev
+          ? {
+              ...prev,
+              full_name: profileData.full_name,
+              phone: profileData.phone,
+            }
+          : prev
+      );
+
+      alert(t('profileUpdated'));
+
       setShowProfileModal(false);
-      
+
       setProfileData(prev => ({
         ...prev,
         currentPassword: '',
@@ -288,50 +234,47 @@ export default function UserManagement() {
     }
 
     try {
-      const backupData = {
-        email: currentUser?.email,
-        recoveryEmail: passwordData.recoveryEmail,
-        securityQuestion: passwordData.securityQuestion,
-        securityAnswer: passwordData.securityAnswer,
-        timestamp: new Date().toISOString()
+      if (!currentUser?.id) {
+        throw new Error('Usuario no encontrado');
+      }
+
+      const { error } = await supabase.auth.updateUser({
+        password: passwordData.newPassword
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      const recoveryUpdates: Record<string, string | null> = {
+        recovery_email: passwordData.recoveryEmail || null,
+        security_question: passwordData.securityQuestion || null,
+        security_answer_hash: passwordData.securityAnswer
+          ? btoa(passwordData.securityAnswer.toLowerCase())
+          : null,
+        recovery_updated_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
 
-      localStorage.setItem('bakery-password-recovery', JSON.stringify(backupData));
+      const { error: recoveryError } = await supabase
+        .from('profiles')
+        .update(recoveryUpdates)
+        .eq('id', currentUser.id);
 
-      try {
-        const { error } = await supabase.auth.updateUser({
-          password: passwordData.newPassword
-        });
-
-        if (error) {
-          throw error;
-        }
-
-        await supabase
-          .from('profiles')
-          .update({
-            recovery_email: passwordData.recoveryEmail,
-            security_question: passwordData.securityQuestion,
-            security_answer_hash: btoa(passwordData.securityAnswer.toLowerCase()),
-            updated_at: new Date().toISOString()
-          })
-          .eq('email', currentUser?.email);
-
-        alert('¡Contraseña actualizada exitosamente! Tu información de recuperación ha sido guardada.');
-        
-      } catch (supabaseError) {
-        console.log('Error con Supabase, usando sistema local:', supabaseError);
-        
-        const localUsers = JSON.parse(localStorage.getItem('bakery-local-users') || '{}');
-        localUsers[currentUser?.email] = {
-          ...localUsers[currentUser?.email],
-          password: btoa(passwordData.newPassword),
-          ...backupData
-        };
-        localStorage.setItem('bakery-local-users', JSON.stringify(localUsers));
-        
-        alert('Contraseña actualizada en el sistema local. Tu información de recuperación ha sido guardada.');
+      if (recoveryError) {
+        throw recoveryError;
       }
+
+      setCurrentUser((prev: any) =>
+        prev
+          ? {
+              ...prev,
+              ...recoveryUpdates,
+            }
+          : prev
+      );
+
+      alert('¡Contraseña actualizada exitosamente! Tu información de recuperación ha sido guardada en Supabase.');
 
       setShowPasswordModal(false);
       setPasswordData({
@@ -396,19 +339,29 @@ export default function UserManagement() {
   };
 
   const showRecoveryInfo = () => {
-    const recoveryData = localStorage.getItem('bakery-password-recovery');
-    if (recoveryData) {
-      const data = JSON.parse(recoveryData);
-      alert(`Información de recuperación guardada:
-      
-Email de recuperación: ${data.recoveryEmail}
-Pregunta de seguridad: ${data.securityQuestion}
-Guardado el: ${new Date(data.timestamp).toLocaleString()}
+    if (!currentUser) {
+      alert('No hay información de recuperación disponible.');
+      return;
+    }
+
+    const recoveryEmail = currentUser.recovery_email;
+    const recoveryQuestion = currentUser.security_question;
+    const hasRecoveryAnswer = Boolean(currentUser.security_answer_hash);
+    const recoveryUpdatedAt = currentUser.recovery_updated_at;
+
+    if (!recoveryEmail && !recoveryQuestion && !hasRecoveryAnswer) {
+      alert('No hay información de recuperación configurada. Te recomendamos agregar un email y pregunta de seguridad.');
+      return;
+    }
+
+    alert(`Información de recuperación guardada:
+
+Email de recuperación: ${recoveryEmail || 'No configurado'}
+Pregunta de seguridad: ${recoveryQuestion || 'No configurada'}
+Respuesta: ${hasRecoveryAnswer ? 'Protegida en Supabase' : 'No configurada'}
+Última actualización: ${recoveryUpdatedAt ? new Date(recoveryUpdatedAt).toLocaleString() : 'Primera vez'}
 
 Esta información te permitirá recuperar el acceso si olvidas tu contraseña.`);
-    } else {
-      alert('No hay información de recuperación guardada. Te recomendamos configurar un método de recuperación.');
-    }
   };
 
   if (loading) {
