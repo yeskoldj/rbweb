@@ -683,6 +683,80 @@ export default function DashboardPage() {
   const handleCalendarStatusUpdate = (orderId: string, newStatus: string) => {
     void updateOrderStatus(orderId, newStatus as Order['status']);
   };
+
+  const updateOrderPaymentStatusLocal = (
+    orderId: string,
+    paymentStatus: Order['payment_status'],
+    paymentType?: string | null,
+    updatedAt?: string
+  ) => {
+    const effectiveUpdatedAt = updatedAt || new Date().toISOString();
+
+    const updatedOrders = orders.map((order) =>
+      order.id === orderId
+        ? {
+            ...order,
+            payment_status: paymentStatus,
+            payment_type:
+              typeof paymentType === 'undefined' ? order.payment_type : paymentType,
+            updated_at: effectiveUpdatedAt,
+          }
+        : order
+    );
+
+    setOrders(updatedOrders);
+    localStorage.setItem('bakery-orders', JSON.stringify(updatedOrders));
+  };
+
+  const handleConfirmCashPayment = async (orderId: string) => {
+    const targetOrder = orders.find((order) => order.id === orderId);
+    if (!targetOrder) {
+      return;
+    }
+
+    const confirmationMessage =
+      '¿Confirmas que esta orden fue pagada en tienda con efectivo? Esta acción permitirá continuar con la preparación.';
+
+    const isConfirmed = typeof window !== 'undefined' ? window.confirm(confirmationMessage) : true;
+
+    if (!isConfirmed) {
+      return;
+    }
+
+    const effectivePaymentType = targetOrder.payment_type ?? 'cash';
+    const nowIso = new Date().toISOString();
+
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          payment_status: 'paid',
+          payment_type: effectivePaymentType,
+          updated_at: nowIso,
+        })
+        .eq('id', orderId);
+
+      if (error) {
+        console.error('Error confirming in-store payment in Supabase:', error);
+      }
+
+      updateOrderPaymentStatusLocal(orderId, 'paid', effectivePaymentType, nowIso);
+
+      setShowSuccessMessage('✅ Pago en tienda confirmado');
+      setTimeout(() => setShowSuccessMessage(''), 3000);
+    } catch (error) {
+      console.error('Error confirming in-store payment:', error);
+      updateOrderPaymentStatusLocal(orderId, 'paid', effectivePaymentType, nowIso);
+      if (typeof window !== 'undefined') {
+        alert(
+          'No se pudo sincronizar con el servidor, pero el pago se marcó como completado en este dispositivo. Verifica luego.'
+        );
+      }
+      setShowSuccessMessage('✅ Pago en tienda confirmado');
+      setTimeout(() => setShowSuccessMessage(''), 3000);
+    }
+  };
+
   const updateOrderStatusLocal = (orderId: string, newStatus: Order['status']) => {
     const updatedOrders = orders.map((order) =>
       order.id === orderId
@@ -1641,6 +1715,16 @@ export default function DashboardPage() {
                               >
                                 <i className="ri-cash-line mr-2"></i>
                                 Someter precio
+                              </button>
+                            )}
+                            {!paymentConfirmed && (
+                              <button
+                                onClick={() => handleConfirmCashPayment(order.id)}
+                                className="flex-1 min-w-[200px] bg-gradient-to-r from-emerald-500 to-teal-500 text-white py-3 px-4 rounded-xl text-sm font-bold !rounded-button hover:from-emerald-600 hover:to-teal-600 transition-all transform hover:scale-105 shadow-lg"
+                                type="button"
+                              >
+                                <i className="ri-hand-coin-line mr-2"></i>
+                                Confirmar pago en tienda
                               </button>
                             )}
                             {order.status === 'pending' && (
