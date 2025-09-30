@@ -2041,7 +2041,10 @@ export default function DashboardPage() {
   // -------------------------------------------------------------------------
   function getTodayOrders() {
     const today = new Date().toISOString().split('T')[0];
-    return orders.filter((order) => order.order_date === today);
+    return orders.filter((order) => {
+      const scheduledDate = order.pickup_date || order.order_date;
+      return scheduledDate === today;
+    });
   }
 
   function getOrdersByStatus(status: Order['status']) {
