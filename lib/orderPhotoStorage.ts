@@ -44,10 +44,12 @@ export const withSignedPhotoUrls = async <T extends Record<string, any>>(items: 
           ? (item.customization as Record<string, unknown>).photoUrl
           : null;
       const customizationPhotoString = typeof customizationPhoto === 'string' ? customizationPhoto : '';
+      const storedPhotoPath =
+        typeof item.photoStoragePath === 'string' ? (item.photoStoragePath as string) : '';
 
       const candidatePath =
         !directPhoto || isHttpUrl(directPhoto)
-          ? customizationPhotoString
+          ? customizationPhotoString || storedPhotoPath
           : directPhoto;
 
       if (!candidatePath || isHttpUrl(candidatePath)) {
@@ -91,6 +93,55 @@ export const collectPhotoStoragePaths = (items: Array<Record<string, any>>): str
     .filter((path): path is string => path !== null);
 
   return Array.from(new Set(paths));
+};
+
+const resolveStoragePathForPersistence = (value: unknown) => {
+  if (typeof value !== 'string' || !value.trim()) {
+    return null;
+  }
+
+  if (isHttpUrl(value)) {
+    return null;
+  }
+
+  return normalizePhotoPath(value) ?? null;
+};
+
+export const prepareItemsForPersistence = (items: Array<Record<string, any>>): Array<Record<string, any>> => {
+  return items.map((item) => {
+    const nextItem: Record<string, any> = { ...item };
+
+    const storagePath =
+      resolveStoragePathForPersistence(item.photoStoragePath) ??
+      resolveStoragePathForPersistence(item.photoUrl);
+
+    if (storagePath) {
+      nextItem.photoStoragePath = storagePath;
+      nextItem.photoUrl = storagePath;
+    } else {
+      if (typeof nextItem.photoUrl === 'string' && !nextItem.photoUrl.trim()) {
+        nextItem.photoUrl = null;
+      }
+      if ('photoStoragePath' in nextItem) {
+        delete nextItem.photoStoragePath;
+      }
+    }
+
+    if (item.customization && typeof item.customization === 'object') {
+      const nextCustomization = { ...(item.customization as Record<string, any>) };
+      const customizationStoragePath = storagePath ?? resolveStoragePathForPersistence(nextCustomization.photoUrl);
+
+      if (customizationStoragePath) {
+        nextCustomization.photoUrl = customizationStoragePath;
+      } else if (typeof nextCustomization.photoUrl === 'string' && !nextCustomization.photoUrl.trim()) {
+        nextCustomization.photoUrl = null;
+      }
+
+      nextItem.customization = nextCustomization;
+    }
+
+    return nextItem;
+  });
 };
 
 export const clearSignedPhotoData = <T extends Record<string, any>>(items: T[], pathsToClear: Set<string>): T[] => {
