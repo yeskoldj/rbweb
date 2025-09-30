@@ -8,6 +8,12 @@ import Header from '../../components/Header';
 import TabBar from '../../components/TabBar';
 import SafeImage from '@/components/SafeImage';
 import { extractItemDetails, getItemPhotoUrl } from '@/lib/orderItemFormatting';
+import {
+  withSignedPhotoUrls,
+  collectPhotoStoragePaths,
+  clearSignedPhotoData,
+  getSignedQuotePhotoUrl,
+} from '@/lib/orderPhotoStorage';
 import CalendarView from './CalendarView';
 import UserManagement from './UserManagement';
 
@@ -478,24 +484,7 @@ export default function DashboardPage() {
       const ordersWithUrls = await Promise.all(
         (orders || []).map(async (order: any) => {
           const itemsArray = Array.isArray(order.items) ? order.items : [];
-          const itemsWithUrls = await Promise.all(
-            itemsArray.map(async (item: any) => {
-              if (item.photoUrl) {
-                if (/^https?:\/\//.test(item.photoUrl)) {
-                  return item;
-                }
-                const { data: signed, error: signError } = await supabase.storage
-                  .from('temp-uploads')
-                  .createSignedUrl(`photo-cakes/${item.photoUrl}`, 60 * 60);
-                if (signError) {
-                  console.error('Error creating signed URL for order photo:', signError);
-                  return item;
-                }
-                return { ...item, photoUrl: signed?.signedUrl };
-              }
-              return item;
-            })
-          );
+          const itemsWithUrls = await withSignedPhotoUrls(itemsArray);
           return { ...order, items: itemsWithUrls };
         })
       );
@@ -550,6 +539,43 @@ export default function DashboardPage() {
     }
 
     setOrders(savedOrders);
+  };
+
+  const removeOrderPhotosFromStorage = async (order: Order | undefined) => {
+    if (!order) {
+      return;
+    }
+
+    const itemsArray = Array.isArray(order.items) ? (order.items as Record<string, any>[]) : [];
+    const storagePaths = collectPhotoStoragePaths(itemsArray);
+
+    if (storagePaths.length === 0) {
+      return;
+    }
+
+    const { error: removalError } = await supabase.storage
+      .from('temp-uploads')
+      .remove(storagePaths);
+
+    if (removalError) {
+      console.error('Error removing order reference photos from storage:', removalError);
+      return;
+    }
+
+    const pathsSet = new Set(storagePaths);
+    setOrders((prevOrders) =>
+      prevOrders.map((existingOrder) => {
+        if (existingOrder.id !== order.id) {
+          return existingOrder;
+        }
+
+        const cleanedItems = Array.isArray(existingOrder.items)
+          ? clearSignedPhotoData(existingOrder.items as Record<string, any>[], pathsSet)
+          : existingOrder.items;
+
+        return { ...existingOrder, items: cleanedItems };
+      })
+    );
   };
 
   const updateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
@@ -631,13 +657,18 @@ export default function DashboardPage() {
         }
       }
 
+      if (newStatus === 'delivered' || newStatus === 'completed') {
+        void removeOrderPhotosFromStorage(targetOrder);
+      }
+
       console.log(`Order ${orderId} updated to ${newStatus}`);
     } catch (error) {
       console.error('Supabase update error:', error);
       updateOrderStatusLocal(orderId, newStatus);
     }
   };
-    const handleCalendarStatusUpdate = (orderId: string, newStatus: string) => {
+
+  const handleCalendarStatusUpdate = (orderId: string, newStatus: string) => {
     void updateOrderStatus(orderId, newStatus as Order['status']);
   };
   const updateOrderStatusLocal = (orderId: string, newStatus: Order['status']) => {
@@ -664,20 +695,8 @@ export default function DashboardPage() {
 
       const quotesWithUrls: Quote[] = await Promise.all(
         (quotesData || []).map(async (quote: Quote) => {
-          if (quote.reference_photo_url) {
-            if (/^https?:\/\//.test(quote.reference_photo_url)) {
-              return quote;
-            }
-            const { data: signed, error: signError } = await supabase.storage
-              .from('temp-uploads')
-              .createSignedUrl(`photo-cakes/${quote.reference_photo_url}`, 60 * 60);
-            if (signError) {
-              console.error('Error creating signed URL for quote photo:', signError);
-              return quote;
-            }
-            return { ...quote, reference_photo_url: signed?.signedUrl || null };
-          }
-          return quote;
+          const signedUrl = await getSignedQuotePhotoUrl(quote.reference_photo_url);
+          return { ...quote, reference_photo_url: signedUrl || null };
         })
       );
 
