@@ -4,6 +4,22 @@
 - **Quote approval (`send-quote-response`)** – When the bakery marks a quote as responded with a price, the dashboard calls the Supabase Edge Function `send-quote-response`. The function updates the `quotes` row and emails the customer using FormSubmit. The HTML message includes greeting, optional event details, the approved estimated price, the admin notes block, and calls to action for calling or confirming via WhatsApp.【F:app/dashboard/page.tsx†L726-L806】【F:supabase/functions/send-quote-response/index.ts†L1-L203】
 - **Order ready for payment (`send-notification-email`)** – When an order transitions to `payment_ready`, the app hits the `send-notification-email` Edge Function with the `customer_order_payment_ready` template. Customers receive a branded HTML email summarizing totals, notes, and a pay-now button; the bakery can reuse the same function to alert internal addresses about new orders.【F:supabase/functions/send-notification-email/index.ts†L1-L200】【F:supabase/functions/send-notification-email/index.ts†L200-L400】
 
+### Order and quote notifications flow
+- The web app calls `notifyBusinessAboutOrder` after a new order is submitted. The helper collects the business email plus any comma-separated employee addresses and posts to the Supabase Edge Function with the `business_new_order` template.【F:lib/orderNotifications.ts†L24-L88】
+- The Edge Function normalizes the payload, picks the correct HTML template, and sends the message through Resend. If the `RESEND_API_KEY` secret is missing, it logs a warning and returns a simulated success response so the UI can continue without failing the checkout.【F:supabase/functions/send-notification-email/index.ts†L300-L390】【F:supabase/functions/send-notification-email/index.ts†L1004-L1034】
+
+### Required configuration for emails
+**Frontend (`.env.local`)**
+- `NEXT_PUBLIC_BUSINESS_NOTIFICATION_EMAIL` – Primary business inbox for order alerts.【F:lib/orderNotifications.ts†L30-L48】
+- `NEXT_PUBLIC_EMPLOYEE_NOTIFICATION_EMAILS` – Optional comma-separated list of staff addresses that should also receive alerts.【F:lib/orderNotifications.ts†L31-L48】
+
+**Supabase Edge Function secrets**
+- `RESEND_API_KEY` – API key used by `send-notification-email` to dispatch HTML emails via Resend.【F:supabase/functions/send-notification-email/index.ts†L12-L53】【F:supabase/functions/send-notification-email/index.ts†L1004-L1034】
+- `PUBLIC_APP_BASE_URL` – Base URL for generating payment/tracking links that are embedded in the email templates.【F:supabase/functions/send-notification-email/index.ts†L14-L33】
+- Optionally configure `WHATSAPP_TEMPLATE_*` secrets if you also want WhatsApp pushes (see below). When these values are missing the function simply skips the WhatsApp calls and still sends the email.【F:supabase/functions/send-notification-email/index.ts†L18-L245】
+
+During development you can leave `RESEND_API_KEY` unset to exercise the flow without sending real emails—the function will short-circuit after logging the payload and return `success: true`. In production set the secret through `supabase secrets set` so that Resend receives the request and delivers the notifications.【F:supabase/functions/send-notification-email/index.ts†L334-L367】【F:supabase/functions/send-notification-email/index.ts†L1004-L1034】
+
 ## Adding WhatsApp Business Cloud API push messages
 To extend the same triggers with WhatsApp messages you only need configuration plus a small fetch call to Meta's Graph API:
 
