@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { requireUser, isStaffRole } from '../_shared/auth.ts'
 
 // Cliente Supabase con service_role para insertar sin RLS
 const supabaseAdmin = createClient(
@@ -16,6 +17,21 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const buildCorsHeaders = (origin: string | null) => {
+  if (ALLOWED_ORIGIN === '*') {
+    return { ...corsHeaders, 'Access-Control-Allow-Origin': '*' }
+  }
+
+  if (origin && origin === ALLOWED_ORIGIN) {
+    return { ...corsHeaders, 'Access-Control-Allow-Origin': origin }
+  }
+
+  return {
+    ...corsHeaders,
+    'Access-Control-Allow-Origin': ALLOWED_ORIGIN || 'null',
+  }
+}
+
 // Helper to verify if a string is a valid UUID
 const isValidUUID = (value: string | undefined | null): boolean => {
   if (!value) return false;
@@ -28,24 +44,34 @@ const isMissingBillingColumn = (error: any): boolean => {
 };
 
 serve(async (req) => {
-  const origin = req.headers.get('origin') || ''
-  if (ALLOWED_ORIGIN !== '*' && origin && origin !== ALLOWED_ORIGIN) {
-    console.warn(`Blocked request from origin: ${origin}`)
-    return new Response('Forbidden', { status: 403, headers: corsHeaders })
+  const origin = req.headers.get('origin')
+  const responseCorsHeaders = buildCorsHeaders(origin)
+
+  if (ALLOWED_ORIGIN !== '*' && origin !== ALLOWED_ORIGIN) {
+    console.warn(`Blocked request from origin: ${origin || 'unknown'}`)
+    return new Response('Forbidden', { status: 403, headers: responseCorsHeaders })
   }
 
   // CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: responseCorsHeaders })
   }
 
   try {
     if (req.method !== 'POST') {
       return new Response(JSON.stringify({ error: 'Method not allowed' }), {
         status: 405,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' }
       })
     }
+
+    const auth = await requireUser(req, supabaseAdmin, responseCorsHeaders)
+    if (auth instanceof Response) {
+      return auth
+    }
+
+    const { userId: requesterId, role } = auth
+    const staffUser = isStaffRole(role)
 
     const { orderData, action = 'create_order' } = await req.json()
     console.log('🚀 P2P request:', { action, amount: orderData?.amount, method: orderData?.paymentMethod })
@@ -63,10 +89,10 @@ serve(async (req) => {
       // const orderId = crypto.randomUUID()  ← COMENTAR ESTA LÍNEA
 
       // Validate userId antes de usar
-      const userId = orderData?.userId
-      if (!userId || !isValidUUID(userId)) {
-        throw new Error('Invalid or missing userId')
-      }
+      const providedUserId = orderData?.userId
+      const userId = staffUser && isValidUUID(providedUserId)
+        ? providedUserId
+        : requesterId
 
       const { data: profile, error: profileError } = await supabaseAdmin
         .from('profiles')
@@ -102,12 +128,19 @@ serve(async (req) => {
       if (existingOrderId && isValidUUID(existingOrderId)) {
         const { data: existingOrder, error: existingError } = await supabaseAdmin
           .from('orders')
-          .select('special_requests')
+          .select('special_requests, user_id')
           .eq('id', existingOrderId)
           .single()
 
         if (existingError) {
           throw new Error('Order not found for update')
+        }
+
+        if (!staffUser && existingOrder?.user_id && existingOrder.user_id !== requesterId) {
+          return new Response(JSON.stringify({ error: 'Forbidden' }), {
+            status: 403,
+            headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' }
+          })
         }
 
         const baseRequests = orderData.specialRequests
@@ -173,7 +206,7 @@ serve(async (req) => {
           amount: total,
           paymentMethod: orderData.paymentMethod,
           message: 'Orden actualizada. Esperando confirmación del propietario.'
-        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        }), { headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' } })
       }
 
       // ✅ CORRECCIÓN: NO incluir 'id' en el objeto
@@ -248,11 +281,38 @@ serve(async (req) => {
         amount: total,
         paymentMethod: orderData.paymentMethod,
         message: 'Orden creada. Sigue las instrucciones para pagar por P2P.'
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }), { headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' } })
     }
 
     if (action === 'confirm_payment') {
-      const { orderId } = orderData
+      const { orderId } = orderData || {}
+
+      if (!orderId || !isValidUUID(orderId)) {
+        return new Response(JSON.stringify({ error: 'Invalid order id' }), {
+          status: 400,
+          headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      const { data: existingOrder, error: fetchError } = await supabaseAdmin
+        .from('orders')
+        .select('id, user_id, payment_status')
+        .eq('id', orderId)
+        .single()
+
+      if (fetchError || !existingOrder) {
+        return new Response(JSON.stringify({ error: 'Order not found' }), {
+          status: 404,
+          headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      if (!staffUser && existingOrder.user_id && existingOrder.user_id !== requesterId) {
+        return new Response(JSON.stringify({ error: 'Forbidden' }), {
+          status: 403,
+          headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
 
       const { data: updated, error: updateError } = await supabaseAdmin
         .from('orders')
@@ -272,19 +332,19 @@ serve(async (req) => {
         orderId: updated.id,
         status: 'payment_confirmed',
         message: 'Pago confirmado. La orden procederá a producción.'
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }), { headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' } })
     }
 
     return new Response(JSON.stringify({ error: 'Acción inválida' }), {
       status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' }
     })
 
   } catch (err: any) {
     console.error('❌ P2P function error:', { message: err.message, stack: err.stack })
     return new Response(JSON.stringify({ success: false, error: err.message || 'Error procesando orden P2P' }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' }
     })
   }
 })

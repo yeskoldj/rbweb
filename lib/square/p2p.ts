@@ -2,6 +2,7 @@
 
 import { EDGE_FUNCTIONS } from './config';
 import { isValidUUID, SquareOrderItem } from './payments';
+import { getCurrentAccessToken } from '@/lib/supabaseAuth';
 
 // ---- P2P config with proper typing to avoid union errors ----
 type ZelleConfig = {
@@ -30,7 +31,7 @@ export async function createP2POrder(orderData: {
   pickupTime?: string;
   specialRequests?: string;
   orderId?: string;
-}) {
+}, options?: { accessToken?: string }) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (!supabaseUrl) throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL');
@@ -38,6 +39,11 @@ export async function createP2POrder(orderData: {
     const functionUrl = `${supabaseUrl}/functions/v1/${EDGE_FUNCTIONS.p2p}`;
     if (!isValidUUID(orderData.userId)) {
       throw new Error('Invalid userId');
+    }
+
+    const accessToken = await getCurrentAccessToken(options?.accessToken);
+    if (!accessToken) {
+      throw new Error('User not authenticated');
     }
 
     const sanitizedOrderData = {
@@ -65,7 +71,7 @@ export async function createP2POrder(orderData: {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+        Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({
         action: 'create_order',

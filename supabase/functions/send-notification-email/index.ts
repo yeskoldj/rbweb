@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
   getWhatsAppBusinessRecipients,
   sendWhatsAppTemplateMessage,
@@ -8,6 +9,7 @@ import type {
   WhatsAppTemplateComponent,
   WhatsAppTemplateComponentParameter,
 } from '../_shared/whatsapp.ts'
+import { requireUser, isStaffRole } from '../_shared/auth.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
 const ENVIRONMENT = Deno.env.get('NODE_ENV') || 'development'
@@ -28,6 +30,40 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
+
+const ensureAppUrl = (value: string | null | undefined): string | null => {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  return trimmed.startsWith(NORMALIZED_APP_BASE_URL) ? trimmed : null
+}
+
+const buildCorsHeaders = (origin: string | null) => {
+  if (ALLOWED_ORIGIN === '*') {
+    return { ...corsHeaders, 'Access-Control-Allow-Origin': '*' }
+  }
+
+  if (origin && origin === ALLOWED_ORIGIN) {
+    return { ...corsHeaders, 'Access-Control-Allow-Origin': origin }
+  }
+
+  return {
+    ...corsHeaders,
+    'Access-Control-Allow-Origin': ALLOWED_ORIGIN || 'null',
+  }
+}
+
+const supabaseAdmin = createClient(
+  Deno.env.get('SUPABASE_URL') || '',
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '',
+)
+
+const BUSINESS_NOTIFICATION_ALLOWLIST = new Set(
+  (Deno.env.get('BUSINESS_NOTIFICATION_ALLOWLIST') || 'rangerbakery@gmail.com')
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean),
+)
 
 function formatCurrencyValue(value: number | string | null | undefined) {
   const numericValue =
@@ -54,6 +90,12 @@ function normalizeLanguageCode(language?: string) {
   if (normalized.startsWith('en')) return 'en'
   if (normalized.startsWith('es')) return 'es'
   return WHATSAPP_LANGUAGE
+}
+
+function isValidUUID(value: string | undefined | null): boolean {
+  if (!value) return false
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+  return uuidRegex.test(value)
 }
 
 function buildCustomerWhatsAppMessage(
@@ -285,26 +327,183 @@ async function dispatchWhatsAppNotifications(
 }
 
 serve(async (req) => {
-  const origin = req.headers.get('origin') || ''
-  if (ALLOWED_ORIGIN !== '*' && origin && origin !== ALLOWED_ORIGIN) {
-    console.warn(`Blocked request from origin: ${origin}`)
-    return new Response('Forbidden', { status: 403, headers: corsHeaders })
+  const origin = req.headers.get('origin')
+  const responseCorsHeaders = buildCorsHeaders(origin)
+
+  if (ALLOWED_ORIGIN !== '*' && origin !== ALLOWED_ORIGIN) {
+    console.warn(`Blocked request from origin: ${origin || 'unknown'}`)
+    return new Response('Forbidden', { status: 403, headers: responseCorsHeaders })
   }
 
   // Handle CORS
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: responseCorsHeaders })
   }
 
   try {
-    const {
-      to,
-      subject,
-      orderData = {},
-      quoteData = {},
-      type = 'order_confirmation',
-      language = 'es'
-    } = await req.json()
+    const body = await req.json()
+    let { to, type = 'order_confirmation' } = body || {}
+    const subject = body?.subject
+    const language = typeof body?.language === 'string' ? body.language : 'es'
+    let orderData = body?.orderData || {}
+    let quoteData = body?.quoteData || {}
+
+    const normalizedType = typeof type === 'string' ? type.trim() : 'order_confirmation'
+
+    const auth = await requireUser(req, supabaseAdmin, responseCorsHeaders)
+    if (auth instanceof Response) {
+      return auth
+    }
+
+    const isStaff = isStaffRole(auth.role)
+
+    const rawRecipient = typeof to === 'string' ? to.trim() : ''
+    const normalizedRecipient = rawRecipient.toLowerCase()
+    const isBusinessType = normalizedType.startsWith('business_') || normalizedType === 'new_quote'
+    const isCustomerType = normalizedType.startsWith('customer_') || normalizedType === 'order_confirmation'
+
+    let finalRecipient = rawRecipient
+
+    if (isBusinessType) {
+      if (!rawRecipient) {
+        return new Response(JSON.stringify({ error: 'Missing recipient' }), {
+          status: 400,
+          headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      if (!BUSINESS_NOTIFICATION_ALLOWLIST.has(normalizedRecipient)) {
+        return new Response(JSON.stringify({ error: 'Recipient not allowed' }), {
+          status: 403,
+          headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      if (normalizedType === 'business_new_order' && isValidUUID(orderData?.id)) {
+        const { data: dbOrder } = await supabaseAdmin
+          .from('orders')
+          .select('id, customer_name, customer_phone, customer_email, subtotal, tax, total, status, items, payment_type, pickup_date, pickup_time, special_requests')
+          .eq('id', orderData.id)
+          .maybeSingle()
+
+        if (dbOrder) {
+          orderData = {
+            ...dbOrder,
+            id: dbOrder.id,
+            items: Array.isArray(dbOrder.items) ? dbOrder.items : [],
+          }
+        }
+      }
+
+      if (normalizedType === 'new_quote' && isValidUUID(quoteData?.id)) {
+        const { data: dbQuote } = await supabaseAdmin
+          .from('quotes')
+          .select('id, customer_name, customer_phone, customer_email, occasion, theme, event_date, event_details, special_requests, reference_code, cart_items, pickup_time')
+          .eq('id', quoteData.id)
+          .maybeSingle()
+
+        if (dbQuote) {
+          quoteData = {
+            ...dbQuote,
+            cart_items: Array.isArray(dbQuote.cart_items) ? dbQuote.cart_items : [],
+          }
+        }
+      }
+    } else if (normalizedType === 'customer_quote_confirmation') {
+      if (isStaff && isValidUUID(quoteData?.id)) {
+        const { data: dbQuote, error: quoteError } = await supabaseAdmin
+          .from('quotes')
+          .select('id, customer_email, customer_name, customer_phone, occasion, theme, event_date, event_details, special_requests, reference_code, cart_items')
+          .eq('id', quoteData.id)
+          .single()
+
+        if (quoteError || !dbQuote?.customer_email) {
+          return new Response(JSON.stringify({ error: 'Quote not found or missing email' }), {
+            status: 404,
+            headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' }
+          })
+        }
+
+        finalRecipient = dbQuote.customer_email
+        quoteData = {
+          ...dbQuote,
+          cart_items: Array.isArray(dbQuote.cart_items) ? dbQuote.cart_items : [],
+        }
+      } else {
+        const authEmail = auth.email?.trim().toLowerCase()
+        if (!authEmail || authEmail !== normalizedRecipient) {
+          return new Response(JSON.stringify({ error: 'Forbidden' }), {
+            status: 403,
+            headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' }
+          })
+        }
+        finalRecipient = auth.email || ''
+      }
+    } else if (isCustomerType) {
+      const orderId = typeof orderData?.id === 'string' ? orderData.id : orderData?.order_id
+      if (!isValidUUID(orderId)) {
+        return new Response(JSON.stringify({ error: 'Missing or invalid order id' }), {
+          status: 400,
+          headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      const { data: orderRecord, error: orderError } = await supabaseAdmin
+        .from('orders')
+        .select('id, user_id, customer_email, customer_name, customer_phone, pickup_date, pickup_time, subtotal, tax, total, status, items, special_requests, payment_status, payment_type, payment_reference, p2p_reference')
+        .eq('id', orderId)
+        .single()
+
+      if (orderError || !orderRecord) {
+        return new Response(JSON.stringify({ error: 'Order not found' }), {
+          status: 404,
+          headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      const ownsOrder = orderRecord.user_id ? orderRecord.user_id === auth.userId : false
+      if (!isStaff && !ownsOrder) {
+        return new Response(JSON.stringify({ error: 'Forbidden' }), {
+          status: 403,
+          headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      if (!orderRecord.customer_email) {
+        return new Response(JSON.stringify({ error: 'Order has no customer email' }), {
+          status: 400,
+          headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      finalRecipient = orderRecord.customer_email
+      const paymentFallback = `${NORMALIZED_APP_BASE_URL}/order?orderId=${orderRecord.id}`
+      const trackingFallback = `${NORMALIZED_APP_BASE_URL}/track?orderId=${orderRecord.id}`
+      orderData = {
+        ...orderRecord,
+        id: orderRecord.id,
+        payment_url: ensureAppUrl(orderData?.payment_url) || paymentFallback,
+        tracking_url: ensureAppUrl(orderData?.tracking_url) || trackingFallback,
+        items: Array.isArray(orderRecord.items) ? orderRecord.items : [],
+      }
+    } else {
+      if (!isStaff) {
+        return new Response(JSON.stringify({ error: 'Forbidden' }), {
+          status: 403,
+          headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+      if (!rawRecipient) {
+        return new Response(JSON.stringify({ error: 'Missing recipient' }), {
+          status: 400,
+          headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+    }
+
+    to = finalRecipient
+
+    type = normalizedType
 
     const inferredOrderId = orderData?.id || orderData?.order_id
     const fallbackPaymentUrl = inferredOrderId
@@ -355,7 +554,7 @@ serve(async (req) => {
           whatsapp,
         }),
         {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }
@@ -1012,7 +1211,7 @@ serve(async (req) => {
         JSON.stringify({ error: 'Template not found' }),
         {
           status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }
@@ -1043,7 +1242,7 @@ serve(async (req) => {
         }),
         {
           status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }
@@ -1057,7 +1256,7 @@ serve(async (req) => {
         id: result.id,
         whatsapp,
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' } }
     )
 
   } catch (error) {
@@ -1069,7 +1268,7 @@ serve(async (req) => {
       }),
       {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' }
       }
     )
   }

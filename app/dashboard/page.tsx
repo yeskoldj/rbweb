@@ -390,10 +390,15 @@ export default function DashboardPage() {
       };
 
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
       const customerEmail = priceApprovalOrder.customer_email;
 
-      if (supabaseUrl && anonKey && customerEmail) {
+      if (supabaseUrl && customerEmail) {
+        const { data: { session } } = await supabase.auth.getSession();
+        const accessToken = session?.access_token;
+        if (!accessToken) {
+          throw new Error('User not authenticated');
+        }
+
         const origin =
           typeof window !== 'undefined'
             ? window.location.origin
@@ -407,7 +412,7 @@ export default function DashboardPage() {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${anonKey}`,
+              Authorization: `Bearer ${accessToken}`,
             },
             body: JSON.stringify({
               to: customerEmail,
@@ -556,9 +561,14 @@ export default function DashboardPage() {
       setOrders(updatedOrders);
 
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-      if (newStatus === 'ready' && supabaseUrl && anonKey && targetOrder?.customer_email) {
+      if (newStatus === 'ready' && supabaseUrl && targetOrder?.customer_email) {
+        const { data: { session } } = await supabase.auth.getSession();
+        const accessToken = session?.access_token;
+        if (!accessToken) {
+          throw new Error('User not authenticated');
+        }
+
         const origin =
           typeof window !== 'undefined'
             ? window.location.origin
@@ -572,7 +582,7 @@ export default function DashboardPage() {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${anonKey}`,
+              Authorization: `Bearer ${accessToken}`,
             },
             body: JSON.stringify({
               to: targetOrder.customer_email,
@@ -771,26 +781,26 @@ export default function DashboardPage() {
 
       if (newStatus === 'responded') {
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
         const customerEmail = targetQuote?.customer_email;
 
-        if (supabaseUrl && anonKey && customerEmail && estimatedPrice) {
+        if (supabaseUrl && customerEmail && estimatedPrice) {
+          const { data: { session } } = await supabase.auth.getSession();
+          const accessToken = session?.access_token;
+          if (!accessToken) {
+            throw new Error('User not authenticated');
+          }
+
           try {
             const response = await fetch(`${supabaseUrl}/functions/v1/send-quote-response`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${anonKey}`,
+                Authorization: `Bearer ${accessToken}`,
               },
             body: JSON.stringify({
               quoteId,
               estimatedPrice,
               adminNotes: adminNotes || targetQuote?.admin_notes || '',
-              customerEmail,
-              customerName: targetQuote?.customer_name || 'Cliente',
-              customerPhone: targetQuote?.customer_phone || '',
-              eventType: targetQuote?.occasion || targetQuote?.theme || null,
-              eventDate: targetQuote?.event_date || null,
             }),
             });
 

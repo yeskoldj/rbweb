@@ -32,9 +32,13 @@ interface OrderNotificationResult {
   details?: OrderNotificationResultDetail[];
 }
 
-export async function notifyBusinessAboutOrder(payload: OrderNotificationPayload): Promise<OrderNotificationResult> {
+import { getCurrentAccessToken } from '@/lib/supabaseAuth';
+
+export async function notifyBusinessAboutOrder(
+  payload: OrderNotificationPayload,
+  options?: { accessToken?: string },
+): Promise<OrderNotificationResult> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const businessEmail =
     process.env.NEXT_PUBLIC_BUSINESS_NOTIFICATION_EMAIL || 'rangerbakery@gmail.com';
   const employeeEmails = (process.env.NEXT_PUBLIC_EMPLOYEE_NOTIFICATION_EMAILS || '')
@@ -42,9 +46,15 @@ export async function notifyBusinessAboutOrder(payload: OrderNotificationPayload
     .map(email => email.trim())
     .filter(Boolean);
 
-  if (!supabaseUrl || !anonKey) {
+  if (!supabaseUrl) {
     console.warn('Missing Supabase configuration for order notifications');
     return { success: false, error: 'Supabase configuration missing' };
+  }
+
+  const accessToken = await getCurrentAccessToken(options?.accessToken);
+  if (!accessToken) {
+    console.warn('No authenticated user available to send order notifications');
+    return { success: false, error: 'Authentication required' };
   }
 
   const recipients = Array.from(new Set([businessEmail, ...employeeEmails]));
@@ -56,7 +66,7 @@ export async function notifyBusinessAboutOrder(payload: OrderNotificationPayload
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${anonKey}`,
+            Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify({
             to: recipient,
