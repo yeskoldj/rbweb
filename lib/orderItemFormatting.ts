@@ -13,7 +13,7 @@ export interface FormattedItemDetail {
 const CUSTOMIZATION_LABELS: Record<string, { label: string; emphasis?: boolean; allowMultiline?: boolean }> = {
   shape: { label: 'Forma' },
   layers: { label: 'Capas' },
-  flavors: { label: 'Sabores' },
+  flavors: { label: 'Masa' },
   colors: { label: 'Colores' },
   fillings: { label: 'Rellenos' },
   decorations: { label: 'Decoraciones' },
