@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { getTranslation } from './languages';
 
 interface LanguageContextType {
@@ -14,28 +14,37 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguageState] = useState('es');
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-    const savedLang = localStorage.getItem('bakery-language');
-    if (savedLang) {
-      setLanguageState(savedLang);
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    try {
+      const savedLang = window.localStorage.getItem('bakery-language');
+      if (savedLang) {
+        setLanguageState(savedLang);
+      }
+    } catch (error) {
+      console.warn('Unable to read saved language preference', error);
     }
   }, []);
 
-  const setLanguage = (lang: string) => {
+  const setLanguage = useCallback((lang: string) => {
     setLanguageState(lang);
-    if (mounted) {
-      localStorage.setItem('bakery-language', lang);
+
+    if (typeof window === 'undefined') {
+      return;
     }
-  };
+
+    try {
+      window.localStorage.setItem('bakery-language', lang);
+    } catch (error) {
+      console.warn('Unable to persist language preference', error);
+    }
+  }, []);
 
   const t = (key: string) => getTranslation(key, language);
-
-  if (!mounted) {
-    return null;
-  }
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>
