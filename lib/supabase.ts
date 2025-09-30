@@ -122,7 +122,15 @@ export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl!, supabaseAnonKey!)
   : createUnavailableClient()
 
-export type OrderStatus = 'pending' | 'baking' | 'decorating' | 'ready' | 'completed' | 'cancelled'
+export type OrderStatus =
+  | 'pending'
+  | 'received'
+  | 'baking'
+  | 'decorating'
+  | 'ready'
+  | 'completed'
+  | 'delivered'
+  | 'cancelled'
 
 export interface User {
   id: string
