@@ -1,11 +1,12 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, type MouseEvent } from 'react';
 import Link from 'next/link';
 import SafeImage from '@/components/SafeImage';
+import type { OrderStatus } from '@/lib/supabase';
 
-interface Order {
+type Order = {
   id: string;
   p2p_reference?: string | null;
   customer_name: string;
@@ -19,14 +20,14 @@ interface Order {
     photoUrl?: string;
   }>;
   total: string;
-  status: 'received' | 'ready' | 'delivered';
+  status: OrderStatus;
   pickup_date: string;
   pickup_time: string;
   special_requests?: string;
   payment_type?: string;
   payment_status: 'pending' | 'completed' | 'paid' | 'failed';
   created_at: string;
-}
+};
 
 interface OrderCardProps {
   order: Order;
@@ -36,14 +37,63 @@ interface OrderCardProps {
 export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
+  const handlePhotoPrint = (event: MouseEvent<HTMLButtonElement>, photoUrl: string) => {
+    event.stopPropagation();
+
+    const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=800,height=600');
+
+    if (!printWindow) {
+      console.error('Unable to open print window for photo');
+      return;
+    }
+
+    const escapedUrl = photoUrl.replace(/"/g, '&quot;');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Imprimir foto de referencia</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <style>
+            body { margin: 0; display: flex; align-items: center; justify-content: center; background: #ffffff; }
+            img { max-width: 100%; max-height: 100vh; }
+          </style>
+        </head>
+        <body>
+          <img id="order-photo" src="${escapedUrl}" alt="Foto de referencia" />
+          <script>
+            const image = document.getElementById('order-photo');
+            if (image) {
+              image.onload = () => {
+                window.focus();
+                window.print();
+              };
+              image.onerror = () => {
+                window.close();
+              };
+            } else {
+              window.print();
+            }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
-      case 'received':
+      case 'pending':
         return 'bg-blue-100 text-blue-800';
+      case 'baking':
+        return 'bg-orange-100 text-orange-800';
+      case 'decorating':
+        return 'bg-purple-100 text-purple-800';
       case 'ready':
         return 'bg-yellow-100 text-yellow-800';
-      case 'delivered':
+      case 'completed':
         return 'bg-green-100 text-green-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -51,12 +101,18 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
 
   const getStatusText = (status: Order['status']) => {
     switch (status) {
-      case 'received':
+      case 'pending':
         return 'Recibido';
+      case 'baking':
+        return 'Horneando';
+      case 'decorating':
+        return 'Decorando';
       case 'ready':
         return 'Listo para Pick up';
-      case 'delivered':
+      case 'completed':
         return 'Entregado';
+      case 'cancelled':
+        return 'Cancelado';
       default:
         return status;
     }
@@ -208,22 +264,44 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
                       <p className="text-xs text-gray-500 mt-1 ml-6">{item.details}</p>
                     )}
                     {item.photoUrl && (
-                      <a
-                        href={item.photoUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block mt-2 ml-6"
-                      >
-                        <div className="relative h-24 w-24 overflow-hidden rounded">
-                          <SafeImage
-                            src={item.photoUrl}
-                            alt={item.name}
-                            fill
-                            className="object-cover"
-                            sizes="96px"
-                          />
+                      <div className="mt-2 ml-6 space-y-2">
+                        <a
+                          href={item.photoUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <div className="relative h-24 w-24 overflow-hidden rounded">
+                            <SafeImage
+                              src={item.photoUrl}
+                              alt={item.name}
+                              fill
+                              className="object-cover"
+                              sizes="96px"
+                            />
+                          </div>
+                        </a>
+                        <div className="flex flex-wrap gap-2">
+                          <a
+                            href={item.photoUrl}
+                            download
+                            className="inline-flex items-center rounded-lg bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-200"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <i className="ri-download-line mr-1"></i>
+                            Descargar foto
+                          </a>
+                          <button
+                            type="button"
+                            onClick={(event) => handlePhotoPrint(event, item.photoUrl!)}
+                            className="inline-flex items-center rounded-lg bg-pink-100 px-3 py-1 text-xs font-medium text-pink-700 transition-colors hover:bg-pink-200"
+                          >
+                            <i className="ri-printer-line mr-1"></i>
+                            Imprimir foto
+                          </button>
                         </div>
-                      </a>
+                      </div>
                     )}
                   </div>
                   <span className="font-medium">${item.price}</span>
@@ -254,9 +332,9 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
             <h5 className="font-medium text-gray-900 mb-3">Actualizar Estado</h5>
             <div className="flex space-x-2">
               <button
-                onClick={() => handleStatusChange('received')}
+                onClick={() => handleStatusChange('pending')}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  order.status === 'received'
+                  order.status === 'pending'
                     ? 'bg-blue-600 text-white'
                     : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                 }`}
@@ -274,9 +352,9 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
                 Listo para Pick up
               </button>
               <button
-                onClick={() => handleStatusChange('delivered')}
+                onClick={() => handleStatusChange('completed')}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  order.status === 'delivered'
+                  order.status === 'completed'
                     ? 'bg-green-600 text-white'
                     : 'bg-green-100 text-green-700 hover:bg-green-200'
                 }`}

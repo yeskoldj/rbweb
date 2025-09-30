@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import SafeImage from '@/components/SafeImage';
 import { extractItemDetails, getItemPhotoUrl } from '@/lib/orderItemFormatting';
+import { withSignedPhotoUrls } from '@/lib/orderPhotoStorage';
 
 interface OrderItem {
   name: string;
@@ -11,6 +12,7 @@ interface OrderItem {
   price: string | number;
   details?: string;
   photoUrl?: string;
+  photoStoragePath?: string | null;
   price_label?: string | null;
   isPricePending?: boolean;
   customization?: Record<string, unknown> | null;
@@ -40,7 +42,11 @@ export default function PrintOrderPage({ params }: { params: { id: string } }) {
         .select('*')
         .eq('id', params.id)
         .single();
-      if (data) setOrder(data as Order);
+      if (data) {
+        const itemsArray = Array.isArray(data.items) ? data.items : [];
+        const itemsWithUrls = await withSignedPhotoUrls(itemsArray);
+        setOrder({ ...(data as Order), items: itemsWithUrls as OrderItem[] });
+      }
     };
     fetchOrder();
   }, [params.id]);
