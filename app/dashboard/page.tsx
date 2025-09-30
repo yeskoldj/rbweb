@@ -45,6 +45,7 @@ interface Quote {
   updated_at?: string | null;
   cart_items?: OrderItem[] | null;
   requires_cake_quote?: boolean;
+  pickup_date?: string | null;
   pickup_time?: string | null;
   special_requests?: string | null;
   reference_code?: string | null;
@@ -439,6 +440,7 @@ export default function DashboardPage() {
                 total: totalValue,
                 subtotal: roundedSubtotal,
                 tax: taxValue,
+                pickup_date: priceApprovalOrder.pickup_date,
                 pickup_time: priceApprovalOrder.pickup_time,
                 special_requests: updatedSpecialRequests,
                 items: updatedItems,
@@ -532,6 +534,7 @@ export default function DashboardPage() {
         tax: 1.41,
         total: 48.4,
         status: 'pending',
+        pickup_date: new Date().toISOString().split('T')[0],
         pickup_time: '2:00 PM',
         special_requests: 'Please include a birthday candle',
         payment_type: 'zelle',
@@ -644,6 +647,7 @@ export default function DashboardPage() {
                 customer_name: targetOrder.customer_name,
                 customer_email: targetOrder.customer_email,
                 customer_phone: targetOrder.customer_phone,
+                pickup_date: targetOrder.pickup_date,
                 pickup_time: targetOrder.pickup_time,
                 total: targetOrder.total,
                 subtotal: targetOrder.subtotal,
@@ -851,6 +855,7 @@ export default function DashboardPage() {
         status: 'pending',
         payment_status: 'pending',
         order_date: now,
+        pickup_date: quote.pickup_date || null,
         pickup_time: quote.pickup_time || null,
         special_requests: quote.special_requests || quote.event_details || null,
         created_at: now,
@@ -1413,6 +1418,10 @@ export default function DashboardPage() {
                               </div>
                               <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
                                 <div className="flex items-center gap-2">
+                                  <i className="ri-calendar-event-line text-pink-500"></i>
+                                  <span>{order.pickup_date || 'Fecha por confirmar'}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
                                   <i className="ri-time-line text-pink-500"></i>
                                   <span>{order.pickup_time || 'Horario por confirmar'}</span>
                                 </div>
@@ -1478,6 +1487,10 @@ export default function DashboardPage() {
                               </div>
                               <div>
                                 <h3 className="font-bold text-gray-800 text-lg">{order.customer_name}</h3>
+                                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                                  <i className="ri-calendar-event-line"></i>
+                                  <span>{order.pickup_date || 'Fecha no especificada'}</span>
+                                </div>
                                 <div className="flex items-center space-x-2 text-sm text-gray-600">
                                   <i className="ri-time-line"></i>
                                   <span>{order.pickup_time || 'Hora no especificada'}</span>

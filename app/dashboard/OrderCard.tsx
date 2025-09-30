@@ -24,8 +24,8 @@ interface Order {
   }>;
   total: string;
   status: 'received' | 'ready' | 'delivered';
-  pickup_date: string;
-  pickup_time: string;
+  pickup_date?: string | null;
+  pickup_time?: string | null;
   special_requests?: string;
   payment_type?: string;
   payment_status: 'pending' | 'completed' | 'paid' | 'failed';
@@ -40,6 +40,8 @@ interface OrderCardProps {
 export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const specialRequestNotes = extractSpecialRequestNotes(order.special_requests);
+  const pickupDateLabel = order.pickup_date || 'Fecha por confirmar';
+  const pickupTimeLabel = order.pickup_time || 'Hora por confirmar';
 
   const handlePhotoPrint = (event: MouseEvent<HTMLButtonElement>, photoUrl: string) => {
     event.stopPropagation();
@@ -150,11 +152,11 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
           <div className="flex items-center space-x-4">
             <span>
               <i className="ri-calendar-line mr-1"></i>
-              {order.pickup_date}
+              {pickupDateLabel}
             </span>
             <span>
               <i className="ri-time-line mr-1"></i>
-              {order.pickup_time}
+              {pickupTimeLabel}
             </span>
           </div>
 

@@ -75,8 +75,31 @@ useEffect(() => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [formData, setFormData] = useState({
     specialRequests: '',
+    pickupDate: '',
     pickupTime: ''
   });
+
+  const [minPickupDate] = useState(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const timezoneOffsetMinutes = today.getTimezoneOffset();
+    today.setMinutes(today.getMinutes() - timezoneOffsetMinutes);
+    return today.toISOString().split('T')[0];
+  });
+
+  const formatPickupDateForSummary = (value: string) => {
+    if (!value) {
+      return '';
+    }
+
+    const parsedDate = new Date(`${value}T00:00:00`);
+    return parsedDate.toLocaleDateString('es-ES', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
   const [contactInfo, setContactInfo] = useState({
     email: '',
     phone: ''
@@ -266,6 +289,7 @@ useEffect(() => {
         setCartItems(normalizedItems);
         setFormData({
           specialRequests: parsedSpecial.userRequests || '',
+          pickupDate: data.pickup_date || '',
           pickupTime: data.pickup_time || '',
         });
         setSystemSummary(parsedSpecial.summary);
@@ -448,10 +472,11 @@ const initSquareCard = useCallback(async () => {
           const parsed = JSON.parse(savedForm);
           setFormData({
             specialRequests: parsed.specialRequests || '',
+            pickupDate: parsed.pickupDate || '',
             pickupTime: parsed.pickupTime || ''
           });
         } catch {
-          setFormData({ specialRequests: '', pickupTime: '' });
+          setFormData({ specialRequests: '', pickupDate: '', pickupTime: '' });
         }
       }
     }
@@ -758,14 +783,17 @@ const initSquareCard = useCallback(async () => {
         return `Pastel ${index + 1}: ${item.name}${detail ? `\n${detail}` : ''}`;
       });
 
-      const pickupLine = formData.pickupTime
+      const pickupDateLine = formData.pickupDate
+        ? `\nFecha preferida de recogida: ${formatPickupDateForSummary(formData.pickupDate)}`
+        : '';
+      const pickupTimeLine = formData.pickupTime
         ? `\nHora preferida de recogida: ${formData.pickupTime}`
         : '';
       const specialLine = formData.specialRequests.trim()
         ? `\nSolicitudes especiales: ${formData.specialRequests.trim()}`
         : '';
 
-      const summary = `Resumen de personalización:\n${cakeSummaries.join('\n\n')}${pickupLine}${specialLine}`;
+      const summary = `Resumen de personalización:\n${cakeSummaries.join('\n\n')}${pickupDateLine}${pickupTimeLine}${specialLine}`;
       const referenceCode = `CAKE-${Date.now()}`;
 
       const subtotalValue = cartItems.reduce((total, item) => {
@@ -790,6 +818,7 @@ const initSquareCard = useCallback(async () => {
         subtotal: Number(subtotalValue.toFixed(2)),
         tax: Number(taxValue.toFixed(2)),
         total: Number(totalValue.toFixed(2)),
+        pickup_date: formData.pickupDate || null,
         pickup_time: formData.pickupTime || null,
         special_requests: specialRequestSections.join('\n\n'),
         status: 'pending',
@@ -845,6 +874,7 @@ const initSquareCard = useCallback(async () => {
           customerName: customerName,
           customerPhone: customerPhone,
           customerEmail: customerEmail || undefined,
+          pickupDate: formData.pickupDate || null,
           pickupTime: formData.pickupTime || null,
           specialRequests: orderPayload.special_requests,
           subtotal: orderPayload.subtotal,
@@ -896,7 +926,7 @@ const initSquareCard = useCallback(async () => {
       setQuoteSubmitted(true);
       setQuoteReference(finalReference);
       setCartItems([]);
-      setFormData({ specialRequests: '', pickupTime: '' });
+      setFormData({ specialRequests: '', pickupDate: '', pickupTime: '' });
       setShowPayment(false);
       setShowCardForm(false);
       setShowP2PInstructions(false);
@@ -925,7 +955,12 @@ const initSquareCard = useCallback(async () => {
       return;
     }
 
-    if (!formData.pickupTime) {
+    if (!existingOrder && !formData.pickupDate) {
+      showNotification('warning', 'Fecha de Recogida', 'Por favor selecciona una fecha de recogida antes de continuar.');
+      return;
+    }
+
+    if (!existingOrder && !formData.pickupTime) {
       showNotification('warning', 'Hora de Recogida', 'Por favor selecciona una hora de recogida antes de continuar.');
       return;
     }
@@ -978,6 +1013,9 @@ const initSquareCard = useCallback(async () => {
       }
 
       await persistPhoneToProfile(customerPhone);
+
+      const effectivePickupDate = existingOrder?.pickup_date || formData.pickupDate || null;
+      const effectivePickupTime = existingOrder?.pickup_time || formData.pickupTime || null;
 
       if (saveBillingAddress && postalCode) {
         localStorage.setItem(
@@ -1065,7 +1103,8 @@ const initSquareCard = useCallback(async () => {
         sourceId,
         currency: 'USD',
         userId,
-        pickupTime: (existingOrder?.pickup_time || formData.pickupTime) || undefined,
+        pickupDate: effectivePickupDate || undefined,
+        pickupTime: effectivePickupTime || undefined,
         specialRequests: (existingOrder?.special_requests || formData.specialRequests)?.trim() || undefined,
         orderId: existingOrder?.id,
       });
@@ -1081,8 +1120,9 @@ const initSquareCard = useCallback(async () => {
           customerName: (currentUser?.full_name || currentUser?.fullName || 'Cliente').trim(),
           customerPhone: customerPhone,
           customerEmail: currentUser?.email || undefined,
-          pickupTime: formData.pickupTime || null,
-          specialRequests: formData.specialRequests?.trim() || null,
+          pickupDate: effectivePickupDate,
+          pickupTime: effectivePickupTime,
+          specialRequests: (existingOrder?.special_requests || formData.specialRequests)?.trim() || null,
           subtotal,
           tax,
           total,
@@ -1126,6 +1166,8 @@ const initSquareCard = useCallback(async () => {
             })),
             customer_phone: customerPhone,
             billing_address: postalCode,
+            pickup_date: effectivePickupDate,
+            pickup_time: effectivePickupTime,
           } as Order);
         }
 
@@ -1184,6 +1226,9 @@ const initSquareCard = useCallback(async () => {
         throw new Error('User not authenticated');
       }
 
+      const effectivePickupDate = existingOrder?.pickup_date || formData.pickupDate || null;
+      const effectivePickupTime = existingOrder?.pickup_time || formData.pickupTime || null;
+
       const result = await createP2POrder({
         amount: existingOrder ? existingOrder.total ?? calculateSubtotal() : calculateSubtotal(),
         items: cartItems.map(item => ({
@@ -1203,7 +1248,8 @@ const initSquareCard = useCallback(async () => {
         },
         paymentMethod: 'zelle',
         userId,
-        pickupTime: (existingOrder?.pickup_time || formData.pickupTime) || undefined,
+        pickupDate: effectivePickupDate || undefined,
+        pickupTime: effectivePickupTime || undefined,
         specialRequests: (existingOrder?.special_requests || formData.specialRequests)?.trim() || undefined,
         orderId: existingOrder?.id,
       });
@@ -1221,8 +1267,9 @@ const initSquareCard = useCallback(async () => {
         customerName: (currentUser?.full_name || currentUser?.fullName || 'Cliente').trim(),
         customerPhone: customerPhone,
         customerEmail: currentUser?.email || undefined,
-        pickupTime: formData.pickupTime || null,
-        specialRequests: formData.specialRequests?.trim() || null,
+        pickupDate: effectivePickupDate,
+        pickupTime: effectivePickupTime,
+        specialRequests: (existingOrder?.special_requests || formData.specialRequests)?.trim() || null,
         subtotal,
         tax: 0,
         total,
@@ -1261,6 +1308,8 @@ const initSquareCard = useCallback(async () => {
           })),
           customer_phone: customerPhone,
           billing_address: postalCode,
+          pickup_date: effectivePickupDate,
+          pickup_time: effectivePickupTime,
         } as Order);
       }
 
@@ -1893,13 +1942,31 @@ const initSquareCard = useCallback(async () => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
+              Fecha Preferida de Recogida
+            </label>
+            <input
+              type="date"
+              name="pickupDate"
+              value={formData.pickupDate}
+              onChange={handleInputChange}
+              min={minPickupDate}
+              required={!existingOrder}
+              disabled={Boolean(existingOrder)}
+              className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm ${
+                existingOrder ? 'bg-gray-100 cursor-not-allowed' : ''
+              }`}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Hora Preferida de Recogida
             </label>
             <select
               name="pickupTime"
               value={formData.pickupTime}
               onChange={handleInputChange}
-              required
+              required={!existingOrder}
               disabled={Boolean(existingOrder)}
               className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm ${
                 existingOrder ? 'bg-gray-100 cursor-not-allowed' : ''

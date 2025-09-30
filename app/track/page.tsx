@@ -29,7 +29,8 @@ interface Order {
   total: number;
   status: 'pending' | 'baking' | 'decorating' | 'ready' | 'completed' | 'cancelled';
   payment_status: 'pending' | 'completed' | 'failed' | 'paid';
-  pickup_time?: string;
+  pickup_date?: string | null;
+  pickup_time?: string | null;
   special_requests?: string;
   order_date: string;
   created_at: string;
@@ -482,15 +483,20 @@ export default function TrackOrderPage() {
                         </div>
                       </div>
 
-                      {order.pickup_time && (
+                      {(order.pickup_time || order.pickup_date) && (
                         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 mb-4 border border-blue-200">
                           <div className="flex items-center">
                             <div className="w-10 h-10 flex items-center justify-center bg-blue-100 rounded-full mr-3">
                               <i className="ri-calendar-line text-blue-600"></i>
                             </div>
                             <div>
-                              <p className="font-semibold text-blue-800">Pickup Time</p>
-                              <p className="text-blue-700">{order.pickup_time}</p>
+                              <p className="font-semibold text-blue-800">Detalles de recogida</p>
+                              {order.pickup_date && (
+                                <p className="text-blue-700">{formatPickupDate(order.pickup_date)}</p>
+                              )}
+                              {order.pickup_time && (
+                                <p className="text-blue-700">{order.pickup_time}</p>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -624,3 +630,20 @@ export default function TrackOrderPage() {
     </div>
   );
 }
+const formatPickupDate = (date?: string) => {
+  if (!date) {
+    return null;
+  }
+
+  try {
+    const parsed = new Date(`${date}T00:00:00`);
+    return parsed.toLocaleDateString('es-ES', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  } catch {
+    return date;
+  }
+};

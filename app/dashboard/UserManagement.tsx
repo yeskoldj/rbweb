@@ -375,6 +375,7 @@ export default function UserManagement() {
             subtotal: 55.00,
             tax: 5.50,
             total: 60.50,
+            pickup_date: new Date().toISOString().split('T')[0],
             pickup_time: new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleString(),
             special_requests: 'Email de prueba del sistema de notificaciones'
           }
