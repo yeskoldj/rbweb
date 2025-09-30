@@ -6,6 +6,7 @@ import TabBar from '../../components/TabBar';
 import Link from 'next/link';
 import { useLanguage } from '../../lib/languageContext';
 import { supabase } from '../../lib/supabase';
+import { buildOrderPhotoPath } from '../../lib/orderPhotoConfig';
 import SafeImage from '@/components/SafeImage';
 
 export default function QuotePage() {
@@ -208,15 +209,14 @@ export default function QuotePage() {
 
     setIsUploadingPhoto(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = buildOrderPhotoPath(file.name);
 
-      const { data, error } = await supabase.storage.from('temp-uploads').upload(fileName, file);
+      const { data, error } = await supabase.storage.from('temp-uploads').upload(filePath, file);
       if (error) {
         throw error;
       }
 
-      setPhotoPath(data.path);
+      setPhotoPath(data?.path ?? filePath);
       setUploadedPhoto(URL.createObjectURL(file));
       setPhotoFile(file);
     } catch (error) {
