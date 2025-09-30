@@ -692,17 +692,25 @@ export default function DashboardPage() {
   ) => {
     const effectiveUpdatedAt = updatedAt || new Date().toISOString();
 
-    const updatedOrders = orders.map((order) =>
-      order.id === orderId
-        ? {
-            ...order,
-            payment_status: paymentStatus,
-            payment_type:
-              typeof paymentType === 'undefined' ? order.payment_type : paymentType,
-            updated_at: effectiveUpdatedAt,
-          }
-        : order
-    );
+    const updatedOrders = orders.map((order) => {
+      if (order.id !== orderId) {
+        return order;
+      }
+
+      const resolvedPaymentType =
+        paymentType === null
+          ? undefined
+          : typeof paymentType === 'undefined'
+            ? order.payment_type
+            : paymentType;
+
+      return {
+        ...order,
+        payment_status: paymentStatus,
+        payment_type: resolvedPaymentType,
+        updated_at: effectiveUpdatedAt,
+      };
+    });
 
     setOrders(updatedOrders);
     localStorage.setItem('bakery-orders', JSON.stringify(updatedOrders));
