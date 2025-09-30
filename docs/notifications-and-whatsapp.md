@@ -27,13 +27,15 @@ To extend the same triggers with WhatsApp messages you only need configuration p
 2. **Store the credentials as Supabase Edge Function secrets** – Add the following environment variables so both Edge Functions can read them:
    - `WHATSAPP_TOKEN` – Permanent or long-lived access token.
    - `WHATSAPP_PHONE_NUMBER_ID` – The sender `phone_number_id` returned by Meta.
-   - `WHATSAPP_TEMPLATE_QUOTE_APPROVED` and `WHATSAPP_TEMPLATE_PAYMENT_READY` – Optional helper IDs/names for your approved message templates.
-   - `BAKERY_WHATSAPP_RECIPIENTS` – Comma-separated list of internal bakery numbers for admin alerts.
+   - `WHATSAPP_GRAPH_VERSION` – Optional override for the WhatsApp Graph API version (defaults to `v18.0`).
+   - `WHATSAPP_TEMPLATE_LANGUAGE` – ISO language code used in your approved templates (defaults to `es`).
+   - `WHATSAPP_BUSINESS_RECIPIENTS` – Comma-separated list of internal bakery numbers for admin alerts.
+   - `WHATSAPP_TEMPLATE_CUSTOMER_*` / `WHATSAPP_TEMPLATE_BUSINESS_*` – Optional helper IDs/names for your approved message templates.
 
-   Set them with the Supabase CLI (`supabase secrets set --env-file supabase/.env.whatsapp`) or through the Dashboard under *Project Settings → API → Edge Function secrets*. They become available via `Deno.env.get()` inside `send-quote-response` and `send-notification-email`.
+   Set them with the Supabase CLI (for example, `supabase secrets set --env-file supabase/.env.whatsapp`) or through the Dashboard under *Project Settings → API → Function secrets*. They become available via `Deno.env.get()` inside `send-quote-response`, `_shared/whatsapp`, and `send-notification-email`.【F:supabase/functions/_shared/whatsapp.ts†L1-L111】【F:supabase/functions/send-quote-response/index.ts†L234-L276】【F:supabase/functions/send-notification-email/index.ts†L17-L245】
 3. **Send the message after the email** – Inside each function, after the existing email logic succeeds, call:
    ```ts
-   await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+   await fetch(`https://graph.facebook.com/${graphVersion}/${phoneNumberId}/messages`, {
      method: 'POST',
      headers: {
        'Content-Type': 'application/json',
@@ -45,13 +47,13 @@ To extend the same triggers with WhatsApp messages you only need configuration p
        type: 'template',
        template: {
          name: templateName,
-         language: { code: 'es' },
+         language: { code: whatsappLanguage },
          components: [/* ... */],
        },
      }),
    })
    ```
-   Make the call conditional so the email is still sent even if WhatsApp fails, and loop through `BAKERY_WHATSAPP_RECIPIENTS` to notify internal staff.
+   Make the call conditional so the email is still sent even if WhatsApp fails, and loop through `WHATSAPP_BUSINESS_RECIPIENTS` to notify internal staff.
 4. **Capture phone numbers** – Ensure quotes and orders store `customer_phone` so the Edge Functions know where to send the WhatsApp template. The dashboard already displays the phone number and can pass it through the existing payloads.【F:app/dashboard/page.tsx†L726-L918】
 
 With those credentials in place, the WhatsApp logic lives beside the current email flow, reusing the same triggers without creating a separate job scheduler.
