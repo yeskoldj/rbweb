@@ -4,6 +4,9 @@ const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
 const ENVIRONMENT = Deno.env.get('NODE_ENV') || 'development'
 const ALLOWED_ORIGIN =
   Deno.env.get('ALLOWED_ORIGIN') || (ENVIRONMENT === 'development' ? '*' : '')
+const DEFAULT_APP_BASE_URL = 'https://app.rangersbakery.com'
+const RAW_APP_BASE_URL = Deno.env.get('PUBLIC_APP_BASE_URL') || DEFAULT_APP_BASE_URL
+const NORMALIZED_APP_BASE_URL = RAW_APP_BASE_URL.replace(/\/$/, '') || DEFAULT_APP_BASE_URL
 const corsHeaders = {
   'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -32,9 +35,20 @@ serve(async (req) => {
       language = 'es'
     } = await req.json()
 
+    const inferredOrderId = orderData?.id || orderData?.order_id
+    const fallbackPaymentUrl = inferredOrderId
+      ? `${NORMALIZED_APP_BASE_URL}/order?orderId=${inferredOrderId}`
+      : `${NORMALIZED_APP_BASE_URL}/order`
+    const fallbackTrackingUrl = inferredOrderId
+      ? `${NORMALIZED_APP_BASE_URL}/track?orderId=${inferredOrderId}`
+      : `${NORMALIZED_APP_BASE_URL}/track`
+
     const order = {
       ...orderData,
-      items: Array.isArray(orderData?.items) ? orderData.items : []
+      id: inferredOrderId,
+      items: Array.isArray(orderData?.items) ? orderData.items : [],
+      payment_url: orderData?.payment_url || fallbackPaymentUrl,
+      tracking_url: orderData?.tracking_url || fallbackTrackingUrl,
     }
     const quote = {
       ...quoteData,
@@ -301,6 +315,96 @@ serve(async (req) => {
               </div>
             </div>
           `
+        },
+        customer_order_payment_ready: {
+          subject: `Tu orden ${order.id ? `#${order.id} ` : ''}está lista para pagar 💳`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
+              <div style="background: linear-gradient(135deg, #fb7185, #f97316); padding: 26px; text-align: center; color: white;">
+                <h1 style="margin: 0; font-size: 26px;">¡Tu orden está lista!</h1>
+                <p style="margin: 10px 0 0 0;">Ya puedes completar el pago para continuar con la preparación.</p>
+              </div>
+              <div style="padding: 28px 24px; background: #ffffff;">
+                <p style="font-size: 16px; color: #1f2937;">Hola ${order.customer_name || 'cliente Ranger'},</p>
+                <p style="color: #4b5563; line-height: 1.6;">
+                  Hemos revisado tu pedido y confirmamos el precio final. Completa el pago en línea para que podamos comenzar a trabajar en tu orden.
+                </p>
+
+                <div style="background: #f1f5f9; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0;">
+                  <p style="margin: 0; color: #64748b;">Total a pagar</p>
+                  <p style="margin: 8px 0 0 0; font-size: 32px; font-weight: bold; color: #0f172a;">$${Number(order.total || 0).toFixed(2)}</p>
+                  <p style="margin: 8px 0 0 0; color: #64748b;">Subtotal: $${Number(order.subtotal || 0).toFixed(2)} ${Number(order.tax || 0) > 0 ? `| Impuestos: $${Number(order.tax || 0).toFixed(2)}` : ''}</p>
+                </div>
+
+                ${order.payment_url ? `
+                  <div style="text-align: center; margin-bottom: 28px;">
+                    <a href="${order.payment_url}" style="display: inline-block; background: linear-gradient(135deg, #fb7185, #f97316); color: white; padding: 14px 28px; border-radius: 9999px; text-decoration: none; font-size: 16px; font-weight: bold;">Pagar mi orden</a>
+                  </div>
+                ` : ''}
+
+                ${order.pickup_time ? `
+                  <p style="color: #4b5563; line-height: 1.6; text-align: center;">
+                    Hora estimada de recogida: <strong>${order.pickup_time}</strong>
+                  </p>
+                ` : ''}
+
+                ${order.tracking_url ? `
+                  <p style="color: #6b7280; text-align: center;">
+                    Puedes seguir el estado de tu orden aquí: <a href="${order.tracking_url}" style="color: #f97316; font-weight: 600;">Ver mi orden</a>
+                  </p>
+                ` : ''}
+              </div>
+              <div style="background: #f3f4f6; padding: 18px; text-align: center; color: #6b7280; font-size: 12px;">
+                <p style="margin: 0;">Gracias por confiar en Ranger's Bakery 🍰</p>
+                <p style="margin: 6px 0 0 0;">Si tienes preguntas escríbenos al (862) 233-7204</p>
+              </div>
+            </div>
+          `
+        },
+        customer_order_ready_for_pickup: {
+          subject: `Tu orden ${order.id ? `#${order.id} ` : ''}está lista para recoger 🎉`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
+              <div style="background: linear-gradient(135deg, #34d399, #22d3ee); padding: 26px; text-align: center; color: white;">
+                <h1 style="margin: 0; font-size: 26px;">¡Listo para recoger!</h1>
+                <p style="margin: 10px 0 0 0;">Tu pedido ya está terminado y esperándote.</p>
+              </div>
+              <div style="padding: 28px 24px; background: #ffffff;">
+                <p style="font-size: 16px; color: #1f2937;">Hola ${order.customer_name || 'cliente Ranger'},</p>
+                <p style="color: #4b5563; line-height: 1.6;">
+                  Queríamos avisarte que tu orden está lista para recoger en la panadería. ¡No podemos esperar a que la veas!
+                </p>
+
+                ${order.pickup_time ? `
+                  <div style="background: #ecfeff; border: 1px solid #a5f3fc; border-radius: 12px; padding: 18px; margin: 20px 0; text-align: center;">
+                    <p style="margin: 0; color: #0f172a;">Horario sugerido:</p>
+                    <p style="margin: 6px 0 0 0; font-size: 18px; font-weight: bold; color: #0f172a;">${order.pickup_time}</p>
+                  </div>
+                ` : ''}
+
+                ${order.tracking_url ? `
+                  <p style="color: #6b7280; text-align: center;">
+                    Revisa los detalles y el estado aquí: <a href="${order.tracking_url}" style="color: #0ea5e9; font-weight: 600;">Seguir mi orden</a>
+                  </p>
+                ` : ''}
+
+                ${order.payment_url ? `
+                  <p style="color: #f97316; text-align: center; font-weight: 600;">
+                    Si aún no has pagado, puedes hacerlo en línea: <a href="${order.payment_url}" style="color: #fb7185;">Pagar ahora</a>
+                  </p>
+                ` : ''}
+
+                <p style="color: #4b5563; line-height: 1.6;">
+                  Dirección: <strong>Ranger's Bakery, 371 Bloomfield Ave, Caldwell, NJ</strong>.<br />
+                  Si necesitas reprogramar la recogida, llámanos o escríbenos por WhatsApp.
+                </p>
+              </div>
+              <div style="background: #f3f4f6; padding: 18px; text-align: center; color: #6b7280; font-size: 12px;">
+                <p style="margin: 0;">¡Gracias por apoyar a un negocio local! 💖</p>
+                <p style="margin: 6px 0 0 0;">Ranger's Bakery - (862) 233-7204</p>
+              </div>
+            </div>
+          `
         }
       },
       en: {
@@ -527,6 +631,96 @@ serve(async (req) => {
               </div>
               <div style="background: #f3f4f6; padding: 18px; text-align: center; color: #6b7280; font-size: 12px;">
                 <p style="margin: 0;">Ranger's Bakery - Bringing sweetness to your events</p>
+              </div>
+            </div>
+          `
+        },
+        customer_order_payment_ready: {
+          subject: `Your order ${order.id ? `#${order.id} ` : ''}is ready to pay 💳`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
+              <div style="background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 26px; text-align: center; color: white;">
+                <h1 style="margin: 0; font-size: 26px;">Your order is ready!</h1>
+                <p style="margin: 10px 0 0 0;">Complete the payment so we can start baking.</p>
+              </div>
+              <div style="padding: 28px 24px; background: #ffffff;">
+                <p style="font-size: 16px; color: #1f2937;">Hi ${order.customer_name || 'Ranger friend'},</p>
+                <p style="color: #4b5563; line-height: 1.6;">
+                  We've reviewed your order and confirmed the final price. Please pay online to lock in your spot on our schedule.
+                </p>
+
+                <div style="background: #eef2ff; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0;">
+                  <p style="margin: 0; color: #6366f1;">Amount due</p>
+                  <p style="margin: 8px 0 0 0; font-size: 32px; font-weight: bold; color: #312e81;">$${Number(order.total || 0).toFixed(2)}</p>
+                  <p style="margin: 8px 0 0 0; color: #6366f1;">Subtotal: $${Number(order.subtotal || 0).toFixed(2)} ${Number(order.tax || 0) > 0 ? `| Tax: $${Number(order.tax || 0).toFixed(2)}` : ''}</p>
+                </div>
+
+                ${order.payment_url ? `
+                  <div style="text-align: center; margin-bottom: 28px;">
+                    <a href="${order.payment_url}" style="display: inline-block; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 14px 28px; border-radius: 9999px; text-decoration: none; font-size: 16px; font-weight: bold;">Pay now</a>
+                  </div>
+                ` : ''}
+
+                ${order.pickup_time ? `
+                  <p style="color: #4b5563; line-height: 1.6; text-align: center;">
+                    Estimated pickup time: <strong>${order.pickup_time}</strong>
+                  </p>
+                ` : ''}
+
+                ${order.tracking_url ? `
+                  <p style="color: #6b7280; text-align: center;">
+                    Track your order anytime: <a href="${order.tracking_url}" style="color: #6366f1; font-weight: 600;">View my order</a>
+                  </p>
+                ` : ''}
+              </div>
+              <div style="background: #f3f4f6; padding: 18px; text-align: center; color: #6b7280; font-size: 12px;">
+                <p style="margin: 0;">Thank you for choosing Ranger's Bakery 🍰</p>
+                <p style="margin: 6px 0 0 0;">Questions? Text or call us at (862) 233-7204</p>
+              </div>
+            </div>
+          `
+        },
+        customer_order_ready_for_pickup: {
+          subject: `Your order ${order.id ? `#${order.id} ` : ''}is ready for pickup 🎉`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
+              <div style="background: linear-gradient(135deg, #22c55e, #0ea5e9); padding: 26px; text-align: center; color: white;">
+                <h1 style="margin: 0; font-size: 26px;">Ready for pickup!</h1>
+                <p style="margin: 10px 0 0 0;">Your treats are fresh and waiting for you.</p>
+              </div>
+              <div style="padding: 28px 24px; background: #ffffff;">
+                <p style="font-size: 16px; color: #1f2937;">Hi ${order.customer_name || 'Ranger friend'},</p>
+                <p style="color: #4b5563; line-height: 1.6;">
+                  Great news! Your order is finished and ready for pickup at the bakery. We hope you love it!
+                </p>
+
+                ${order.pickup_time ? `
+                  <div style="background: #ecfeff; border: 1px solid #bae6fd; border-radius: 12px; padding: 18px; margin: 20px 0; text-align: center;">
+                    <p style="margin: 0; color: #0f172a;">Suggested pickup time</p>
+                    <p style="margin: 6px 0 0 0; font-size: 18px; font-weight: bold; color: #0f172a;">${order.pickup_time}</p>
+                  </div>
+                ` : ''}
+
+                ${order.tracking_url ? `
+                  <p style="color: #6b7280; text-align: center;">
+                    Check details anytime: <a href="${order.tracking_url}" style="color: #0ea5e9; font-weight: 600;">Track my order</a>
+                  </p>
+                ` : ''}
+
+                ${order.payment_url ? `
+                  <p style="color: #f97316; text-align: center; font-weight: 600;">
+                    Need to pay first? <a href="${order.payment_url}" style="color: #fb7185;">Pay online now</a>
+                  </p>
+                ` : ''}
+
+                <p style="color: #4b5563; line-height: 1.6;">
+                  Pickup location: <strong>Ranger's Bakery, 371 Bloomfield Ave, Caldwell, NJ</strong>.<br />
+                  Call or text us if you need to adjust the pickup time.
+                </p>
+              </div>
+              <div style="background: #f3f4f6; padding: 18px; text-align: center; color: #6b7280; font-size: 12px;">
+                <p style="margin: 0;">Thank you for supporting a local bakery! 💖</p>
+                <p style="margin: 6px 0 0 0;">Ranger's Bakery - (862) 233-7204</p>
               </div>
             </div>
           `

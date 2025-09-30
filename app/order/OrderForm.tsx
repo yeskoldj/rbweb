@@ -936,44 +936,6 @@ const initSquareCard = useCallback(async () => {
         console.log('No se pudo notificar al negocio sobre la orden personalizada:', notificationError);
       }
 
-      try {
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        if (supabaseUrl) {
-          await fetch(`${supabaseUrl}/functions/v1/send-notification-email`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-            },
-            body: JSON.stringify({
-              to: 'rangerbakery@gmail.com',
-              type: 'business_new_order',
-              language: 'es',
-              orderData: {
-                id: insertedOrder.id || finalReference,
-                status: insertedOrder.status || 'pending',
-                customer_name: customerName,
-                customer_phone: customerPhone,
-                customer_email: customerEmail || null,
-                pickup_time: formData.pickupTime || null,
-                special_requests: orderPayload.special_requests,
-                subtotal: orderPayload.subtotal,
-                tax: orderPayload.tax,
-                total: orderPayload.total,
-                items: cartItems.map((item) => ({
-                  name: item.name,
-                  quantity: item.quantity,
-                  price: getItemPrice(item),
-                })),
-                payment_method: 'manual_quote',
-              },
-            }),
-          });
-        }
-      } catch (notificationError) {
-        console.log('Error enviando notificación de orden personalizada:', notificationError);
-      }
-
       if (customerEmail) {
         try {
           const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
