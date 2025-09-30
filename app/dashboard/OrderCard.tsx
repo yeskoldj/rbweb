@@ -4,6 +4,7 @@
 import { useState, type MouseEvent } from 'react';
 import Link from 'next/link';
 import SafeImage from '@/components/SafeImage';
+import { getItemPhotoUrl } from '@/lib/orderItemFormatting';
 
 interface Order {
   id: string;
@@ -16,7 +17,8 @@ interface Order {
     quantity: number;
     price: string;
     details?: string;
-    photoUrl?: string;
+    photoUrl?: string | null;
+    customization?: Record<string, unknown> | null;
   }>;
   total: string;
   status: 'received' | 'ready' | 'delivered';
@@ -250,46 +252,53 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
                     {item.details && (
                       <p className="text-xs text-gray-500 mt-1 ml-6">{item.details}</p>
                     )}
-                    {item.photoUrl && (
-                      <div className="mt-2 ml-6 space-y-2">
-                        <a
-                          href={item.photoUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block"
-                          onClick={(event) => event.stopPropagation()}
-                        >
-                          <div className="relative h-24 w-24 overflow-hidden rounded">
-                            <SafeImage
-                              src={item.photoUrl}
-                              alt={item.name}
-                              fill
-                              className="object-cover"
-                              sizes="96px"
-                            />
-                          </div>
-                        </a>
-                        <div className="flex flex-wrap gap-2">
+                    {(() => {
+                      const photoSource = getItemPhotoUrl(item);
+                      if (!photoSource) {
+                        return null;
+                      }
+
+                      return (
+                        <div className="mt-2 ml-6 space-y-2">
                           <a
-                            href={item.photoUrl}
-                            download
-                            className="inline-flex items-center rounded-lg bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-200"
+                            href={photoSource}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block"
                             onClick={(event) => event.stopPropagation()}
                           >
-                            <i className="ri-download-line mr-1"></i>
-                            Descargar foto
+                            <div className="relative h-24 w-24 overflow-hidden rounded">
+                              <SafeImage
+                                src={photoSource}
+                                alt={item.name}
+                                fill
+                                className="object-cover"
+                                sizes="96px"
+                              />
+                            </div>
                           </a>
-                          <button
-                            type="button"
-                            onClick={(event) => handlePhotoPrint(event, item.photoUrl!)}
-                            className="inline-flex items-center rounded-lg bg-pink-100 px-3 py-1 text-xs font-medium text-pink-700 transition-colors hover:bg-pink-200"
-                          >
-                            <i className="ri-printer-line mr-1"></i>
-                            Imprimir foto
-                          </button>
+                          <div className="flex flex-wrap gap-2">
+                            <a
+                              href={photoSource}
+                              download
+                              className="inline-flex items-center rounded-lg bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-200"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              <i className="ri-download-line mr-1"></i>
+                              Descargar foto
+                            </a>
+                            <button
+                              type="button"
+                              onClick={(event) => handlePhotoPrint(event, photoSource)}
+                              className="inline-flex items-center rounded-lg bg-pink-100 px-3 py-1 text-xs font-medium text-pink-700 transition-colors hover:bg-pink-200"
+                            >
+                              <i className="ri-printer-line mr-1"></i>
+                              Imprimir foto
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                   <span className="font-medium">${item.price}</span>
                 </div>
