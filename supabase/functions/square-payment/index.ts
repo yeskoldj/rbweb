@@ -163,6 +163,10 @@ serve(async (req) => {
           updateData.pickup_time = orderData.pickupTime || null;
         }
 
+        if (orderData.pickupDate !== undefined) {
+          updateData.pickup_date = orderData.pickupDate || null;
+        }
+
         if (orderData.specialRequests !== undefined) {
           updateData.special_requests = orderData.specialRequests?.trim() || null;
         }
@@ -265,6 +269,7 @@ serve(async (req) => {
         subtotal: normalizedSubtotal,
         tax: normalizedTax,
         total: Math.round(amountValue * 100) / 100,
+        pickup_date: orderData.pickupDate || null,
         pickup_time: orderData.pickupTime || null,
         special_requests: orderData.specialRequests?.trim() || null,
         status: 'pending',

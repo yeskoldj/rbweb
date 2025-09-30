@@ -43,6 +43,7 @@ export interface SquareOrderData {
   sourceId?: string;
 
   userId: string;
+  pickupDate?: string | null;
   pickupTime?: string | null;
   specialRequests?: string | null;
   currency?: 'USD';
