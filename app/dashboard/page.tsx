@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase, Order } from '../../lib/supabase';
+import { supabase, Order, OrderStatus } from '../../lib/supabase';
 import Header from '../../components/Header';
 import TabBar from '../../components/TabBar';
 import SafeImage from '@/components/SafeImage';
@@ -994,13 +994,26 @@ export default function DashboardPage() {
   // -------------------------------------------------------------------------
   // UI helpers
   // -------------------------------------------------------------------------
-  const statusColors = {
+  const statusColors: Record<OrderStatus, string> = {
     pending: 'bg-yellow-100 text-yellow-800',
+    received: 'bg-sky-100 text-sky-800',
     baking: 'bg-orange-100 text-orange-800',
     decorating: 'bg-purple-100 text-purple-800',
     ready: 'bg-green-100 text-green-800',
     completed: 'bg-blue-100 text-blue-800',
+    delivered: 'bg-emerald-100 text-emerald-800',
     cancelled: 'bg-red-100 text-red-800',
+  };
+
+  const statusMeta: Record<OrderStatus, { label: string; icon: string }> = {
+    pending: { label: 'Pendiente', icon: 'ri-timer-line' },
+    received: { label: 'Recibido', icon: 'ri-mail-download-line' },
+    baking: { label: 'Horneando', icon: 'ri-fire-line' },
+    decorating: { label: 'Decorando', icon: 'ri-brush-line' },
+    ready: { label: 'Listo', icon: 'ri-check-line' },
+    completed: { label: 'Completado', icon: 'ri-check-double-line' },
+    delivered: { label: 'Entregado', icon: 'ri-truck-line' },
+    cancelled: { label: 'Cancelado', icon: 'ri-close-line' },
   };
 
   const getUserDisplayName = () => {
@@ -1424,6 +1437,7 @@ export default function DashboardPage() {
                       const orderItems = Array.isArray(order.items)
                         ? (order.items as OrderItem[])
                         : [];
+                      const statusInfo = statusMeta[order.status];
 
                       return (
                         <div key={order.id} className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
@@ -1448,32 +1462,8 @@ export default function DashboardPage() {
                                   <span
                                     className={`px-3 py-1 rounded-full text-xs font-bold ${statusColors[order.status]} shadow-sm`}
                                   >
-                                    <i
-                                      className={`${
-                                        order.status === 'pending'
-                                          ? 'ri-timer-line'
-                                          : order.status === 'baking'
-                                          ? 'ri-fire-line'
-                                          : order.status === 'decorating'
-                                          ? 'ri-brush-line'
-                                          : order.status === 'ready'
-                                          ? 'ri-check-line'
-                                          : order.status === 'completed'
-                                          ? 'ri-check-double-line'
-                                          : 'ri-close-line'
-                                      } mr-1`}
-                                    ></i>
-                                    {order.status === 'pending'
-                                      ? 'Pendiente'
-                                      : order.status === 'baking'
-                                      ? 'Horneando'
-                                      : order.status === 'decorating'
-                                      ? 'Decorando'
-                                      : order.status === 'ready'
-                                      ? 'Listo'
-                                      : order.status === 'completed'
-                                      ? 'Completado'
-                                      : 'Cancelado'}
+                                    <i className={`${statusInfo.icon} mr-1`}></i>
+                                    {statusInfo.label}
                                   </span>
                                   {orderHasPendingPrice(order) && (
                                     <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
