@@ -1169,7 +1169,8 @@ const initSquareCard = useCallback(async () => {
 
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id;
-      if (!userId) {
+      const accessToken = session?.access_token;
+      if (!userId || !accessToken) {
         throw new Error('User not authenticated');
       }
 
