@@ -154,6 +154,7 @@ export interface Order {
   tax: number
   total: number
   status: OrderStatus
+  pickup_date?: string
   pickup_time?: string
   special_requests?: string
   payment_type?: string

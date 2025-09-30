@@ -29,6 +29,7 @@ interface Order {
   total: number;
   status: 'pending' | 'baking' | 'decorating' | 'ready' | 'completed' | 'cancelled';
   payment_status: 'pending' | 'completed' | 'failed' | 'paid';
+  pickup_date?: string;
   pickup_time?: string;
   special_requests?: string;
   order_date: string;
@@ -79,6 +80,25 @@ const formatSpecialRequests = (specialRequests?: string): SpecialRequestEntry[] 
     seen.add(key);
     return true;
   });
+};
+
+const formatPickupDate = (value?: string | null) => {
+  if (!value) {
+    return '';
+  }
+
+  try {
+    const date = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+
+    return new Intl.DateTimeFormat('en-US', {
+      dateStyle: 'long',
+    }).format(date);
+  } catch {
+    return value;
+  }
 };
 
 export default function TrackOrderPage() {
@@ -482,15 +502,20 @@ export default function TrackOrderPage() {
                         </div>
                       </div>
 
-                      {order.pickup_time && (
+                      {(order.pickup_date || order.pickup_time) && (
                         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 mb-4 border border-blue-200">
                           <div className="flex items-center">
                             <div className="w-10 h-10 flex items-center justify-center bg-blue-100 rounded-full mr-3">
                               <i className="ri-calendar-line text-blue-600"></i>
                             </div>
                             <div>
-                              <p className="font-semibold text-blue-800">Pickup Time</p>
-                              <p className="text-blue-700">{order.pickup_time}</p>
+                              <p className="font-semibold text-blue-800">Pickup Schedule</p>
+                              {order.pickup_date && (
+                                <p className="text-blue-700">{formatPickupDate(order.pickup_date)}</p>
+                              )}
+                              {order.pickup_time && (
+                                <p className="text-blue-700">{order.pickup_time}</p>
+                              )}
                             </div>
                           </div>
                         </div>

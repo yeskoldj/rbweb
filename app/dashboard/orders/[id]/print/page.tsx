@@ -28,6 +28,7 @@ interface Order {
   items: OrderItem[];
   total: number;
   order_date: string;
+  pickup_date?: string;
   pickup_time?: string;
   special_requests?: string;
 }
@@ -147,9 +148,12 @@ export default function PrintOrderPage({ params }: { params: { id: string } }) {
           <p>
             <span className="font-semibold text-gray-900">Fecha de creación:</span> {order.order_date}
           </p>
-          {order.pickup_time && (
+          {(order.pickup_date || order.pickup_time) && (
             <p>
-              <span className="font-semibold text-gray-900">Hora de retiro:</span> {order.pickup_time}
+              <span className="font-semibold text-gray-900">Retiro:</span>{' '}
+              {order.pickup_date && <span>{order.pickup_date}</span>}
+              {order.pickup_date && order.pickup_time && <span> · </span>}
+              {order.pickup_time && <span>{order.pickup_time}</span>}
             </p>
           )}
         </div>

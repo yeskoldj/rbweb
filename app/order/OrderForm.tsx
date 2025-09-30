@@ -75,6 +75,7 @@ useEffect(() => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [formData, setFormData] = useState({
     specialRequests: '',
+    pickupDate: '',
     pickupTime: ''
   });
   const [contactInfo, setContactInfo] = useState({
@@ -84,6 +85,7 @@ useEffect(() => {
   const [billingPostalCode, setBillingPostalCode] = useState('');
   const billingAddress = billingPostalCode.trim();
   const [saveBillingAddress, setSaveBillingAddress] = useState(true);
+  const todayIsoString = new Date().toISOString().split('T')[0];
   const hasPendingPrice = cartItems.some(item => {
     if (existingOrder) return false;
     if (item.isPricePending) return true;
@@ -266,6 +268,7 @@ useEffect(() => {
         setCartItems(normalizedItems);
         setFormData({
           specialRequests: parsedSpecial.userRequests || '',
+          pickupDate: data.pickup_date || '',
           pickupTime: data.pickup_time || '',
         });
         setSystemSummary(parsedSpecial.summary);
@@ -329,6 +332,25 @@ useEffect(() => {
     }
 
     return details.join(' | ');
+  };
+
+  const formatPickupDate = (value: string | null | undefined) => {
+    if (!value) {
+      return '';
+    }
+
+    try {
+      const date = new Date(`${value}T00:00:00`);
+      if (Number.isNaN(date.getTime())) {
+        return value;
+      }
+
+      return new Intl.DateTimeFormat('es-ES', {
+        dateStyle: 'long',
+      }).format(date);
+    } catch {
+      return value;
+    }
   };
 
   const appId = process.env.NEXT_PUBLIC_SQUARE_APPLICATION_ID || '';
@@ -448,10 +470,11 @@ const initSquareCard = useCallback(async () => {
           const parsed = JSON.parse(savedForm);
           setFormData({
             specialRequests: parsed.specialRequests || '',
+            pickupDate: parsed.pickupDate || '',
             pickupTime: parsed.pickupTime || ''
           });
         } catch {
-          setFormData({ specialRequests: '', pickupTime: '' });
+          setFormData({ specialRequests: '', pickupDate: '', pickupTime: '' });
         }
       }
     }
@@ -758,9 +781,15 @@ const initSquareCard = useCallback(async () => {
         return `Pastel ${index + 1}: ${item.name}${detail ? `\n${detail}` : ''}`;
       });
 
-      const pickupLine = formData.pickupTime
-        ? `\nHora preferida de recogida: ${formData.pickupTime}`
-        : '';
+      const pickupDetails: string[] = [];
+      const formattedPickupDate = formatPickupDate(formData.pickupDate);
+      if (formattedPickupDate) {
+        pickupDetails.push(`Fecha preferida de recogida: ${formattedPickupDate}`);
+      }
+      if (formData.pickupTime) {
+        pickupDetails.push(`Hora preferida de recogida: ${formData.pickupTime}`);
+      }
+      const pickupLine = pickupDetails.length ? `\n${pickupDetails.join('\n')}` : '';
       const specialLine = formData.specialRequests.trim()
         ? `\nSolicitudes especiales: ${formData.specialRequests.trim()}`
         : '';
@@ -790,6 +819,7 @@ const initSquareCard = useCallback(async () => {
         subtotal: Number(subtotalValue.toFixed(2)),
         tax: Number(taxValue.toFixed(2)),
         total: Number(totalValue.toFixed(2)),
+        pickup_date: formData.pickupDate || null,
         pickup_time: formData.pickupTime || null,
         special_requests: specialRequestSections.join('\n\n'),
         status: 'pending',
@@ -845,6 +875,7 @@ const initSquareCard = useCallback(async () => {
           customerName: customerName,
           customerPhone: customerPhone,
           customerEmail: customerEmail || undefined,
+          pickupDate: formData.pickupDate || null,
           pickupTime: formData.pickupTime || null,
           specialRequests: orderPayload.special_requests,
           subtotal: orderPayload.subtotal,
@@ -881,6 +912,8 @@ const initSquareCard = useCallback(async () => {
                   reference_code: finalReference,
                   cart_items: formattedItems,
                   event_details: summary,
+                  pickup_date: formData.pickupDate || null,
+                  pickup_time: formData.pickupTime || null,
                 },
               }),
             });
@@ -896,7 +929,7 @@ const initSquareCard = useCallback(async () => {
       setQuoteSubmitted(true);
       setQuoteReference(finalReference);
       setCartItems([]);
-      setFormData({ specialRequests: '', pickupTime: '' });
+      setFormData({ specialRequests: '', pickupDate: '', pickupTime: '' });
       setShowPayment(false);
       setShowCardForm(false);
       setShowP2PInstructions(false);
@@ -922,6 +955,11 @@ const initSquareCard = useCallback(async () => {
     e.preventDefault();
     if (cartItems.length === 0) {
       showNotification('warning', 'Carrito Vacío', 'Tu carrito está vacío. Por favor agrega productos del menú primero.');
+      return;
+    }
+
+    if (!formData.pickupDate) {
+      showNotification('warning', 'Fecha de Recogida', 'Por favor selecciona una fecha de recogida antes de continuar.');
       return;
     }
 
@@ -1065,6 +1103,7 @@ const initSquareCard = useCallback(async () => {
         sourceId,
         currency: 'USD',
         userId,
+        pickupDate: (existingOrder?.pickup_date || formData.pickupDate) || undefined,
         pickupTime: (existingOrder?.pickup_time || formData.pickupTime) || undefined,
         specialRequests: (existingOrder?.special_requests || formData.specialRequests)?.trim() || undefined,
         orderId: existingOrder?.id,
@@ -1081,7 +1120,8 @@ const initSquareCard = useCallback(async () => {
           customerName: (currentUser?.full_name || currentUser?.fullName || 'Cliente').trim(),
           customerPhone: customerPhone,
           customerEmail: currentUser?.email || undefined,
-          pickupTime: formData.pickupTime || null,
+          pickupDate: (existingOrder?.pickup_date || formData.pickupDate) || null,
+          pickupTime: (existingOrder?.pickup_time || formData.pickupTime) || null,
           specialRequests: formData.specialRequests?.trim() || null,
           subtotal,
           tax,
@@ -1112,6 +1152,8 @@ const initSquareCard = useCallback(async () => {
             ...existingOrder,
             payment_status: 'completed',
             payment_type: 'card',
+            pickup_date: existingOrder.pickup_date || formData.pickupDate || null,
+            pickup_time: existingOrder.pickup_time || formData.pickupTime || null,
             subtotal,
             tax,
             total,
@@ -1203,6 +1245,7 @@ const initSquareCard = useCallback(async () => {
         },
         paymentMethod: 'zelle',
         userId,
+        pickupDate: (existingOrder?.pickup_date || formData.pickupDate) || undefined,
         pickupTime: (existingOrder?.pickup_time || formData.pickupTime) || undefined,
         specialRequests: (existingOrder?.special_requests || formData.specialRequests)?.trim() || undefined,
         orderId: existingOrder?.id,
@@ -1221,7 +1264,8 @@ const initSquareCard = useCallback(async () => {
         customerName: (currentUser?.full_name || currentUser?.fullName || 'Cliente').trim(),
         customerPhone: customerPhone,
         customerEmail: currentUser?.email || undefined,
-        pickupTime: formData.pickupTime || null,
+        pickupDate: (existingOrder?.pickup_date || formData.pickupDate) || null,
+        pickupTime: (existingOrder?.pickup_time || formData.pickupTime) || null,
         specialRequests: formData.specialRequests?.trim() || null,
         subtotal,
         tax: 0,
@@ -1245,15 +1289,17 @@ const initSquareCard = useCallback(async () => {
       setShowSuccess(true);
       setShowP2PInstructions(false);
 
-      if (existingOrder) {
-        setExistingOrder({
-          ...existingOrder,
-          payment_status: 'pending',
-          payment_type: 'zelle',
-          items: cartItems.map(item => ({
-            name: item.name,
-            quantity: item.quantity,
-            price: getItemPrice(item),
+        if (existingOrder) {
+          setExistingOrder({
+            ...existingOrder,
+            payment_status: 'pending',
+            payment_type: 'zelle',
+            pickup_date: existingOrder.pickup_date || formData.pickupDate || null,
+            pickup_time: existingOrder.pickup_time || formData.pickupTime || null,
+            items: cartItems.map(item => ({
+              name: item.name,
+              quantity: item.quantity,
+              price: getItemPrice(item),
             photoUrl: item.photoUrl,
             details: getCustomizationDetails(item),
             customization: item.customization,
@@ -1891,31 +1937,50 @@ const initSquareCard = useCallback(async () => {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Hora Preferida de Recogida
-            </label>
-            <select
-              name="pickupTime"
-              value={formData.pickupTime}
-              onChange={handleInputChange}
-              required
-              disabled={Boolean(existingOrder)}
-              className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm ${
-                existingOrder ? 'bg-gray-100 cursor-not-allowed' : ''
-              }`}
-            >
-              <option value="">Seleccionar hora de recogida</option>
-              <option value="9:00 AM">9:00 AM</option>
-              <option value="10:00 AM">10:00 AM</option>
-              <option value="11:00 AM">11:00 AM</option>
-              <option value="12:00 PM">12:00 PM</option>
-              <option value="1:00 PM">1:00 PM</option>
-              <option value="2:00 PM">2:00 PM</option>
-              <option value="3:00 PM">3:00 PM</option>
-              <option value="4:00 PM">4:00 PM</option>
-              <option value="5:00 PM">5:00 PM</option>
-            </select>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Fecha Preferida de Recogida
+              </label>
+              <input
+                type="date"
+                name="pickupDate"
+                value={formData.pickupDate}
+                onChange={handleInputChange}
+                required
+                min={todayIsoString}
+                disabled={Boolean(existingOrder)}
+                className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm ${
+                  existingOrder ? 'bg-gray-100 cursor-not-allowed' : ''
+                }`}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Hora Preferida de Recogida
+              </label>
+              <select
+                name="pickupTime"
+                value={formData.pickupTime}
+                onChange={handleInputChange}
+                required
+                disabled={Boolean(existingOrder)}
+                className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm ${
+                  existingOrder ? 'bg-gray-100 cursor-not-allowed' : ''
+                }`}
+              >
+                <option value="">Seleccionar hora de recogida</option>
+                <option value="9:00 AM">9:00 AM</option>
+                <option value="10:00 AM">10:00 AM</option>
+                <option value="11:00 AM">11:00 AM</option>
+                <option value="12:00 PM">12:00 PM</option>
+                <option value="1:00 PM">1:00 PM</option>
+                <option value="2:00 PM">2:00 PM</option>
+                <option value="3:00 PM">3:00 PM</option>
+                <option value="4:00 PM">4:00 PM</option>
+                <option value="5:00 PM">5:00 PM</option>
+              </select>
+            </div>
           </div>
 
           {shouldShowContactSection && (

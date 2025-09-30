@@ -240,11 +240,13 @@ export default function CalendarView({ orders, onStatusUpdate }: CalendarViewPro
                     </div>
                   </div>
                   
-                  {order.pickup_time && (
+                  {(order.pickup_date || order.pickup_time) && (
                     <div className="mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
                       <div className="flex items-center text-blue-800">
                         <i className="ri-time-line mr-2"></i>
-                        <span className="text-sm font-medium">Hora de entrega: {order.pickup_time}</span>
+                        <span className="text-sm font-medium">
+                          Hora de entrega: {[order.pickup_date, order.pickup_time].filter(Boolean).join(' · ')}
+                        </span>
                       </div>
                     </div>
                   )}

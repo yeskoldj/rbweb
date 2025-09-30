@@ -159,6 +159,10 @@ serve(async (req) => {
           updated_at: new Date().toISOString(),
         };
 
+        if (orderData.pickupDate !== undefined) {
+          updateData.pickup_date = orderData.pickupDate || null;
+        }
+
         if (orderData.pickupTime !== undefined) {
           updateData.pickup_time = orderData.pickupTime || null;
         }
@@ -265,6 +269,7 @@ serve(async (req) => {
         subtotal: normalizedSubtotal,
         tax: normalizedTax,
         total: Math.round(amountValue * 100) / 100,
+        pickup_date: orderData.pickupDate || null,
         pickup_time: orderData.pickupTime || null,
         special_requests: orderData.specialRequests?.trim() || null,
         status: 'pending',

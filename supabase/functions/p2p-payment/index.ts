@@ -129,6 +129,10 @@ serve(async (req) => {
           ? `${baseRequests}\n[Pagado con Zelle | Ref: ${p2pRef}]`
           : `[Pagado con Zelle | Ref: ${p2pRef}]`
 
+        if (orderData.pickupDate !== undefined) {
+          updateData.pickup_date = orderData.pickupDate || null
+        }
+
         if (orderData.pickupTime !== undefined) {
           updateData.pickup_time = orderData.pickupTime || null
         }
@@ -187,6 +191,7 @@ serve(async (req) => {
         subtotal,
         tax,
         total,
+        pickup_date: orderData.pickupDate || null,
         pickup_time: orderData.pickupTime || null,
         special_requests: orderData.specialRequests
           ? `${orderData.specialRequests}\n[Pagado con Zelle | Ref: ${p2pRef}]`
