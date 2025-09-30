@@ -9,6 +9,7 @@ import { createP2POrder, p2pPaymentConfig } from '@/lib/square/p2p';
 import { showCartNotification } from '@/lib/cartNotification';
 import { notifyBusinessAboutOrder } from '@/lib/orderNotifications';
 import Script from 'next/script';
+import { parseSpecialRequestSections } from '@/lib/specialRequestParsing';
 
 interface CartItem {
   id: string;
@@ -34,82 +35,6 @@ interface Notification {
 interface OrderFormProps {
   orderId?: string;
 }
-
-const parseSpecialRequestSections = (raw: string | null | undefined) => {
-  if (!raw || typeof raw !== 'string') {
-    return {
-      summary: null as string | null,
-      userRequests: '',
-      referenceCode: null as string | null,
-      statusMessage: null as string | null,
-    };
-  }
-
-  const sections = raw
-    .split('\n\n')
-    .map((section) => section.trim())
-    .filter(Boolean)
-    .filter((section) => section !== '---');
-
-  let referenceCode: string | null = null;
-  let statusMessage: string | null = null;
-  const summaryParts: string[] = [];
-  const metadataMatchers = [/^referencia interna/i, /^estado:/i];
-
-  sections.forEach((section) => {
-    const normalized = section.toLowerCase();
-
-    if (normalized.startsWith('referencia interna')) {
-      const code = section.split(':').slice(1).join(':').trim();
-      referenceCode = code || null;
-      return;
-    }
-
-    if (normalized.startsWith('estado:')) {
-      const message = section.split(':').slice(1).join(':').trim();
-      statusMessage = message || null;
-      return;
-    }
-
-    summaryParts.push(section);
-  });
-
-  const summary = summaryParts.length > 0
-    ? summaryParts
-        .map((part) =>
-          part
-            .split('\n')
-            .filter((line) => !metadataMatchers.some((pattern) => pattern.test(line.trim())))
-            .join('\n')
-            .trim()
-        )
-        .filter(Boolean)
-        .join('\n\n')
-    : null;
-
-  let userRequests = '';
-
-  if (summary) {
-    const specialRequestMatch = summary.match(/Solicitudes especiales:\s*([\s\S]*)/i);
-    if (specialRequestMatch) {
-      userRequests = (specialRequestMatch[1] || '').trim();
-    }
-  }
-
-  const sanitizedUserRequests = userRequests
-    .split('\n')
-    .map((line) => line.trimEnd())
-    .filter((line) => !metadataMatchers.some((pattern) => pattern.test(line.trim())))
-    .join('\n')
-    .trim();
-
-  return {
-    summary,
-    userRequests: sanitizedUserRequests,
-    referenceCode,
-    statusMessage,
-  };
-};
 
 export default function OrderForm({ orderId }: OrderFormProps) {
   const router = useRouter();
