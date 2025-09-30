@@ -5,6 +5,7 @@ import { useState, type MouseEvent } from 'react';
 import Link from 'next/link';
 import SafeImage from '@/components/SafeImage';
 import { getItemPhotoUrl } from '@/lib/orderItemFormatting';
+import { openPhotoPrintWindow } from '@/lib/photoPrinting';
 
 interface Order {
   id: string;
@@ -40,45 +41,7 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
 
   const handlePhotoPrint = (event: MouseEvent<HTMLButtonElement>, photoUrl: string) => {
     event.stopPropagation();
-
-    const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=800,height=600');
-
-    if (!printWindow) {
-      console.error('Unable to open print window for photo');
-      return;
-    }
-
-    const escapedUrl = photoUrl.replace(/"/g, '&quot;');
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Imprimir foto de referencia</title>
-          <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <style>
-            body { margin: 0; display: flex; align-items: center; justify-content: center; background: #ffffff; }
-            img { max-width: 100%; max-height: 100vh; }
-          </style>
-        </head>
-        <body>
-          <img id="order-photo" src="${escapedUrl}" alt="Foto de referencia" />
-          <script>
-            const image = document.getElementById('order-photo');
-            if (image) {
-              image.onload = () => {
-                window.focus();
-                window.print();
-              };
-              image.onerror = () => {
-                window.close();
-              };
-            } else {
-              window.print();
-            }
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+    openPhotoPrintWindow(photoUrl);
   };
 
   const getStatusColor = (status: Order['status']) => {
