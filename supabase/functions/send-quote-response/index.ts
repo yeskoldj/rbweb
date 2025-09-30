@@ -1,5 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import {
+  getWhatsAppBusinessRecipients,
+  sendWhatsAppTemplateMessage,
+  sendWhatsAppTextMessage,
+} from '../_shared/whatsapp.ts'
 
 const ENVIRONMENT = Deno.env.get('NODE_ENV') || 'development'
 const ALLOWED_ORIGIN =
@@ -21,7 +26,16 @@ serve(async (req) => {
   }
 
   try {
-    const { quoteId, estimatedPrice, adminNotes, customerEmail, customerName, eventType, eventDate } = await req.json()
+    const {
+      quoteId,
+      estimatedPrice,
+      adminNotes,
+      customerEmail,
+      customerName,
+      customerPhone,
+      eventType,
+      eventDate,
+    } = await req.json()
 
     if (!quoteId || !estimatedPrice || !customerEmail) {
       throw new Error('Missing required fields')
@@ -210,17 +224,84 @@ serve(async (req) => {
       throw new Error('Failed to send email')
     }
 
+    const whatsappResults: Record<string, unknown> = {}
+    const formattedPrice = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(Number(estimatedPrice))
+
+    const whatsappTemplateName = Deno.env.get('WHATSAPP_TEMPLATE_QUOTE_APPROVED')
+    const whatsappLanguage = Deno.env.get('WHATSAPP_TEMPLATE_LANGUAGE') || 'es'
+
+    if (customerPhone) {
+      const customerMessage = `Hola ${customerName || 'cliente Ranger Bakery'}, tu cotización ya está lista. El precio estimado es ${formattedPrice}. ${adminNotes ? `Notas especiales: ${adminNotes}. ` : ''}Responde a este mensaje o llámanos al (862) 233-7204 para confirmar.`
+
+      whatsappResults.customer = whatsappTemplateName
+        ? await sendWhatsAppTemplateMessage({
+            to: customerPhone,
+            templateName: whatsappTemplateName,
+            languageCode: whatsappLanguage,
+            components: [
+              {
+                type: 'body',
+                parameters: [
+                  { type: 'text', text: customerName || 'cliente Ranger Bakery' },
+                  { type: 'text', text: formattedPrice },
+                  { type: 'text', text: adminNotes ? adminNotes : 'Sin notas adicionales' },
+                ],
+              },
+            ],
+          })
+        : await sendWhatsAppTextMessage({
+            to: customerPhone,
+            body: customerMessage,
+          })
+    }
+
+    const businessRecipients = getWhatsAppBusinessRecipients()
+    if (businessRecipients.length > 0) {
+      const businessMessage = `Cotización respondida para ${customerName || 'cliente'} por ${formattedPrice}. ${adminNotes ? `Notas: ${adminNotes}. ` : ''}${eventType ? `Evento: ${eventType}. ` : ''}${eventDate ? `Fecha: ${eventDate}. ` : ''}ID: ${quoteId}.`
+      const businessTemplate = Deno.env.get('WHATSAPP_TEMPLATE_BUSINESS_QUOTE_ALERT')
+
+      whatsappResults.business = await Promise.all(
+        businessRecipients.map((recipient) =>
+          businessTemplate
+            ? sendWhatsAppTemplateMessage({
+                to: recipient,
+                templateName: businessTemplate,
+                languageCode: whatsappLanguage,
+                components: [
+                  {
+                    type: 'body',
+                    parameters: [
+                      { type: 'text', text: customerName || 'cliente' },
+                      { type: 'text', text: formattedPrice },
+                      { type: 'text', text: quoteId },
+                    ],
+                  },
+                ],
+              })
+            : sendWhatsAppTextMessage({
+                to: recipient,
+                body: businessMessage,
+              })
+        )
+      )
+    }
+
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         message: 'Quote response sent successfully',
-        emailSent: true
+        emailSent: true,
+        whatsapp: whatsappResults,
       }),
-      { 
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        } 
+      {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
       }
     )
 

@@ -1,4 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import {
+  getWhatsAppBusinessRecipients,
+  sendWhatsAppTemplateMessage,
+  sendWhatsAppTextMessage,
+} from '../_shared/whatsapp.ts'
+import type {
+  WhatsAppTemplateComponent,
+  WhatsAppTemplateComponentParameter,
+} from '../_shared/whatsapp.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
 const ENVIRONMENT = Deno.env.get('NODE_ENV') || 'development'
@@ -7,10 +16,272 @@ const ALLOWED_ORIGIN =
 const DEFAULT_APP_BASE_URL = 'https://app.rangersbakery.com'
 const RAW_APP_BASE_URL = Deno.env.get('PUBLIC_APP_BASE_URL') || DEFAULT_APP_BASE_URL
 const NORMALIZED_APP_BASE_URL = RAW_APP_BASE_URL.replace(/\/$/, '') || DEFAULT_APP_BASE_URL
+const WHATSAPP_LANGUAGE = (Deno.env.get('WHATSAPP_TEMPLATE_LANGUAGE') || 'es').toLowerCase()
+const WHATSAPP_TEMPLATE_CUSTOMER_ORDER_CONFIRMATION = Deno.env.get('WHATSAPP_TEMPLATE_CUSTOMER_ORDER_CONFIRMATION') || ''
+const WHATSAPP_TEMPLATE_CUSTOMER_QUOTE_CONFIRMATION = Deno.env.get('WHATSAPP_TEMPLATE_CUSTOMER_QUOTE_CONFIRMATION') || ''
+const WHATSAPP_TEMPLATE_CUSTOMER_PAYMENT_READY = Deno.env.get('WHATSAPP_TEMPLATE_CUSTOMER_ORDER_PAYMENT_READY') || ''
+const WHATSAPP_TEMPLATE_CUSTOMER_READY_FOR_PICKUP = Deno.env.get('WHATSAPP_TEMPLATE_CUSTOMER_ORDER_READY_FOR_PICKUP') || ''
+const WHATSAPP_TEMPLATE_BUSINESS_ORDER_ALERT = Deno.env.get('WHATSAPP_TEMPLATE_BUSINESS_ORDER_ALERT') || ''
+const WHATSAPP_TEMPLATE_BUSINESS_QUOTE_ALERT = Deno.env.get('WHATSAPP_TEMPLATE_BUSINESS_QUOTE_ALERT') || ''
 const corsHeaders = {
   'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+function formatCurrencyValue(value: number | string | null | undefined) {
+  const numericValue =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string'
+        ? Number(value)
+        : typeof value === 'bigint'
+          ? Number(value)
+          : Number(value ?? 0)
+
+  const safeNumber = Number.isFinite(numericValue) ? numericValue : 0
+
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+  }).format(safeNumber)
+}
+
+function normalizeLanguageCode(language?: string) {
+  if (!language) return WHATSAPP_LANGUAGE
+  const normalized = language.toLowerCase()
+  if (normalized.startsWith('en')) return 'en'
+  if (normalized.startsWith('es')) return 'es'
+  return WHATSAPP_LANGUAGE
+}
+
+function buildCustomerWhatsAppMessage(
+  type: string,
+  language: string,
+  order: any,
+  quote: any,
+): string | null {
+  const lang = normalizeLanguageCode(language)
+  const fallbackName = lang === 'en' ? 'Ranger Bakery friend' : 'cliente Ranger Bakery'
+  const name = order?.customer_name || quote?.customer_name || fallbackName
+  const orderId = order?.id ? `#${order.id}` : ''
+  const total = formatCurrencyValue(order?.total ?? order?.subtotal ?? 0)
+
+  switch (type) {
+    case 'order_confirmation':
+      return lang === 'en'
+        ? `Hi ${name}, we received your order ${orderId}. We'll keep you posted. Total: ${total}.`
+        : `Hola ${name}, recibimos tu orden ${orderId}. Te mantendremos al tanto. Total: ${total}.`
+    case 'customer_quote_confirmation': {
+      const reference = quote?.reference_code ? ` (${quote.reference_code})` : ''
+      return lang === 'en'
+        ? `Hi ${name}, we received your quote request${reference}. We'll review the details and reply soon.`
+        : `Hola ${name}, recibimos tu solicitud de cotización${reference}. Revisaremos los detalles y te responderemos pronto.`
+    }
+    case 'customer_order_payment_ready': {
+      const paymentUrl = order?.payment_url || order?.tracking_url || ''
+      const paymentSentence = paymentUrl ? (lang === 'en' ? ` Pay here: ${paymentUrl}` : ` Paga aquí: ${paymentUrl}`) : ''
+      return lang === 'en'
+        ? `Hi ${name}, your order ${orderId} is ready for payment. Total: ${total}.${paymentSentence}`
+        : `Hola ${name}, tu orden ${orderId} ya está lista para pagar. Total: ${total}.${paymentSentence}`
+    }
+    case 'customer_order_ready_for_pickup': {
+      const pickupTime = order?.pickup_time
+      return lang === 'en'
+        ? `Hi ${name}, your order ${orderId} is ready for pickup${pickupTime ? ` at ${pickupTime}` : ''}. See you soon!`
+        : `Hola ${name}, tu orden ${orderId} está lista para recoger${pickupTime ? ` a las ${pickupTime}` : ''}. ¡Te esperamos!`
+    }
+    default:
+      return null
+  }
+}
+
+function buildBusinessWhatsAppMessage(type: string, order: any, quote: any): string | null {
+  const name = order?.customer_name || quote?.customer_name || 'Cliente'
+  const phone = order?.customer_phone || quote?.customer_phone || 'sin teléfono'
+  const orderId = order?.id ? `#${order.id}` : ''
+  const total = formatCurrencyValue(order?.total ?? order?.subtotal ?? 0)
+
+  switch (type) {
+    case 'business_new_order':
+      return `Nueva orden ${orderId} de ${name}. Total ${total}. Tel: ${phone}. Estado: ${order?.status || 'pendiente'}.`
+    case 'order_confirmation':
+      return `Pedido confirmado ${orderId} de ${name}. Total ${total}. Tel: ${phone}.`
+    case 'customer_order_payment_ready':
+      return `Orden ${orderId} de ${name} lista para pagar. Total ${total}. Tel: ${phone}.`
+    case 'customer_order_ready_for_pickup':
+      return `Orden ${orderId} de ${name} lista para recoger${order?.pickup_time ? ` a las ${order.pickup_time}` : ''}. Tel: ${phone}.`
+    case 'customer_quote_confirmation':
+    case 'new_quote': {
+      const reference = quote?.reference_code ? ` (${quote.reference_code})` : ''
+      return `Nueva cotización${reference} de ${name}. Tel: ${phone}.`
+    }
+    default:
+      return null
+  }
+}
+
+function buildCustomerTemplateComponents(
+  type: string,
+  order: any,
+  quote: any,
+): WhatsAppTemplateComponent[] {
+  const parameters: WhatsAppTemplateComponentParameter[] = []
+
+  switch (type) {
+    case 'order_confirmation':
+      parameters.push({ type: 'text', text: order?.customer_name || quote?.customer_name || 'cliente Ranger Bakery' })
+      parameters.push({ type: 'text', text: order?.id ? `#${order.id}` : 'sin-id' })
+      parameters.push({ type: 'text', text: formatCurrencyValue(order?.total ?? order?.subtotal ?? 0) })
+      break
+    case 'customer_quote_confirmation':
+      parameters.push({ type: 'text', text: quote?.customer_name || 'cliente Ranger Bakery' })
+      parameters.push({ type: 'text', text: quote?.reference_code || 'sin-codigo' })
+      break
+    case 'customer_order_payment_ready':
+      parameters.push({ type: 'text', text: order?.customer_name || 'cliente Ranger Bakery' })
+      parameters.push({ type: 'text', text: formatCurrencyValue(order?.total ?? order?.subtotal ?? 0) })
+      parameters.push({ type: 'text', text: order?.payment_url || order?.tracking_url || 'sin-enlace' })
+      break
+    case 'customer_order_ready_for_pickup':
+      parameters.push({ type: 'text', text: order?.customer_name || 'cliente Ranger Bakery' })
+      parameters.push({ type: 'text', text: order?.pickup_time || 'Horario pendiente' })
+      parameters.push({ type: 'text', text: order?.id ? `#${order.id}` : 'sin-id' })
+      break
+    default:
+      break
+  }
+
+  return parameters.length
+    ? [
+        {
+          type: 'body',
+          parameters,
+        },
+      ]
+    : []
+}
+
+function buildBusinessTemplateComponents(type: string, order: any, quote: any): WhatsAppTemplateComponent[] {
+  const parameters: WhatsAppTemplateComponentParameter[] = []
+
+  switch (type) {
+    case 'business_new_order':
+    case 'order_confirmation':
+    case 'customer_order_payment_ready':
+    case 'customer_order_ready_for_pickup':
+      parameters.push({ type: 'text', text: order?.customer_name || 'Cliente' })
+      parameters.push({ type: 'text', text: order?.id ? `#${order.id}` : 'sin-id' })
+      parameters.push({ type: 'text', text: formatCurrencyValue(order?.total ?? order?.subtotal ?? 0) })
+      parameters.push({ type: 'text', text: order?.customer_phone || 'sin-telefono' })
+      break
+    case 'customer_quote_confirmation':
+    case 'new_quote':
+      parameters.push({ type: 'text', text: quote?.customer_name || 'Cliente' })
+      parameters.push({ type: 'text', text: quote?.reference_code || 'sin-codigo' })
+      parameters.push({ type: 'text', text: quote?.customer_phone || 'sin-telefono' })
+      break
+    default:
+      break
+  }
+
+  return parameters.length
+    ? [
+        {
+          type: 'body',
+          parameters,
+        },
+      ]
+    : []
+}
+
+async function sendCustomerWhatsAppNotification(
+  type: string,
+  language: string,
+  order: any,
+  quote: any,
+) {
+  const phone = order?.customer_phone || quote?.customer_phone
+  if (!phone) return null
+
+  const message = buildCustomerWhatsAppMessage(type, language, order, quote)
+  if (!message) return null
+
+  const templateName =
+    (type === 'order_confirmation' && WHATSAPP_TEMPLATE_CUSTOMER_ORDER_CONFIRMATION) ||
+    (type === 'customer_quote_confirmation' && WHATSAPP_TEMPLATE_CUSTOMER_QUOTE_CONFIRMATION) ||
+    (type === 'customer_order_payment_ready' && WHATSAPP_TEMPLATE_CUSTOMER_PAYMENT_READY) ||
+    (type === 'customer_order_ready_for_pickup' && WHATSAPP_TEMPLATE_CUSTOMER_READY_FOR_PICKUP) ||
+    ''
+
+  if (templateName) {
+    return await sendWhatsAppTemplateMessage({
+      to: phone,
+      templateName,
+      languageCode: normalizeLanguageCode(language),
+      components: buildCustomerTemplateComponents(type, order, quote),
+    })
+  }
+
+  return await sendWhatsAppTextMessage({
+    to: phone,
+    body: message,
+    previewUrl: /https?:\/\//i.test(message),
+  })
+}
+
+async function sendBusinessWhatsAppNotifications(type: string, order: any, quote: any) {
+  const recipients = getWhatsAppBusinessRecipients()
+  if (!recipients.length) return []
+
+  const message = buildBusinessWhatsAppMessage(type, order, quote)
+  if (!message) return []
+
+  const templateName =
+    ((type === 'customer_quote_confirmation' || type === 'new_quote') && (WHATSAPP_TEMPLATE_BUSINESS_QUOTE_ALERT || WHATSAPP_TEMPLATE_BUSINESS_ORDER_ALERT)) ||
+    (type === 'business_new_order' && WHATSAPP_TEMPLATE_BUSINESS_ORDER_ALERT) ||
+    (type === 'order_confirmation' && WHATSAPP_TEMPLATE_BUSINESS_ORDER_ALERT) ||
+    (type === 'customer_order_payment_ready' && WHATSAPP_TEMPLATE_BUSINESS_ORDER_ALERT) ||
+    (type === 'customer_order_ready_for_pickup' && WHATSAPP_TEMPLATE_BUSINESS_ORDER_ALERT) ||
+    ''
+
+  return await Promise.all(
+    recipients.map((recipient) =>
+      templateName
+        ? sendWhatsAppTemplateMessage({
+            to: recipient,
+            templateName,
+            languageCode: WHATSAPP_LANGUAGE,
+            components: buildBusinessTemplateComponents(type, order, quote),
+          })
+        : sendWhatsAppTextMessage({
+            to: recipient,
+            body: message,
+          })
+    )
+  )
+}
+
+async function dispatchWhatsAppNotifications(
+  type: string,
+  language: string,
+  order: any,
+  quote: any,
+) {
+  const results: Record<string, unknown> = {}
+
+  const customerResult = await sendCustomerWhatsAppNotification(type, language, order, quote)
+  if (customerResult) {
+    results.customer = customerResult
+  }
+
+  const businessResults = await sendBusinessWhatsAppNotifications(type, order, quote)
+  if (businessResults.length) {
+    results.business = businessResults
+  }
+
+  return results
 }
 
 serve(async (req) => {
@@ -54,7 +325,10 @@ serve(async (req) => {
       ...quoteData,
       cart_items: Array.isArray(quoteData?.cart_items) ? quoteData.cart_items : [],
       reference_code: quoteData?.reference_code || quoteData?.referenceCode || '',
-      event_details: quoteData?.event_details || quoteData?.eventDetails || ''
+      event_details: quoteData?.event_details || quoteData?.eventDetails || '',
+      customer_name: quoteData?.customer_name || quoteData?.contactInfo?.name || quoteData?.name || '',
+      customer_phone: quoteData?.customer_phone || quoteData?.contactInfo?.phone || '',
+      customer_email: quoteData?.customer_email || quoteData?.contactInfo?.email || '',
     }
     const quoteItems = Array.isArray(quote.cart_items) ? (quote.cart_items as any[]) : []
     const quoteItemsHtml = quoteItems.length
@@ -72,11 +346,13 @@ serve(async (req) => {
 
     if (!RESEND_API_KEY) {
       console.log('RESEND_API_KEY not configured, simulating email send')
+      const whatsapp = await dispatchWhatsAppNotifications(type, language, order, quote)
       return new Response(
         JSON.stringify({
           success: true,
           message: 'Email simulation - RESEND_API_KEY not configured',
-          data: { to, subject, type, order }
+          data: { to, subject, type, order },
+          whatsapp,
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -772,11 +1048,14 @@ serve(async (req) => {
       )
     }
 
+    const whatsapp = await dispatchWhatsAppNotifications(type, language, order, quote)
+
     return new Response(
       JSON.stringify({
         success: true,
         message: 'Email sent successfully',
-        id: result.id
+        id: result.id,
+        whatsapp,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

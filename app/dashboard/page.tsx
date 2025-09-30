@@ -435,6 +435,7 @@ export default function DashboardPage() {
                 id: priceApprovalOrder.id,
                 customer_name: priceApprovalOrder.customer_name,
                 customer_email: customerEmail,
+                customer_phone: priceApprovalOrder.customer_phone,
                 total: totalValue,
                 subtotal: roundedSubtotal,
                 tax: taxValue,
@@ -642,6 +643,7 @@ export default function DashboardPage() {
                 id: targetOrder.id,
                 customer_name: targetOrder.customer_name,
                 customer_email: targetOrder.customer_email,
+                customer_phone: targetOrder.customer_phone,
                 pickup_time: targetOrder.pickup_time,
                 total: targetOrder.total,
                 subtotal: targetOrder.subtotal,
@@ -772,15 +774,16 @@ export default function DashboardPage() {
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${anonKey}`,
               },
-              body: JSON.stringify({
-                quoteId,
-                estimatedPrice,
-                adminNotes: adminNotes || targetQuote?.admin_notes || '',
-                customerEmail,
-                customerName: targetQuote?.customer_name || 'Cliente',
-                eventType: targetQuote?.occasion || targetQuote?.theme || null,
-                eventDate: targetQuote?.event_date || null,
-              }),
+            body: JSON.stringify({
+              quoteId,
+              estimatedPrice,
+              adminNotes: adminNotes || targetQuote?.admin_notes || '',
+              customerEmail,
+              customerName: targetQuote?.customer_name || 'Cliente',
+              customerPhone: targetQuote?.customer_phone || '',
+              eventType: targetQuote?.occasion || targetQuote?.theme || null,
+              eventDate: targetQuote?.event_date || null,
+            }),
             });
 
             const result = await response.json();
