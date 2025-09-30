@@ -7,6 +7,7 @@ import { supabase, Order } from '../../lib/supabase';
 import Header from '../../components/Header';
 import TabBar from '../../components/TabBar';
 import SafeImage from '@/components/SafeImage';
+import { extractItemDetails, getItemPhotoUrl } from '@/lib/orderItemFormatting';
 import CalendarView from './CalendarView';
 import UserManagement from './UserManagement';
 
@@ -49,6 +50,7 @@ interface OrderItem {
   details?: string | null;
   photoUrl?: string | null;
   type?: string | null;
+  customization?: Record<string, unknown> | null;
 }
 
 const quoteStatusColors: Record<QuoteStatus, string> = {
@@ -260,6 +262,14 @@ export default function DashboardPage() {
 
       return total + parsePriceValue(item.price) * quantity;
     }, 0);
+  };
+
+  const openPrintOrder = (orderId: string) => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.open(`/dashboard/orders/${orderId}/print`, '_blank', 'noopener');
   };
 
   const openPriceModal = (order: Order) => {
@@ -1283,6 +1293,9 @@ export default function DashboardPage() {
                   ) : (
                     orders.map((order) => {
                       const paymentConfirmed = isPaymentConfirmed(order);
+                      const orderItems = Array.isArray(order.items)
+                        ? (order.items as OrderItem[])
+                        : [];
 
                       return (
                         <div key={order.id} className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
@@ -1360,18 +1373,75 @@ export default function DashboardPage() {
                               <i className="ri-shopping-bag-line mr-2"></i>
                               Items del pedido:
                             </h4>
-                            <div className="bg-gray-50 rounded-xl p-3 space-y-2">
-                              {order.items.map((item, idx) => (
-                                <div key={idx} className="flex justify-between items-center">
-                                  <div className="flex items-center space-x-2">
-                                    <div className="w-6 h-6 bg-pink-100 rounded-full flex items-center justify-center text-pink-600 font-bold text-xs">
-                                      {item.quantity}
+                            <div className="space-y-3">
+                              {orderItems.map((item, idx) => {
+                                const detailEntries = extractItemDetails(item);
+                                const photoSource = getItemPhotoUrl(item);
+
+                                return (
+                                  <div
+                                    key={`${order.id}-item-${idx}`}
+                                    className="rounded-xl border border-gray-200 bg-white/80 p-3 shadow-sm"
+                                  >
+                                    <div className="flex flex-wrap items-center justify-between gap-3">
+                                      <div className="flex items-center space-x-3">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-pink-100 text-sm font-bold text-pink-600">
+                                          {item.quantity}
+                                        </div>
+                                        <div>
+                                          <p className="text-sm font-semibold text-gray-800">{item.name}</p>
+                                          {item.type === 'cake' && (
+                                            <p className="text-xs font-medium uppercase tracking-wide text-pink-500">Personalizado</p>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div className="text-right text-sm font-bold text-gray-800">
+                                        {formatOrderItemPrice(item)}
+                                      </div>
                                     </div>
-                                    <span className="text-sm font-medium text-gray-700">{item.name}</span>
+
+                                    {detailEntries.length > 0 && (
+                                      <ul className="mt-3 space-y-1 text-xs text-gray-600">
+                                        {detailEntries.map((detail, detailIndex) => (
+                                          <li
+                                            key={`${order.id}-item-${idx}-detail-${detailIndex}`}
+                                            className="flex items-start gap-2"
+                                          >
+                                            <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-pink-400"></span>
+                                            <span>
+                                              {detail.label ? (
+                                                <>
+                                                  <span className="font-semibold text-gray-700">{detail.label}:</span>{' '}
+                                                  <span className={detail.emphasis ? 'text-gray-800 font-semibold' : undefined}>
+                                                    {detail.value}
+                                                  </span>
+                                                </>
+                                              ) : (
+                                                detail.value
+                                              )}
+                                            </span>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    )}
+
+                                    {photoSource && (
+                                      <div className="mt-3">
+                                        <p className="text-xs font-semibold text-gray-700 mb-1">Referencia visual</p>
+                                        <div className="relative h-28 w-full max-w-xs overflow-hidden rounded-lg border border-pink-100">
+                                          <SafeImage
+                                            src={photoSource}
+                                            alt={`Referencia de ${item.name}`}
+                                            fill
+                                            className="object-cover"
+                                            sizes="(max-width: 640px) 60vw, 220px"
+                                          />
+                                        </div>
+                                      </div>
+                                    )}
                                   </div>
-                                  <span className="text-sm font-bold text-gray-800">{formatOrderItemPrice(item)}</span>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           </div>
 
@@ -1388,6 +1458,14 @@ export default function DashboardPage() {
                           )}
 
                           <div className="flex flex-wrap gap-2">
+                            <button
+                              onClick={() => openPrintOrder(order.id)}
+                              className="flex-1 min-w-[200px] bg-gradient-to-r from-slate-600 to-slate-800 text-white py-3 px-4 rounded-xl text-sm font-bold !rounded-button hover:from-slate-700 hover:to-slate-900 transition-all transform hover:scale-105 shadow-lg"
+                              type="button"
+                            >
+                              <i className="ri-printer-line mr-2"></i>
+                              Imprimir orden
+                            </button>
                             {currentUser?.role === 'owner' && orderHasPendingPrice(order) && (
                               <button
                                 onClick={() => openPriceModal(order)}
