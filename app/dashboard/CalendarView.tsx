@@ -10,8 +10,38 @@ interface CalendarViewProps {
 }
 
 export default function CalendarView({ orders, onStatusUpdate }: CalendarViewProps) {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const today = new Date();
+  const [selectedDate, setSelectedDate] = useState(today.toISOString().split('T')[0]);
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
+  const [currentMonth, setCurrentMonth] = useState(
+    () => new Date(today.getFullYear(), today.getMonth(), 1)
+  );
+
+  const monthLabel = currentMonth.toLocaleDateString('es-ES', {
+    month: 'long',
+    year: 'numeric',
+  });
+
+  const handleMonthChange = (offset: number) => {
+    setCurrentMonth((previous) => {
+      const next = new Date(previous.getFullYear(), previous.getMonth() + offset, 1);
+      const selected = new Date(selectedDate);
+
+      if (!Number.isNaN(selected.getTime()) && selected.getMonth() === previous.getMonth() && selected.getFullYear() === previous.getFullYear()) {
+        const daysInNextMonth = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+        const newSelected = new Date(
+          next.getFullYear(),
+          next.getMonth(),
+          Math.min(selected.getDate(), daysInNextMonth)
+        );
+        setSelectedDate(newSelected.toISOString().split('T')[0]);
+      } else {
+        setSelectedDate(next.toISOString().split('T')[0]);
+      }
+
+      return next;
+    });
+  };
 
   const formatPickupDate = (value?: string | null) => {
     if (!value) {
@@ -31,7 +61,10 @@ export default function CalendarView({ orders, onStatusUpdate }: CalendarViewPro
   };
 
   const getOrdersForDate = (date: string) => {
-    return orders.filter(order => order.order_date === date);
+    return orders.filter((order) => {
+      const scheduledDate = order.pickup_date || order.order_date;
+      return scheduledDate === date;
+    });
   };
 
   const getNext7Days = () => {
@@ -49,12 +82,9 @@ export default function CalendarView({ orders, onStatusUpdate }: CalendarViewPro
 
   const getDaysOfMonth = () => {
     const days = [];
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth();
-    const date = new Date(year, month, 1);
+    const date = new Date(currentMonth);
 
-    while (date.getMonth() === month) {
+    while (date.getMonth() === currentMonth.getMonth()) {
       days.push(date.toISOString().split('T')[0]);
       date.setDate(date.getDate() + 1);
     }
@@ -117,16 +147,43 @@ export default function CalendarView({ orders, onStatusUpdate }: CalendarViewPro
             </div>
             {viewMode === 'week' ? 'Próximos 7 Días' : 'Vista Mensual'}
           </h3>
-          <div className="space-x-2">
+          <div className="flex items-center space-x-2">
+            {viewMode === 'month' && (
+              <div className="flex items-center space-x-1 bg-white/70 px-3 py-1 rounded-full text-sm font-semibold text-gray-700">
+                <button
+                  onClick={() => handleMonthChange(-1)}
+                  className="text-gray-500 hover:text-pink-500 transition-colors"
+                  type="button"
+                >
+                  <i className="ri-arrow-left-s-line"></i>
+                </button>
+                <span>{monthLabel}</span>
+                <button
+                  onClick={() => handleMonthChange(1)}
+                  className="text-gray-500 hover:text-pink-500 transition-colors"
+                  type="button"
+                >
+                  <i className="ri-arrow-right-s-line"></i>
+                </button>
+              </div>
+            )}
             <button
               onClick={() => setViewMode('week')}
               className={`px-3 py-1 rounded-full text-sm font-medium ${viewMode === 'week' ? 'bg-pink-400 text-white' : 'bg-white text-gray-700'}`}
+              type="button"
             >
               7 días
             </button>
             <button
-              onClick={() => setViewMode('month')}
+              onClick={() => {
+                setViewMode('month');
+                const date = new Date(selectedDate);
+                if (!Number.isNaN(date.getTime())) {
+                  setCurrentMonth(new Date(date.getFullYear(), date.getMonth(), 1));
+                }
+              }}
               className={`px-3 py-1 rounded-full text-sm font-medium ${viewMode === 'month' ? 'bg-pink-400 text-white' : 'bg-white text-gray-700'}`}
+              type="button"
             >
               Mes
             </button>
