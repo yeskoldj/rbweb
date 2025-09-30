@@ -1224,7 +1224,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Ranger\'s Bakery <orders@rangersbakery.com>',
+        from: 'Ranger\'s Bakery <rangerbakery@gmail.com>',
         to: [to],
         subject: template.subject,
         html: template.html,
