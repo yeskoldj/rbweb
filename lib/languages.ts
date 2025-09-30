@@ -18,6 +18,7 @@ export const translations = {
     // Language selector
     selectLanguage: "Selecciona tu idioma",
     language: "Idioma",
+    languageSelectorAriaLabel: "Abrir selector de idioma",
     
     // Home Page
     featuredProducts: "Productos Destacados",
@@ -223,6 +224,7 @@ export const translations = {
     // Language selector
     selectLanguage: "Select your language",
     language: "Language",
+    languageSelectorAriaLabel: "Open language selector",
     
     // Home Page
     featuredProducts: "Featured Products",
