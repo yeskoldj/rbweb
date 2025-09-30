@@ -5,6 +5,7 @@ import { useState, type MouseEvent } from 'react';
 import Link from 'next/link';
 import SafeImage from '@/components/SafeImage';
 import { getItemPhotoUrl } from '@/lib/orderItemFormatting';
+import { extractSpecialRequestNotes } from '@/lib/specialRequestParsing';
 import { openPhotoPrintWindow } from '@/lib/photoPrinting';
 
 interface Order {
@@ -38,6 +39,7 @@ interface OrderCardProps {
 
 export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const specialRequestNotes = extractSpecialRequestNotes(order.special_requests);
 
   const handlePhotoPrint = (event: MouseEvent<HTMLButtonElement>, photoUrl: string) => {
     event.stopPropagation();
@@ -280,12 +282,17 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
           </div>
 
           {/* Special Instructions */}
-          {order.special_requests && (
+          {specialRequestNotes.length > 0 && (
             <div className="px-4 pb-4">
               <h5 className="font-medium text-gray-900 mb-2">Instrucciones Especiales</h5>
-              <p className="text-sm text-gray-600 bg-yellow-50 p-3 rounded-lg">
-                {order.special_requests}
-              </p>
+              <ul className="space-y-1 rounded-lg bg-yellow-50 p-3 text-sm text-gray-700">
+                {specialRequestNotes.map((note, index) => (
+                  <li key={`${order.id}-card-special-${index}`} className="flex items-start gap-2">
+                    <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-yellow-500"></span>
+                    <span>{note}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 

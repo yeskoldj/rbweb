@@ -8,6 +8,7 @@ import Header from '../../components/Header';
 import TabBar from '../../components/TabBar';
 import SafeImage from '@/components/SafeImage';
 import { extractItemDetails, getItemPhotoUrl } from '@/lib/orderItemFormatting';
+import { extractSpecialRequestNotes } from '@/lib/specialRequestParsing';
 import {
   withSignedPhotoUrls,
   collectPhotoStoragePaths,
@@ -1380,7 +1381,10 @@ export default function DashboardPage() {
                             </p>
                           </div>
                         ) : (
-                          getTodayOrders().map((order) => (
+                        getTodayOrders().map((order) => {
+                          const specialRequestNotes = extractSpecialRequestNotes(order.special_requests);
+
+                          return (
                             <div
                               key={order.id}
                               className="space-y-3 rounded-2xl border border-gray-100 bg-gray-50 p-5 shadow-sm"
@@ -1418,14 +1422,23 @@ export default function DashboardPage() {
                                   <span>{order.customer_email || 'Sin correo'}</span>
                                 </div>
                               </div>
-                              {order.special_requests && (
-                                <p className="rounded-2xl bg-white px-4 py-3 text-sm text-gray-700 shadow-inner">
-                                  {order.special_requests}
-                                </p>
+                              {specialRequestNotes.length > 0 && (
+                                <div className="rounded-2xl bg-white px-4 py-3 text-sm text-gray-700 shadow-inner">
+                                  <p className="font-semibold text-gray-800">Solicitudes especiales</p>
+                                  <ul className="mt-1 space-y-1 text-sm text-gray-700">
+                                    {specialRequestNotes.map((note, index) => (
+                                      <li key={`${order.id}-special-note-${index}`} className="flex items-start gap-2">
+                                        <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-yellow-500"></span>
+                                        <span>{note}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
                               )}
                             </div>
-                          ))
-                        )}
+                          );
+                        })
+                      )}
                       </div>
                     </div>
                   </div>
@@ -1450,6 +1463,7 @@ export default function DashboardPage() {
                         ? (order.items as OrderItem[])
                         : [];
                       const statusInfo = statusMeta[order.status];
+                      const specialRequestNotes = extractSpecialRequestNotes(order.special_requests);
 
                       return (
                         <div key={order.id} className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
@@ -1575,13 +1589,20 @@ export default function DashboardPage() {
                             </div>
                           </div>
 
-                          {order.special_requests && (
+                          {specialRequestNotes.length > 0 && (
                             <div className="mb-4 p-3 bg-gradient-to-r from-yellow-50 to-amber-50 rounded-xl border-l-4 border-yellow-400">
                               <div className="flex items-start space-x-2">
                                 <i className="ri-lightbulb-line text-yellow-600 mt-0.5"></i>
                                 <div>
-                                  <p className="text-sm font-bold text-yellow-800">Solicitud Especial:</p>
-                                  <p className="text-sm text-yellow-700">{order.special_requests}</p>
+                                  <p className="text-sm font-bold text-yellow-800">Solicitudes especiales</p>
+                                  <ul className="mt-2 space-y-1 text-sm text-yellow-700">
+                                    {specialRequestNotes.map((note, index) => (
+                                      <li key={`${order.id}-special-request-${index}`} className="flex items-start gap-2">
+                                        <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-yellow-500"></span>
+                                        <span>{note}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
                                 </div>
                               </div>
                             </div>
@@ -1950,6 +1971,7 @@ function QuoteCard({ quote, onStatusUpdate, onFinalize, onDelete }: { quote: Quo
     quote.estimated_price ? String(quote.estimated_price) : ''
   );
   const [adminNotes, setAdminNotes] = useState(quote.admin_notes || '');
+  const specialRequestNotes = extractSpecialRequestNotes(quote.special_requests);
 
   const handlePhotoPrint = (event: MouseEvent<HTMLButtonElement>, photoUrl: string) => {
     event.stopPropagation();
@@ -2190,8 +2212,18 @@ function QuoteCard({ quote, onStatusUpdate, onFinalize, onDelete }: { quote: Quo
               Hora preferida de recogida: <span className="font-semibold">{quote.pickup_time}</span>
             </p>
           )}
-          {quote.special_requests && (
-            <p className="text-xs text-pink-700 mt-1 whitespace-pre-line">Notas: {quote.special_requests}</p>
+          {specialRequestNotes.length > 0 && (
+            <div className="mt-1 space-y-1">
+              <p className="text-xs font-semibold text-pink-800">Solicitudes especiales</p>
+              <ul className="space-y-1 text-xs text-pink-700">
+                {specialRequestNotes.map((note, index) => (
+                  <li key={`${quote.id}-special-request-${index}`} className="flex items-start gap-1.5">
+                    <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-pink-400"></span>
+                    <span>{note}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
       )}

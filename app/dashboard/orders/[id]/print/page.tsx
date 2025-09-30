@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import SafeImage from '@/components/SafeImage';
 import { extractItemDetails, getItemPhotoUrl } from '@/lib/orderItemFormatting';
 import { withSignedPhotoUrls } from '@/lib/orderPhotoStorage';
+import { extractSpecialRequestNotes } from '@/lib/specialRequestParsing';
 
 interface OrderItem {
   name: string;
@@ -107,6 +108,7 @@ export default function PrintOrderPage({ params }: { params: { id: string } }) {
 
   const printableItems = Array.isArray(order.items) ? order.items : [];
   const orderReference = order.p2p_reference ?? order.id.slice(-8);
+  const specialRequestNotes = extractSpecialRequestNotes(order.special_requests);
 
   return (
     <div className="p-4 print:p-0">
@@ -221,10 +223,17 @@ export default function PrintOrderPage({ params }: { params: { id: string } }) {
           </table>
         </div>
 
-        {order.special_requests && (
+        {specialRequestNotes.length > 0 && (
           <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
             <h2 className="text-lg font-semibold text-amber-800">Instrucciones adicionales</h2>
-            <p className="mt-2 whitespace-pre-line text-sm text-amber-800">{order.special_requests}</p>
+            <ul className="mt-2 space-y-1 text-sm text-amber-800">
+              {specialRequestNotes.map((note, index) => (
+                <li key={`${order.id}-print-special-${index}`} className="flex items-start gap-2">
+                  <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-amber-500"></span>
+                  <span>{note}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 
