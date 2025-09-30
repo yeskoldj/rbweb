@@ -48,6 +48,7 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
+  const [validationMessages, setValidationMessages] = useState<string[]>([]);
 
   const isPhotoCake = cakeId === 'photo-cake-basic' || cakeId === 'photo-cake-premium';
   const [uploadedPhoto, setUploadedPhoto] = useState<string | null>(null);
@@ -58,7 +59,7 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
     layers: [] as CakeLayer[],
     flavors: [] as string[],
     colors: [] as string[],
-    fillings: [] as string[],
+    fillings: ['none'] as string[],
     decorations: [] as string[],
     inscription: '',
     specialRequests: '',
@@ -431,16 +432,127 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
   // Funciones para manejar opciones múltiples
   const toggleOption = (category: keyof typeof selectedOptions, optionId: string) => {
     setSelectedOptions(prev => {
-      const currentArray = prev[category] as string[];
+      const currentArray = Array.isArray(prev[category]) ? (prev[category] as string[]) : [];
       const isSelected = currentArray.includes(optionId);
+
+      if (category === 'fillings') {
+        if (optionId === 'none') {
+          return {
+            ...prev,
+            fillings: isSelected ? [] : ['none'],
+          };
+        }
+
+        const withoutNone = currentArray.filter(id => id !== 'none');
+
+        if (isSelected) {
+          const next = withoutNone.filter(id => id !== optionId);
+          return {
+            ...prev,
+            fillings: next,
+          };
+        }
+
+        return {
+          ...prev,
+          fillings: [...withoutNone, optionId],
+        };
+      }
 
       return {
         ...prev,
         [category]: isSelected
           ? currentArray.filter(id => id !== optionId)
-          : [...currentArray, optionId]
+          : [...currentArray, optionId],
       };
     });
+  };
+
+  const validateStepRequirements = (step: number): string[] => {
+    const errors: string[] = [];
+
+    if (!selectedOptions.shape) {
+      errors.push('Selecciona una forma para el pastel.');
+    }
+
+    if (customizerMode === 'basic') {
+      if (step >= 2 && selectedOptions.layers.length === 0) {
+        errors.push('Selecciona el tamaño o número de niveles del pastel.');
+      }
+
+      if (step >= 3 && selectedOptions.flavors.length === 0) {
+        errors.push('Selecciona al menos un sabor de masa.');
+      }
+
+      if (step >= 4 && selectedOptions.colors.length === 0) {
+        errors.push('Selecciona al menos un color de decoración.');
+      }
+    } else {
+      if (step >= 2) {
+        if (selectedOptions.layers.length === 0) {
+          errors.push('Agrega al menos un nivel al pastel.');
+        }
+
+        const structureValidation = validateCakeStructure();
+        if (!structureValidation.isValid) {
+          structureValidation.errors.forEach(error => {
+            if (error && !errors.includes(error)) {
+              errors.push(error);
+            }
+          });
+        }
+      }
+
+      if (step >= 3 && selectedOptions.flavors.length === 0) {
+        errors.push('Selecciona al menos una masa.');
+      }
+
+      if (step >= 4 && selectedOptions.colors.length === 0) {
+        errors.push('Selecciona al menos un color de decoración.');
+      }
+
+      if (step >= 5 && selectedOptions.fillings.length === 0) {
+        errors.push('Selecciona al menos un relleno (puede ser "Sin Relleno").');
+      }
+    }
+
+    return Array.from(new Set(errors));
+  };
+
+  const validateAllRequiredSelections = () =>
+    validateStepRequirements(customizerMode === 'basic' ? 4 : 5);
+
+  const handleNextStep = () => {
+    const errors = validateStepRequirements(currentStep);
+    if (errors.length > 0) {
+      setValidationMessages(errors);
+      return;
+    }
+
+    setValidationMessages([]);
+    setCurrentStep(Math.min(currentStep + 1, maxSteps));
+  };
+
+  const handlePreviousStep = () => {
+    setValidationMessages([]);
+    setCurrentStep(Math.max(1, currentStep - 1));
+  };
+
+  const handleStepNavigation = (targetStep: number) => {
+    if (targetStep === currentStep) {
+      return;
+    }
+
+    if (targetStep > currentStep) {
+      const errors = validateStepRequirements(currentStep);
+      if (errors.length > 0) {
+        setValidationMessages(errors);
+        return;
+      }
+    }
+
+    setValidationMessages([]);
+    setCurrentStep(targetStep);
   };
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -596,6 +708,13 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
   };
 
   const addToCart = async () => {
+    const errors = validateAllRequiredSelections();
+    if (errors.length > 0) {
+      setValidationMessages(errors);
+      return;
+    }
+
+    setValidationMessages([]);
     setIsAdding(true);
 
     const layerDescriptions = selectedOptions.layers
@@ -1154,7 +1273,13 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                 onClick={() => {
                   setCustomizerMode('basic');
                   setCurrentStep(1);
-                  setSelectedOptions(prev => ({ ...prev, layers: [], fillings: [], decorations: [] }));
+                  setValidationMessages([]);
+                  setSelectedOptions(prev => ({
+                    ...prev,
+                    layers: [],
+                    fillings: prev.fillings.length > 0 ? prev.fillings : ['none'],
+                    decorations: [],
+                  }));
                 }}
                 className={`p-4 rounded-xl border-2 transition-all ${
                   customizerMode === 'basic'
@@ -1178,6 +1303,11 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                 onClick={() => {
                   setCustomizerMode('advanced');
                   setCurrentStep(1);
+                  setValidationMessages([]);
+                  setSelectedOptions(prev => ({
+                    ...prev,
+                    fillings: prev.fillings.length > 0 ? prev.fillings : ['none'],
+                  }));
                 }}
                 className={`p-4 rounded-xl border-2 transition-all ${
                   customizerMode === 'advanced'
@@ -1268,7 +1398,7 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
                         ? 'text-green-500'
                         : 'text-gray-400'
                   }`}
-                  onClick={() => setCurrentStep(step.id)}
+                  onClick={() => handleStepNavigation(step.id)}
                 >
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center mb-1 transition-all ${
@@ -1674,10 +1804,26 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
 
             {customizerMode === 'advanced' && renderAdvancedStep()}
 
+            {validationMessages.length > 0 && (
+              <div className="px-6 pb-4">
+                <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                  <p className="mb-2 flex items-center gap-2 font-semibold">
+                    <i className="ri-error-warning-line"></i>
+                    Revisa los siguientes puntos antes de continuar:
+                  </p>
+                  <ul className="list-disc space-y-1 pl-5">
+                    {validationMessages.map((message, index) => (
+                      <li key={`validation-${index}`}>{message}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+
             <div className="border-t bg-gray-50 p-4">
               <div className="flex justify-between items-center">
                 <button
-                  onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
+                  onClick={handlePreviousStep}
                   className="px-6 py-3 bg-white border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:border-gray-400 transition-all"
                 >
                   <i className="ri-arrow-left-line mr-2"></i>
@@ -1686,7 +1832,7 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
 
                 {currentStep < maxSteps ? (
                   <button
-                    onClick={() => setCurrentStep(currentStep + 1)}
+                    onClick={handleNextStep}
                     disabled={
                       (customizerMode === 'basic' && currentStep === 2 && selectedOptions.layers.length === 0) ||
                       (customizerMode === 'advanced' && currentStep === 2 && !validateCakeStructure().isValid)
