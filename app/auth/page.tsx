@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '../../lib/languageContext';
 import { supabase } from '../../lib/supabase';
-import { saveUser } from '../../lib/authStorage';
 import Header from '../../components/Header';
 import TabBar from '../../components/TabBar';
 
@@ -75,24 +74,6 @@ export default function AuthPage() {
 
           // Determinar rol y permisos desde el servidor
           const userRole = profile?.role || 'customer';
-          const isOwner = userRole === 'owner';
-
-          const userPhone = (profile?.phone || data.user.user_metadata?.phone || '').toString().trim();
-
-          const userData = {
-            id: data.user.id,
-            email: normalizedEmail, // Usar email normalizado
-            fullName: profile?.full_name || data.user.user_metadata?.full_name || normalizedEmail.split('@')[0],
-            phone: userPhone || undefined,
-            isOwner: isOwner,
-            role: userRole,
-            loginTime: Date.now()
-          };
-
-          // Guardar usuario sanitisado en localStorage con expiración
-          saveUser(userData);
-
-          console.log('👤 Usuario autenticado:', userData);
 
           // Redirigir según el rol
           if (userRole === 'owner' || userRole === 'employee') {

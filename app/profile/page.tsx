@@ -28,74 +28,40 @@ export default function ProfilePage() {
   const router = useRouter();
   const checkUser = useCallback(async () => {
     try {
-      // Primero verificar Supabase
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      
-      if (authUser) {
-        const { data: userData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', authUser.id)
-          .single();
+      const {
+        data: { user: authUser },
+        error: authError,
+      } = await supabase.auth.getUser();
 
-        if (userData) {
-          setUser(userData);
-          setProfileData({
-            full_name: userData.full_name || '',
-            phone: userData.phone || '',
-            email: userData.email || authUser.email
-          });
-          setLoading(false);
-          return;
-        }
-      }
-
-      // Si no hay usuario en Supabase, verificar localStorage
-      const localUser = localStorage.getItem('bakery-user');
-      if (!localUser) {
+      if (authError || !authUser) {
         router.push('/auth');
         return;
       }
 
-      const userData = JSON.parse(localUser);
-      setUser({
-        email: userData.email,
-        full_name: userData.fullName || userData.email.split('@')[0],
-        phone: userData.phone || '',
-        role: userData.role || (userData.isOwner ? 'owner' : 'customer')
-      });
+      const { data: userData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
 
+      if (profileError || !userData) {
+        console.error('No se pudo cargar el perfil desde Supabase:', profileError);
+        router.push('/auth');
+        return;
+      }
+
+      setUser(userData);
       setProfileData({
-        full_name: userData.fullName || userData.email.split('@')[0],
+        full_name: userData.full_name || '',
         phone: userData.phone || '',
-        email: userData.email
+        email: userData.email || authUser.email || '',
       });
-
     } catch (error) {
-      console.log('Error verificando usuario:', error);
-      // Verificar localStorage como fallback
-      const localUser = localStorage.getItem('bakery-user');
-      if (localUser) {
-        const userData = JSON.parse(localUser);
-        setUser({
-          email: userData.email,
-          full_name: userData.fullName || userData.email.split('@')[0],
-          phone: userData.phone || '',
-          role: userData.role || (userData.isOwner ? 'owner' : 'customer')
-        });
-
-        setProfileData({
-          full_name: userData.fullName || userData.email.split('@')[0],
-          phone: userData.phone || '',
-          email: userData.email
-        });
-      } else {
-        router.push('/auth');
-        return;
-      }
+      console.error('Error verificando usuario:', error);
+      router.push('/auth');
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }, [router]);
 
   useEffect(() => {
@@ -106,44 +72,52 @@ export default function ProfilePage() {
     e.preventDefault();
     
     try {
-      // Actualizar en localStorage
-      const localUser = JSON.parse(localStorage.getItem('bakery-user') || '{}');
-      const updatedUser = {
-        ...localUser,
-        fullName: profileData.full_name,
-        phone: profileData.phone,
-        email: profileData.email
+      if (!user?.id) {
+        throw new Error('Usuario no encontrado');
+      }
+
+      const normalizedEmail = profileData.email.trim().toLowerCase();
+      const updates: Record<string, string | null> = {
+        full_name: profileData.full_name || null,
+        phone: profileData.phone || null,
+        updated_at: new Date().toISOString(),
       };
-      localStorage.setItem('bakery-user', JSON.stringify(updatedUser));
 
-      // Intentar actualizar en Supabase si está disponible
-      if (user?.id) {
-        try {
-          const { error } = await supabase
-            .from('profiles')
-            .update({
-              full_name: profileData.full_name,
-              phone: profileData.phone,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', user.id);
+      const emailChanged = normalizedEmail && normalizedEmail !== (user.email || '').toLowerCase();
+      if (emailChanged) {
+        updates.email = normalizedEmail;
+      }
 
-          if (!error) {
-            console.log('Perfil actualizado en Supabase');
-          }
-        } catch {
-          console.log('Error actualizando en Supabase, guardado localmente');
+      const { error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', user.id);
+
+      if (error) {
+        throw error;
+      }
+
+      if (emailChanged) {
+        const { error: authError } = await supabase.auth.updateUser({ email: normalizedEmail });
+        if (authError) {
+          console.error('Error actualizando email de autenticación:', authError);
+          alert(
+            'Tu información de perfil se actualizó, pero hubo un problema al actualizar el email de inicio de sesión. Verifica tu bandeja de entrada o contacta soporte.'
+          );
         }
       }
 
-      // Actualizar estado local
-      setUser({
-        ...user,
-        full_name: profileData.full_name,
-        phone: profileData.phone,
-        email: profileData.email
-      });
-      
+      setUser((prev: any) =>
+        prev
+          ? {
+              ...prev,
+              full_name: profileData.full_name,
+              phone: profileData.phone,
+              email: emailChanged ? normalizedEmail : prev.email,
+            }
+          : prev
+      );
+
       setShowEditModal(false);
       alert('Perfil actualizado exitosamente');
 
@@ -167,54 +141,47 @@ export default function ProfilePage() {
     }
 
     try {
-      // Guardar información de recuperación
-      const backupData = {
-        email: user?.email,
-        recoveryEmail: passwordData.recoveryEmail,
-        securityQuestion: passwordData.securityQuestion,
-        securityAnswer: passwordData.securityAnswer,
-        timestamp: new Date().toISOString()
+      if (!user?.id) {
+        throw new Error('Usuario no encontrado');
+      }
+
+      const { error: passwordError } = await supabase.auth.updateUser({
+        password: passwordData.newPassword
+      });
+
+      if (passwordError) {
+        throw passwordError;
+      }
+
+      const recoveryUpdates: Record<string, string | null> = {
+        recovery_email: passwordData.recoveryEmail || null,
+        security_question: passwordData.securityQuestion || null,
+        security_answer_hash: passwordData.securityAnswer
+          ? btoa(passwordData.securityAnswer.toLowerCase())
+          : null,
+        recovery_updated_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
 
-      localStorage.setItem('bakery-password-recovery', JSON.stringify(backupData));
+      const { error: recoveryError } = await supabase
+        .from('profiles')
+        .update(recoveryUpdates)
+        .eq('id', user.id);
 
-      try {
-        // Intentar actualizar en Supabase
-        const { error } = await supabase.auth.updateUser({
-          password: passwordData.newPassword
-        });
-
-        if (error) {
-          throw error;
-        }
-
-        // Actualizar información adicional en la base de datos
-        await supabase
-          .from('profiles')
-          .update({
-            recovery_email: passwordData.recoveryEmail,
-            security_question: passwordData.securityQuestion,
-            security_answer_hash: btoa(passwordData.securityAnswer.toLowerCase()),
-            updated_at: new Date().toISOString()
-          })
-          .eq('email', user?.email);
-
-        alert('¡Contraseña actualizada exitosamente!');
-        
-      } catch (supabaseError) {
-        console.log('Error con Supabase, usando sistema local:', supabaseError);
-        
-        // Fallback: guardar en localStorage
-        const localUsers = JSON.parse(localStorage.getItem('bakery-local-users') || '{}');
-        localUsers[user?.email] = {
-          ...localUsers[user?.email],
-          password: btoa(passwordData.newPassword),
-          ...backupData
-        };
-        localStorage.setItem('bakery-local-users', JSON.stringify(localUsers));
-        
-        alert('Contraseña actualizada en el sistema local');
+      if (recoveryError) {
+        throw recoveryError;
       }
+
+      setUser((prev: any) =>
+        prev
+          ? {
+              ...prev,
+              ...recoveryUpdates,
+            }
+          : prev
+      );
+
+      alert('¡Contraseña actualizada exitosamente!');
 
       setShowPasswordModal(false);
       setPasswordData({
@@ -234,7 +201,6 @@ export default function ProfilePage() {
 
   const logout = () => {
     if (confirm('¿Estás seguro que quieres cerrar sesión?')) {
-      localStorage.removeItem('bakery-user');
       localStorage.removeItem('bakery-cart');
       supabase.auth.signOut();
       router.push('/');
@@ -266,6 +232,14 @@ export default function ProfilePage() {
   if (!user) {
     return null;
   }
+
+  const recoveryEmail = user?.recovery_email || 'No configurado';
+  const securityQuestion = user?.security_question || 'No configurado';
+  const hasSecurityAnswer = Boolean(user?.security_answer_hash);
+  const recoveryUpdatedAt = user?.recovery_updated_at || null;
+  const formattedRecoveryUpdate = recoveryUpdatedAt
+    ? new Date(recoveryUpdatedAt).toLocaleString()
+    : 'Primera vez';
 
   const getUserRole = () => {
     if (user?.role === 'owner') return 'Propietario';
@@ -671,7 +645,7 @@ export default function ProfilePage() {
                         <h4 className="font-semibold text-blue-800">Email de Recuperación</h4>
                       </div>
                       <p className="text-blue-700 font-medium">
-                        {localStorage.getItem('recovery-email') || 'No configurado'}
+                        {recoveryEmail}
                       </p>
                       <p className="text-xs text-blue-600 mt-2">
                         Este email recibe enlaces para restablecer la contraseña
@@ -686,12 +660,12 @@ export default function ProfilePage() {
                         <h4 className="font-semibold text-green-800">Pregunta de Seguridad</h4>
                       </div>
                       <p className="text-green-700 font-medium mb-2">
-                        {localStorage.getItem('security-question') || 'No configurado'}
+                        {securityQuestion}
                       </p>
                       <div className="bg-green-100 rounded-lg p-3">
                         <p className="text-xs text-green-600 font-medium">Respuesta Guardada:</p>
                         <p className="text-green-700">
-                          {localStorage.getItem('security-answer') ? '••••••••••' : 'No configurado'}
+                          {hasSecurityAnswer ? 'Protegido en Supabase' : 'No configurado'}
                         </p>
                       </div>
                     </div>
@@ -719,7 +693,7 @@ export default function ProfilePage() {
                         <h4 className="font-semibold text-amber-800">Última Actualización</h4>
                       </div>
                       <p className="text-amber-700 font-medium" suppressHydrationWarning={true}>
-                        {localStorage.getItem('security-updated') || 'Primera vez'}
+                        {formattedRecoveryUpdate}
                       </p>
                       <p className="text-xs text-amber-600 mt-2">
                         Fecha del último cambio de seguridad

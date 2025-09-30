@@ -82,6 +82,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [showSuccessMessage, setShowSuccessMessage] = useState('');
+  const [ordersError, setOrdersError] = useState<string | null>(null);
   const [showTodayView, setShowTodayView] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<string | null>(null);
   const [deletingQuote, setDeletingQuote] = useState<string | null>(null);
@@ -107,60 +108,40 @@ export default function DashboardPage() {
     try {
       const {
         data: { user },
+        error: authError,
       } = await supabase.auth.getUser();
 
-      if (user) {
-        const { data: userData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        if (userData && (userData.role === 'owner' || userData.role === 'employee')) {
-          setCurrentUser(userData);
-          setIsAuthenticated(true);
-          await Promise.all([loadOrdersFromSupabase(), loadQuotesFromSupabase()]);
-          setLoading(false);
-          return;
-        }
-      }
-
-      const userData = localStorage.getItem('bakery-user');
-      if (!userData) {
+      if (authError || !user) {
         router.push('/auth');
         return;
       }
 
-      const user_data = JSON.parse(userData);
-      if (!['owner', 'employee'].includes(user_data.role)) {
+      const { data: userData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError || !userData) {
+        console.error('No se pudo cargar el perfil del usuario actual:', profileError);
+        router.push('/auth');
+        return;
+      }
+
+      if (!['owner', 'employee'].includes(userData.role)) {
         router.push('/');
         return;
       }
 
-      setCurrentUser({
-        role: user_data.role,
-        email: user_data.email,
-        full_name: user_data.fullName || user_data.email.split('@')[0],
-      });
+      setCurrentUser(userData);
       setIsAuthenticated(true);
       await Promise.all([loadOrdersFromSupabase(), loadQuotesFromSupabase()]);
     } catch (error) {
       console.error('Auth error:', error);
-      const userData = localStorage.getItem('bakery-user');
-      if (userData) {
-        const user_data = JSON.parse(userData);
-        if (['owner', 'employee'].includes(user_data.role)) {
-          setCurrentUser({
-            role: user_data.role,
-            email: user_data.email,
-            full_name: user_data.fullName || user_data.email.split('@')[0],
-          });
-          setIsAuthenticated(true);
-          await Promise.all([loadOrdersFromSupabase(), loadQuotesFromSupabase()]);
-        }
-      }
+      router.push('/auth');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const normalizePriceString = (value: string) =>
@@ -484,7 +465,7 @@ export default function DashboardPage() {
 
       if (error) {
         console.error('Error loading orders from Supabase:', error);
-        loadOrdersFromLocal();
+        setOrdersError('No se pudieron cargar las órdenes.');
         return;
       }
 
@@ -499,56 +480,11 @@ export default function DashboardPage() {
       );
 
       setOrders(ordersWithUrls);
+      setOrdersError(null);
     } catch (error) {
       console.error('Supabase connection error:', error);
-      loadOrdersFromLocal();
+      setOrdersError('No se pudieron cargar las órdenes.');
     }
-  };
-
-  const loadOrdersFromLocal = () => {
-    const savedOrders = JSON.parse(localStorage.getItem('bakery-orders') || '[]');
-
-    if (savedOrders.length === 0) {
-      const testOrder: Order = {
-        id: crypto.randomUUID(),
-        p2p_reference: 'P2P-TEST',
-        user_id: undefined,
-        customer_name: 'Maria Gonzalez',
-        customer_phone: '(555) 123-4567',
-        customer_email: 'maria.gonzalez@email.com',
-        items: [
-          {
-            id: 'cake-1',
-            name: 'Chocolate Cake',
-            price: '$25.99',
-            quantity: 1,
-          },
-          {
-            id: 'cupcakes-1',
-            name: 'Vanilla Cupcakes',
-            price: '$3.50 each',
-            quantity: 6,
-          },
-        ],
-        subtotal: 46.99,
-        tax: 1.41,
-        total: 48.4,
-        status: 'pending',
-        pickup_date: new Date().toISOString().split('T')[0],
-        pickup_time: '2:00 PM',
-        special_requests: 'Please include a birthday candle',
-        payment_type: 'zelle',
-        payment_status: 'completed',
-        order_date: new Date().toISOString().split('T')[0],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-
-      savedOrders.push(testOrder);
-      localStorage.setItem('bakery-orders', JSON.stringify(savedOrders));
-    }
-
-    setOrders(savedOrders);
   };
 
   const removeOrderPhotosFromStorage = async (order: Order | undefined) => {
@@ -608,7 +544,7 @@ export default function DashboardPage() {
 
       if (error) {
         console.error('Error updating order in Supabase:', error);
-        updateOrderStatusLocal(orderId, newStatus);
+        setOrdersError('No se pudo actualizar el estado de la orden.');
         return;
       }
 
@@ -674,9 +610,10 @@ export default function DashboardPage() {
       }
 
       console.log(`Order ${orderId} updated to ${newStatus}`);
+      setOrdersError(null);
     } catch (error) {
       console.error('Supabase update error:', error);
-      updateOrderStatusLocal(orderId, newStatus);
+      setOrdersError('No se pudo actualizar el estado de la orden.');
     }
   };
 
@@ -684,7 +621,7 @@ export default function DashboardPage() {
     void updateOrderStatus(orderId, newStatus as Order['status']);
   };
 
-  const updateOrderPaymentStatusLocal = (
+  const applyOrderPaymentStatus = (
     orderId: string,
     paymentStatus: Order['payment_status'],
     paymentType?: string | null,
@@ -692,28 +629,27 @@ export default function DashboardPage() {
   ) => {
     const effectiveUpdatedAt = updatedAt || new Date().toISOString();
 
-    const updatedOrders = orders.map((order) => {
-      if (order.id !== orderId) {
-        return order;
-      }
+    setOrders((prevOrders) =>
+      prevOrders.map((order) => {
+        if (order.id !== orderId) {
+          return order;
+        }
 
-      const resolvedPaymentType =
-        paymentType === null
-          ? undefined
-          : typeof paymentType === 'undefined'
-            ? order.payment_type
-            : paymentType;
+        const resolvedPaymentType =
+          paymentType === null
+            ? undefined
+            : typeof paymentType === 'undefined'
+              ? order.payment_type
+              : paymentType;
 
-      return {
-        ...order,
-        payment_status: paymentStatus,
-        payment_type: resolvedPaymentType,
-        updated_at: effectiveUpdatedAt,
-      };
-    });
-
-    setOrders(updatedOrders);
-    localStorage.setItem('bakery-orders', JSON.stringify(updatedOrders));
+        return {
+          ...order,
+          payment_status: paymentStatus,
+          payment_type: resolvedPaymentType,
+          updated_at: effectiveUpdatedAt,
+        };
+      })
+    );
   };
 
   const handleConfirmCashPayment = async (orderId: string) => {
@@ -746,33 +682,19 @@ export default function DashboardPage() {
 
       if (error) {
         console.error('Error confirming in-store payment in Supabase:', error);
+        setOrdersError('No se pudo confirmar el pago en Supabase.');
+        return;
       }
 
-      updateOrderPaymentStatusLocal(orderId, 'paid', effectivePaymentType, nowIso);
+      applyOrderPaymentStatus(orderId, 'paid', effectivePaymentType, nowIso);
+      setOrdersError(null);
 
       setShowSuccessMessage('✅ Pago en tienda confirmado');
       setTimeout(() => setShowSuccessMessage(''), 3000);
     } catch (error) {
       console.error('Error confirming in-store payment:', error);
-      updateOrderPaymentStatusLocal(orderId, 'paid', effectivePaymentType, nowIso);
-      if (typeof window !== 'undefined') {
-        alert(
-          'No se pudo sincronizar con el servidor, pero el pago se marcó como completado en este dispositivo. Verifica luego.'
-        );
-      }
-      setShowSuccessMessage('✅ Pago en tienda confirmado');
-      setTimeout(() => setShowSuccessMessage(''), 3000);
+      setOrdersError('No se pudo confirmar el pago en Supabase.');
     }
-  };
-
-  const updateOrderStatusLocal = (orderId: string, newStatus: Order['status']) => {
-    const updatedOrders = orders.map((order) =>
-      order.id === orderId
-        ? { ...order, status: newStatus, updated_at: new Date().toISOString() }
-        : order
-    );
-    setOrders(updatedOrders);
-    localStorage.setItem('bakery-orders', JSON.stringify(updatedOrders));
   };
 
   const loadQuotesFromSupabase = async () => {
@@ -1062,33 +984,22 @@ export default function DashboardPage() {
 
       if (error) {
         console.error('Error deleting order from Supabase:', error);
-        // Fallback to local deletion
-        deleteOrderFromLocal(orderId);
-      } else {
-        // Update local state
-        setOrders(orders.filter((order) => order.id !== orderId));
+        setOrdersError('No se pudo eliminar la orden en Supabase.');
+        return;
       }
 
-      // Show success message
+      setOrders((prev) => prev.filter((order) => order.id !== orderId));
+      setOrdersError(null);
+
       setShowSuccessMessage('✅ Pedido eliminado correctamente');
       setTimeout(() => setShowSuccessMessage(''), 3000);
     } catch (error) {
       console.error('Error deleting order:', error);
-      // Fallback to local deletion
-      deleteOrderFromLocal(orderId);
+      setOrdersError('No se pudo eliminar la orden en Supabase.');
     }
 
     setDeletingOrder(null);
     setDeleteOrderConfirmation(null);
-  };
-
-  const deleteOrderFromLocal = (orderId: string) => {
-    const updatedOrders = orders.filter((order) => order.id !== orderId);
-    setOrders(updatedOrders);
-    localStorage.setItem('bakery-orders', JSON.stringify(updatedOrders));
-    
-    setShowSuccessMessage('✅ Pedido eliminado correctamente');
-    setTimeout(() => setShowSuccessMessage(''), 3000);
   };
 
   // -------------------------------------------------------------------------
@@ -1360,6 +1271,17 @@ export default function DashboardPage() {
                           <i className="ri-check-line text-green-600"></i>
                         </div>
                         <p className="ml-3 text-green-700 font-medium">{showSuccessMessage}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {ordersError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                      <div className="flex items-center">
+                        <div className="w-5 h-5 flex items-center justify-center">
+                          <i className="ri-error-warning-line text-red-600"></i>
+                        </div>
+                        <p className="ml-3 text-red-700 font-medium">{ordersError}</p>
                       </div>
                     </div>
                   )}
