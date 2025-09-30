@@ -82,25 +82,6 @@ const formatSpecialRequests = (specialRequests?: string): SpecialRequestEntry[] 
   });
 };
 
-const formatPickupDate = (value?: string | null) => {
-  if (!value) {
-    return '';
-  }
-
-  try {
-    const date = new Date(`${value}T00:00:00`);
-    if (Number.isNaN(date.getTime())) {
-      return value;
-    }
-
-    return new Intl.DateTimeFormat('en-US', {
-      dateStyle: 'long',
-    }).format(date);
-  } catch {
-    return value;
-  }
-};
-
 export default function TrackOrderPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -197,6 +178,13 @@ export default function TrackOrderPage() {
 
   const normalizeStatus = (status: string) =>
     status === 'baking' || status === 'decorating' ? 'pending' : status;
+
+  const getPickupSchedule = (date?: string | null, time?: string | null) => {
+    if (date && time) return `${date} · ${time}`;
+    if (date) return date;
+    if (time) return time;
+    return '';
+  };
 
   const getNumericPrice = (value: number | string | null | undefined) => {
     if (typeof value === 'number') {
@@ -412,6 +400,7 @@ export default function TrackOrderPage() {
             ) : (
               orders.map(order => {
                 const specialRequests = formatSpecialRequests(order.special_requests);
+                const pickupSchedule = getPickupSchedule(order.pickup_date, order.pickup_time);
 
                 return (
                   <div key={order.id} className="bg-white rounded-xl shadow-lg overflow-hidden">
@@ -502,7 +491,7 @@ export default function TrackOrderPage() {
                         </div>
                       </div>
 
-                      {(order.pickup_date || order.pickup_time) && (
+                      {pickupSchedule && (
                         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 mb-4 border border-blue-200">
                           <div className="flex items-center">
                             <div className="w-10 h-10 flex items-center justify-center bg-blue-100 rounded-full mr-3">
@@ -510,12 +499,7 @@ export default function TrackOrderPage() {
                             </div>
                             <div>
                               <p className="font-semibold text-blue-800">Pickup Schedule</p>
-                              {order.pickup_date && (
-                                <p className="text-blue-700">{formatPickupDate(order.pickup_date)}</p>
-                              )}
-                              {order.pickup_time && (
-                                <p className="text-blue-700">{order.pickup_time}</p>
-                              )}
+                              <p className="text-blue-700">{pickupSchedule}</p>
                             </div>
                           </div>
                         </div>

@@ -37,6 +37,13 @@ export default function PrintOrderPage({ params }: { params: { id: string } }) {
   const [order, setOrder] = useState<Order | null>(null);
   const [hasAutoPrinted, setHasAutoPrinted] = useState(false);
 
+  const formatPickupSchedule = (date?: string | null, time?: string | null) => {
+    if (date && time) return `${date} · ${time}`;
+    if (date) return date;
+    if (time) return time;
+    return '';
+  };
+
   useEffect(() => {
     const fetchOrder = async () => {
       const { data } = await supabase
@@ -110,6 +117,7 @@ export default function PrintOrderPage({ params }: { params: { id: string } }) {
   const printableItems = Array.isArray(order.items) ? order.items : [];
   const orderReference = order.p2p_reference ?? order.id.slice(-8);
   const specialRequestNotes = extractSpecialRequestNotes(order.special_requests);
+  const pickupSchedule = formatPickupSchedule(order.pickup_date, order.pickup_time);
 
   return (
     <div className="p-4 print:p-0">
@@ -148,12 +156,9 @@ export default function PrintOrderPage({ params }: { params: { id: string } }) {
           <p>
             <span className="font-semibold text-gray-900">Fecha de creación:</span> {order.order_date}
           </p>
-          {(order.pickup_date || order.pickup_time) && (
+          {pickupSchedule && (
             <p>
-              <span className="font-semibold text-gray-900">Retiro:</span>{' '}
-              {order.pickup_date && <span>{order.pickup_date}</span>}
-              {order.pickup_date && order.pickup_time && <span> · </span>}
-              {order.pickup_time && <span>{order.pickup_time}</span>}
+              <span className="font-semibold text-gray-900">Horario de retiro:</span> {pickupSchedule}
             </p>
           )}
         </div>

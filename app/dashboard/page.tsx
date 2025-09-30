@@ -71,6 +71,13 @@ const quoteStatusColors: Record<QuoteStatus, string> = {
   rejected: 'bg-red-100 text-red-800',
 };
 
+const formatPickupSchedule = (date?: string | null, time?: string | null) => {
+  if (date && time) return `${date} · ${time}`;
+  if (date) return date;
+  if (time) return time;
+  return '';
+};
+
 export default function DashboardPage() {
   // -------------------------------------------------------------------------
   // State declarations (original + new ones needed for quote handling)
@@ -1388,6 +1395,7 @@ export default function DashboardPage() {
                         ) : (
                         getTodayOrders().map((order) => {
                           const specialRequestNotes = extractSpecialRequestNotes(order.special_requests);
+                          const pickupSchedule = formatPickupSchedule(order.pickup_date, order.pickup_time) || 'Horario por confirmar';
 
                           return (
                             <div
@@ -1416,11 +1424,7 @@ export default function DashboardPage() {
                               <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
                                 <div className="flex items-center gap-2">
                                   <i className="ri-time-line text-pink-500"></i>
-                                  <span>
-                                    {order.pickup_date || order.pickup_time
-                                      ? [order.pickup_date, order.pickup_time].filter(Boolean).join(' · ')
-                                      : 'Horario por confirmar'}
-                                  </span>
+                                  <span>{pickupSchedule}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <i className="ri-map-pin-line text-pink-500"></i>
@@ -1466,13 +1470,14 @@ export default function DashboardPage() {
                       </p>
                     </div>
                   ) : (
-                    orders.map((order) => {
-                      const paymentConfirmed = isPaymentConfirmed(order);
-                      const orderItems = Array.isArray(order.items)
-                        ? (order.items as OrderItem[])
-                        : [];
-                      const statusInfo = statusMeta[order.status];
-                      const specialRequestNotes = extractSpecialRequestNotes(order.special_requests);
+                  orders.map((order) => {
+                    const paymentConfirmed = isPaymentConfirmed(order);
+                    const orderItems = Array.isArray(order.items)
+                      ? (order.items as OrderItem[])
+                      : [];
+                    const statusInfo = statusMeta[order.status];
+                    const specialRequestNotes = extractSpecialRequestNotes(order.special_requests);
+                    const pickupSchedule = formatPickupSchedule(order.pickup_date, order.pickup_time) || 'Horario por confirmar';
 
                       return (
                         <div key={order.id} className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
@@ -1486,11 +1491,7 @@ export default function DashboardPage() {
                                 <h3 className="font-bold text-gray-800 text-lg">{order.customer_name}</h3>
                                 <div className="flex items-center space-x-2 text-sm text-gray-600">
                                   <i className="ri-time-line"></i>
-                                  <span>
-                                    {order.pickup_date || order.pickup_time
-                                      ? [order.pickup_date, order.pickup_time].filter(Boolean).join(' · ')
-                                      : 'Hora no especificada'}
-                                  </span>
+                                  <span>{pickupSchedule}</span>
                                 </div>
                               </div>
                             </div>
@@ -1985,6 +1986,7 @@ function QuoteCard({ quote, onStatusUpdate, onFinalize, onDelete }: { quote: Quo
   );
   const [adminNotes, setAdminNotes] = useState(quote.admin_notes || '');
   const specialRequestNotes = extractSpecialRequestNotes(quote.special_requests);
+  const pickupSchedule = formatPickupSchedule(quote.pickup_date, quote.pickup_time);
 
   const handlePhotoPrint = (event: MouseEvent<HTMLButtonElement>, photoUrl: string) => {
     event.stopPropagation();
@@ -2068,6 +2070,12 @@ function QuoteCard({ quote, onStatusUpdate, onFinalize, onDelete }: { quote: Quo
           <div>
             <span className="text-gray-600">Fecha del evento:</span>
             <span className="ml-2 font-medium">{new Date(quote.event_date).toLocaleDateString('es-ES')}</span>
+          </div>
+        )}
+        {pickupSchedule && (
+          <div>
+            <span className="text-gray-600">Horario preferido:</span>
+            <span className="ml-2 font-medium">{pickupSchedule}</span>
           </div>
         )}
       </div>
@@ -2220,12 +2228,9 @@ function QuoteCard({ quote, onStatusUpdate, onFinalize, onDelete }: { quote: Quo
               );
             })}
           </div>
-          {(quote.pickup_date || quote.pickup_time) && (
+          {pickupSchedule && (
             <p className="text-xs text-pink-700 mt-2">
-              Hora/fecha preferida de recogida:{' '}
-              {quote.pickup_date && <span className="font-semibold">{quote.pickup_date}</span>}
-              {quote.pickup_date && quote.pickup_time && <span> · </span>}
-              {quote.pickup_time && <span className="font-semibold">{quote.pickup_time}</span>}
+              Horario preferido de recogida: <span className="font-semibold">{pickupSchedule}</span>
             </p>
           )}
           {specialRequestNotes.length > 0 && (

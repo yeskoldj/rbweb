@@ -88,6 +88,13 @@ export default function CalendarView({ orders, onStatusUpdate }: CalendarViewPro
     return statusTexts[status as keyof typeof statusTexts] || status;
   };
 
+  const getPickupSchedule = (date?: string | null, time?: string | null) => {
+    if (date && time) return `${date} · ${time}`;
+    if (date) return date;
+    if (time) return time;
+    return '';
+  };
+
   const selectedDateOrders = getOrdersForDate(selectedDate);
 
   return (
@@ -210,110 +217,112 @@ export default function CalendarView({ orders, onStatusUpdate }: CalendarViewPro
             </div>
           ) : (
             <div className="space-y-4">
-              {selectedDateOrders.map((order) => (
-                <div key={order.id} className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-4 hover:shadow-md transition-all">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-pink-400 via-purple-400 to-teal-400 rounded-full flex items-center justify-center text-white font-bold shadow-md">
-                        {order.customer_name.charAt(0)}
+              {selectedDateOrders.map((order) => {
+                const pickupSchedule = getPickupSchedule(order.pickup_date, order.pickup_time);
+
+                return (
+                  <div key={order.id} className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-4 hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-12 h-12 bg-gradient-to-br from-pink-400 via-purple-400 to-teal-400 rounded-full flex items-center justify-center text-white font-bold shadow-md">
+                          {order.customer_name.charAt(0)}
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-gray-800">{order.customer_name}</h4>
+                          <div className="flex items-center space-x-2 text-sm text-gray-600">
+                            <i className="ri-phone-line"></i>
+                            <span>
+                              <span className="font-medium">Teléfono principal:</span>{' '}
+                              {order.customer_phone}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-bold text-gray-800">{order.customer_name}</h4>
-                        <div className="flex items-center space-x-2 text-sm text-gray-600">
-                          <i className="ri-phone-line"></i>
-                          <span>
-                            <span className="font-medium">Teléfono principal:</span>{' '}
-                            {order.customer_phone}
+
+                      <div className="text-right">
+                        <p className="text-xl font-bold text-pink-600">${order.total}</p>
+                        <div className="flex items-center space-x-2">
+                          <div className={`w-3 h-3 rounded-full ${getStatusColor(order.status)}`}></div>
+                          <span className="text-sm font-medium text-gray-700">
+                            {getStatusText(order.status)}
                           </span>
                         </div>
                       </div>
                     </div>
-                    
-                    <div className="text-right">
-                      <p className="text-xl font-bold text-pink-600">${order.total}</p>
-                      <div className="flex items-center space-x-2">
-                        <div className={`w-3 h-3 rounded-full ${getStatusColor(order.status)}`}></div>
-                        <span className="text-sm font-medium text-gray-700">
-                          {getStatusText(order.status)}
-                        </span>
+
+                    {pickupSchedule && (
+                      <div className="mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="flex items-center text-blue-800">
+                          <i className="ri-time-line mr-2"></i>
+                          <span className="text-sm font-medium">Horario de entrega: {pickupSchedule}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="mb-3">
+                      <div className="text-sm text-gray-600 mb-2">
+                        <i className="ri-shopping-bag-line mr-1"></i>
+                        Productos pedidos:
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {order.items.map((item: any, index: number) => (
+                          <span key={index} className="px-3 py-1 bg-pink-100 text-pink-800 rounded-full text-xs font-medium">
+                            {item.quantity}x {item.name}
+                          </span>
+                        ))}
                       </div>
                     </div>
-                  </div>
-                  
-                  {(order.pickup_date || order.pickup_time) && (
-                    <div className="mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
-                      <div className="flex items-center text-blue-800">
-                        <i className="ri-time-line mr-2"></i>
-                        <span className="text-sm font-medium">
-                          Hora de entrega: {[order.pickup_date, order.pickup_time].filter(Boolean).join(' · ')}
-                        </span>
+
+                    {order.status !== 'completed' && order.status !== 'cancelled' && (
+                      <div className="flex space-x-2">
+                        {order.status === 'pending' && (
+                          <button
+                            onClick={() => onStatusUpdate(order.id, 'baking')}
+                            className="flex-1 bg-gradient-to-r from-orange-400 to-red-400 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-orange-500 hover:to-red-500 transition-all transform hover:scale-105"
+                          >
+                            <i className="ri-fire-line mr-2"></i>
+                            Comenzar a Hornear
+                          </button>
+                        )}
+                        {order.status === 'baking' && (
+                          <button
+                            onClick={() => onStatusUpdate(order.id, 'decorating')}
+                            className="flex-1 bg-gradient-to-r from-purple-400 to-pink-400 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-purple-500 hover:to-pink-500 transition-all transform hover:scale-105"
+                          >
+                            <i className="ri-brush-line mr-2"></i>
+                            Comenzar a Decorar
+                          </button>
+                        )}
+                        {order.status === 'decorating' && (
+                          <button
+                            onClick={() => onStatusUpdate(order.id, 'ready')}
+                            className="flex-1 bg-gradient-to-r from-green-400 to-emerald-400 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-green-500 hover:to-emerald-500 transition-all transform hover:scale-105"
+                          >
+                            <i className="ri-check-line mr-2"></i>
+                            Marcar como Listo
+                          </button>
+                        )}
+                        {order.status === 'ready' && (
+                          <button
+                            onClick={() => onStatusUpdate(order.id, 'completed')}
+                            className="flex-1 bg-gradient-to-r from-blue-400 to-indigo-400 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-blue-500 hover:to-indigo-500 transition-all transform hover:scale-105"
+                          >
+                            <i className="ri-check-double-line mr-2"></i>
+                            Marcar Completado
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => window.open(`tel:${order.customer_phone}`, '_self')}
+                          className="bg-gradient-to-r from-teal-400 to-blue-400 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-teal-500 hover:to-blue-500 transition-all transform hover:scale-105"
+                        >
+                          <i className="ri-phone-line"></i>
+                        </button>
                       </div>
-                    </div>
-                  )}
-                  
-                  <div className="mb-3">
-                    <div className="text-sm text-gray-600 mb-2">
-                      <i className="ri-shopping-bag-line mr-1"></i>
-                      Productos pedidos:
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {order.items.map((item: any, index: number) => (
-                        <span key={index} className="px-3 py-1 bg-pink-100 text-pink-800 rounded-full text-xs font-medium">
-                          {item.quantity}x {item.name}
-                        </span>
-                      ))}
-                    </div>
+                    )}
                   </div>
-                  
-                  {order.status !== 'completed' && order.status !== 'cancelled' && (
-                    <div className="flex space-x-2">
-                      {order.status === 'pending' && (
-                        <button
-                          onClick={() => onStatusUpdate(order.id, 'baking')}
-                          className="flex-1 bg-gradient-to-r from-orange-400 to-red-400 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-orange-500 hover:to-red-500 transition-all transform hover:scale-105"
-                        >
-                          <i className="ri-fire-line mr-2"></i>
-                          Comenzar a Hornear
-                        </button>
-                      )}
-                      {order.status === 'baking' && (
-                        <button
-                          onClick={() => onStatusUpdate(order.id, 'decorating')}
-                          className="flex-1 bg-gradient-to-r from-purple-400 to-pink-400 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-purple-500 hover:to-pink-500 transition-all transform hover:scale-105"
-                        >
-                          <i className="ri-brush-line mr-2"></i>
-                          Comenzar a Decorar
-                        </button>
-                      )}
-                      {order.status === 'decorating' && (
-                        <button
-                          onClick={() => onStatusUpdate(order.id, 'ready')}
-                          className="flex-1 bg-gradient-to-r from-green-400 to-emerald-400 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-green-500 hover:to-emerald-500 transition-all transform hover:scale-105"
-                        >
-                          <i className="ri-check-line mr-2"></i>
-                          Marcar como Listo
-                        </button>
-                      )}
-                      {order.status === 'ready' && (
-                        <button
-                          onClick={() => onStatusUpdate(order.id, 'completed')}
-                          className="flex-1 bg-gradient-to-r from-blue-400 to-indigo-400 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-blue-500 hover:to-indigo-500 transition-all transform hover:scale-105"
-                        >
-                          <i className="ri-check-double-line mr-2"></i>
-                          Marcar Completado
-                        </button>
-                      )}
-                      
-                      <button
-                        onClick={() => window.open(`tel:${order.customer_phone}`, '_self')}
-                        className="bg-gradient-to-r from-teal-400 to-blue-400 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-teal-500 hover:to-blue-500 transition-all transform hover:scale-105"
-                      >
-                        <i className="ri-phone-line"></i>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

@@ -24,8 +24,8 @@ interface Order {
   }>;
   total: string;
   status: 'received' | 'ready' | 'delivered';
-  pickup_date: string;
-  pickup_time: string;
+  pickup_date?: string | null;
+  pickup_time?: string | null;
   special_requests?: string;
   payment_type?: string;
   payment_status: 'pending' | 'completed' | 'paid' | 'failed';
@@ -40,6 +40,13 @@ interface OrderCardProps {
 export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const specialRequestNotes = extractSpecialRequestNotes(order.special_requests);
+
+  const formatPickupSchedule = (date?: string | null, time?: string | null) => {
+    if (date && time) return `${date} · ${time}`;
+    if (date) return date;
+    if (time) return time;
+    return 'Horario por confirmar';
+  };
 
   const handlePhotoPrint = (event: MouseEvent<HTMLButtonElement>, photoUrl: string) => {
     event.stopPropagation();
@@ -107,6 +114,7 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
   // Asegurar que tenemos el nombre del cliente
   const customerName = order.customer_name || 'Cliente';
   const customerInitial = customerName.charAt(0).toUpperCase();
+  const pickupSchedule = formatPickupSchedule(order.pickup_date, order.pickup_time);
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -150,11 +158,7 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
           <div className="flex items-center space-x-4">
             <span>
               <i className="ri-calendar-line mr-1"></i>
-              {order.pickup_date}
-            </span>
-            <span>
-              <i className="ri-time-line mr-1"></i>
-              {order.pickup_time}
+              {pickupSchedule}
             </span>
           </div>
 
