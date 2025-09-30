@@ -13,6 +13,7 @@ import {
   collectPhotoStoragePaths,
   clearSignedPhotoData,
   getSignedQuotePhotoUrl,
+  prepareItemsForPersistence,
 } from '@/lib/orderPhotoStorage';
 import CalendarView from './CalendarView';
 import UserManagement from './UserManagement';
@@ -369,10 +370,12 @@ export default function DashboardPage() {
     setPriceError(null);
 
     try {
+      const itemsForPersistence = prepareItemsForPersistence(updatedItems as Record<string, any>[]);
+
       const { data, error } = await supabase
         .from('orders')
         .update({
-          items: updatedItems,
+          items: itemsForPersistence,
           subtotal: roundedSubtotal,
           tax: taxValue,
           total: totalValue,
@@ -818,6 +821,7 @@ export default function DashboardPage() {
           price_label: item?.price_label || item?.priceLabel || 'Incluido en total',
           isPricePending: item?.isPricePending ?? true,
         }));
+      const orderItemsForPersistence = prepareItemsForPersistence(orderItems as Record<string, any>[]);
 
       const subtotal = quote.estimated_price || 0;
       const tax = Number((subtotal * 0.03).toFixed(2));
@@ -827,7 +831,7 @@ export default function DashboardPage() {
         customer_name: quote.customer_name,
         customer_phone: quote.customer_phone || '',
         customer_email: quote.customer_email || '',
-        items: orderItems,
+        items: orderItemsForPersistence,
         subtotal,
         tax,
         total,
@@ -851,13 +855,19 @@ export default function DashboardPage() {
         return;
       }
 
+      const insertedOrderItems = Array.isArray(insertedOrder?.items) ? (insertedOrder.items as Record<string, any>[]) : [];
+      const insertedOrderWithUrls: Order = {
+        ...(insertedOrder as Order),
+        items: (await withSignedPhotoUrls(insertedOrderItems)) as any,
+      };
+
       await supabase
         .from('quotes')
         .update({ status: 'accepted', updated_at: now })
         .eq('id', quote.id);
 
       setQuotes((prev) => prev.filter((q) => q.id !== quote.id));
-      setOrders((prev) => [insertedOrder as Order, ...prev]);
+      setOrders((prev) => [insertedOrderWithUrls, ...prev]);
       setShowSuccessMessage('✅ Cotización finalizada, orden creada');
       setTimeout(() => setShowSuccessMessage(''), 3000);
     } catch (error) {
