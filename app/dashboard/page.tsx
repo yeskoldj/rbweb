@@ -18,6 +18,7 @@ import {
 import CalendarView from './CalendarView';
 import UserManagement from './UserManagement';
 import { openPhotoPrintWindow } from '@/lib/photoPrinting';
+import { formatPickupDate, formatPickupDetails } from '@/lib/pickupFormatting';
 
 type QuoteStatus = 'pending' | 'responded' | 'accepted' | 'rejected';
 
@@ -45,6 +46,7 @@ interface Quote {
   cart_items?: OrderItem[] | null;
   requires_cake_quote?: boolean;
   pickup_time?: string | null;
+  pickup_date?: string | null;
   special_requests?: string | null;
   reference_code?: string | null;
 }
@@ -437,6 +439,7 @@ export default function DashboardPage() {
                 total: totalValue,
                 subtotal: roundedSubtotal,
                 tax: taxValue,
+                pickup_date: priceApprovalOrder.pickup_date,
                 pickup_time: priceApprovalOrder.pickup_time,
                 special_requests: updatedSpecialRequests,
                 items: updatedItems,
@@ -530,6 +533,7 @@ export default function DashboardPage() {
         tax: 1.41,
         total: 48.4,
         status: 'pending',
+        pickup_date: new Date().toISOString().split('T')[0],
         pickup_time: '2:00 PM',
         special_requests: 'Please include a birthday candle',
         payment_type: 'zelle',
@@ -641,6 +645,7 @@ export default function DashboardPage() {
                 id: targetOrder.id,
                 customer_name: targetOrder.customer_name,
                 customer_email: targetOrder.customer_email,
+                pickup_date: targetOrder.pickup_date,
                 pickup_time: targetOrder.pickup_time,
                 total: targetOrder.total,
                 subtotal: targetOrder.subtotal,
@@ -847,6 +852,7 @@ export default function DashboardPage() {
         status: 'pending',
         payment_status: 'pending',
         order_date: now,
+        pickup_date: quote.pickup_date || null,
         pickup_time: quote.pickup_time || null,
         special_requests: quote.special_requests || quote.event_details || null,
         created_at: now,
@@ -1380,7 +1386,12 @@ export default function DashboardPage() {
                             </p>
                           </div>
                         ) : (
-                          getTodayOrders().map((order) => (
+                          getTodayOrders().map((order) => {
+                            const pickupDateLabel = formatPickupDate(order.pickup_date) || 'Fecha no especificada';
+                            const pickupTimeLabel = (order.pickup_time || '').trim() || 'Horario por confirmar';
+                            const pickupSummaryLabel = formatPickupDetails(order.pickup_date, order.pickup_time) || null;
+
+                            return (
                             <div
                               key={order.id}
                               className="space-y-3 rounded-2xl border border-gray-100 bg-gray-50 p-5 shadow-sm"
@@ -1405,9 +1416,13 @@ export default function DashboardPage() {
                                 </div>
                               </div>
                               <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2" title={pickupSummaryLabel || undefined}>
+                                  <i className="ri-calendar-line text-pink-500"></i>
+                                  <span>{pickupDateLabel}</span>
+                                </div>
+                                <div className="flex items-center gap-2" title={pickupSummaryLabel || undefined}>
                                   <i className="ri-time-line text-pink-500"></i>
-                                  <span>{order.pickup_time || 'Horario por confirmar'}</span>
+                                  <span>{pickupTimeLabel}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <i className="ri-map-pin-line text-pink-500"></i>
@@ -1424,7 +1439,7 @@ export default function DashboardPage() {
                                 </p>
                               )}
                             </div>
-                          ))
+                          )})
                         )}
                       </div>
                     </div>
@@ -1450,6 +1465,9 @@ export default function DashboardPage() {
                         ? (order.items as OrderItem[])
                         : [];
                       const statusInfo = statusMeta[order.status];
+                      const pickupDateLabel = formatPickupDate(order.pickup_date) || 'Fecha no especificada';
+                      const pickupTimeLabel = (order.pickup_time || '').trim() || 'Hora no especificada';
+                      const pickupSummaryLabel = formatPickupDetails(order.pickup_date, order.pickup_time) || null;
 
                       return (
                         <div key={order.id} className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
@@ -1461,9 +1479,15 @@ export default function DashboardPage() {
                               </div>
                               <div>
                                 <h3 className="font-bold text-gray-800 text-lg">{order.customer_name}</h3>
-                                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                                  <i className="ri-time-line"></i>
-                                  <span>{order.pickup_time || 'Hora no especificada'}</span>
+                                <div className="flex flex-col text-sm text-gray-600" title={pickupSummaryLabel || undefined}>
+                                  <span className="flex items-center space-x-2">
+                                    <i className="ri-calendar-line"></i>
+                                    <span>{pickupDateLabel}</span>
+                                  </span>
+                                  <span className="flex items-center space-x-2">
+                                    <i className="ri-time-line"></i>
+                                    <span>{pickupTimeLabel}</span>
+                                  </span>
                                 </div>
                               </div>
                             </div>

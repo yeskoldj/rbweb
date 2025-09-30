@@ -6,6 +6,7 @@ import Link from 'next/link';
 import SafeImage from '@/components/SafeImage';
 import { getItemPhotoUrl } from '@/lib/orderItemFormatting';
 import { openPhotoPrintWindow } from '@/lib/photoPrinting';
+import { formatPickupDate, formatPickupDetails } from '@/lib/pickupFormatting';
 
 interface Order {
   id: string;
@@ -23,8 +24,8 @@ interface Order {
   }>;
   total: string;
   status: 'received' | 'ready' | 'delivered';
-  pickup_date: string;
-  pickup_time: string;
+  pickup_date?: string | null;
+  pickup_time?: string | null;
   special_requests?: string;
   payment_type?: string;
   payment_status: 'pending' | 'completed' | 'paid' | 'failed';
@@ -105,6 +106,9 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
   // Asegurar que tenemos el nombre del cliente
   const customerName = order.customer_name || 'Cliente';
   const customerInitial = customerName.charAt(0).toUpperCase();
+  const pickupDateLabel = formatPickupDate(order.pickup_date) || 'Fecha no especificada';
+  const pickupTimeLabel = (order.pickup_time || '').trim() || 'Hora no especificada';
+  const pickupSummaryLabel = formatPickupDetails(order.pickup_date, order.pickup_time) || null;
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -145,14 +149,14 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
         </div>
 
         <div className="flex items-center justify-between text-sm text-gray-600">
-          <div className="flex items-center space-x-4">
-            <span>
+          <div className="flex items-center space-x-4 text-left">
+            <span title={pickupSummaryLabel || undefined}>
               <i className="ri-calendar-line mr-1"></i>
-              {order.pickup_date}
+              {pickupDateLabel}
             </span>
-            <span>
+            <span title={pickupSummaryLabel || undefined}>
               <i className="ri-time-line mr-1"></i>
-              {order.pickup_time}
+              {pickupTimeLabel}
             </span>
           </div>
 

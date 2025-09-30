@@ -13,6 +13,55 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/
+
+const parseDate = (rawDate?: string | null): Date | null => {
+  const value = (rawDate || '').trim()
+  if (!value) return null
+
+  if (!DATE_ONLY_REGEX.test(value)) {
+    const parsed = new Date(value)
+    return Number.isNaN(parsed.getTime()) ? null : parsed
+  }
+
+  const parsed = new Date(`${value}T00:00:00`)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+const formatPickupDateValue = (rawDate?: string | null, locale = 'es-ES'): string | null => {
+  const parsed = parseDate(rawDate)
+  if (!parsed) {
+    const fallback = (rawDate || '').trim()
+    return fallback || null
+  }
+
+  try {
+    return new Intl.DateTimeFormat(locale, { dateStyle: 'long' }).format(parsed)
+  } catch {
+    return parsed.toISOString().split('T')[0]
+  }
+}
+
+const formatPickupDetailsValue = (
+  rawDate?: string | null,
+  rawTime?: string | null,
+  locale = 'es-ES'
+): string | null => {
+  const dateLabel = formatPickupDateValue(rawDate, locale)
+  const timeValue = (rawTime || '').trim()
+
+  if (dateLabel && timeValue) {
+    const connector = locale.startsWith('es') ? 'a las' : 'at'
+    return `${dateLabel} ${connector} ${timeValue}`
+  }
+
+  if (timeValue) {
+    return timeValue
+  }
+
+  return dateLabel
+}
+
 serve(async (req) => {
   const origin = req.headers.get('origin') || ''
   if (ALLOWED_ORIGIN !== '*' && origin && origin !== ALLOWED_ORIGIN) {
@@ -69,6 +118,10 @@ serve(async (req) => {
     const formattedQuoteSummary = typeof quote.event_details === 'string'
       ? quote.event_details.replace(/\n/g, '<br />')
       : ''
+    const pickupSummaryEs = order.pickup_summary || formatPickupDetailsValue(order.pickup_date, order.pickup_time, 'es-ES')
+    const pickupSummaryEn = order.pickup_summary || formatPickupDetailsValue(order.pickup_date, order.pickup_time, 'en-US')
+    const quotePickupSummaryEs = formatPickupDetailsValue(quote.pickup_date, quote.pickup_time, 'es-ES')
+    const quotePickupSummaryEn = formatPickupDetailsValue(quote.pickup_date, quote.pickup_time, 'en-US')
 
     if (!RESEND_API_KEY) {
       console.log('RESEND_API_KEY not configured, simulating email send')
@@ -102,7 +155,7 @@ serve(async (req) => {
                 <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
                   <p style="margin: 0; font-weight: bold;">Pedido #${order.id}</p>
                   <p style="margin: 5px 0 0 0;">Estado: ${order.status}</p>
-                  ${order.pickup_time ? `<p style="margin: 5px 0 0 0;">Fecha de recogida: ${order.pickup_time}</p>` : ''}
+                  ${pickupSummaryEs ? `<p style="margin: 5px 0 0 0;">Recogida programada: ${pickupSummaryEs}</p>` : ''}
                 </div>
 
                 <h3 style="color: #92400e;">Detalles del Cliente:</h3>
@@ -155,7 +208,7 @@ serve(async (req) => {
                   <p style="margin: 0; font-size: 18px; font-weight: bold; color: #92400e;">Pedido #${order.id || 'Sin ID'}</p>
                   <p style="margin: 6px 0 0 0; color: #b45309;">Estado inicial: ${order.status || 'pendiente'}</p>
                   ${order.payment_method ? `<p style="margin: 6px 0 0 0; color: #b45309;">Método de pago: ${order.payment_method}</p>` : ''}
-                  ${order.pickup_time ? `<p style="margin: 6px 0 0 0; color: #b45309;">Recogida: ${order.pickup_time}</p>` : ''}
+                  ${pickupSummaryEs ? `<p style="margin: 6px 0 0 0; color: #b45309;">Recogida: ${pickupSummaryEs}</p>` : ''}
                 </div>
 
                 <h3 style="color: #0f172a; margin-bottom: 12px;">Información del cliente</h3>
@@ -226,10 +279,10 @@ serve(async (req) => {
                   ${quote.customer_email ? `<p style="margin: 6px 0 0 0; color: #5b21b6;">Email: ${quote.customer_email}</p>` : ''}
                 </div>
 
-                ${quote.pickup_time ? `
+                ${quotePickupSummaryEs ? `
                   <div style="margin-top: 20px;">
                     <p style="margin: 0; font-weight: bold; color: #4338ca;">Hora preferida de recogida:</p>
-                    <p style="margin: 4px 0 0 0; color: #312e81;">${quote.pickup_time}</p>
+                    <p style="margin: 4px 0 0 0; color: #312e81;">${quotePickupSummaryEs}</p>
                   </div>
                 ` : ''}
 
@@ -282,7 +335,7 @@ serve(async (req) => {
                 <div style="background: #fdf2f8; border-radius: 12px; padding: 18px; border: 1px solid #fbcfe8;">
                   <p style="margin: 0; color: #be185d; font-weight: bold;">Tu código de referencia</p>
                   <p style="margin: 4px 0 0 0; color: #9d174d; font-size: 20px; letter-spacing: 1px; font-weight: bold;">${quote.reference_code || 'Pendiente'}</p>
-                  ${quote.pickup_time ? `<p style="margin: 8px 0 0 0; color: #be185d;">Hora preferida de recogida: ${quote.pickup_time}</p>` : ''}
+                  ${quotePickupSummaryEs ? `<p style="margin: 8px 0 0 0; color: #be185d;">Hora preferida de recogida: ${quotePickupSummaryEs}</p>` : ''}
                 </div>
 
                 <div style="margin-top: 24px;">
@@ -342,9 +395,9 @@ serve(async (req) => {
                   </div>
                 ` : ''}
 
-                ${order.pickup_time ? `
+                ${pickupSummaryEs ? `
                   <p style="color: #4b5563; line-height: 1.6; text-align: center;">
-                    Hora estimada de recogida: <strong>${order.pickup_time}</strong>
+                    Hora estimada de recogida: <strong>${pickupSummaryEs}</strong>
                   </p>
                 ` : ''}
 
@@ -375,10 +428,10 @@ serve(async (req) => {
                   Queríamos avisarte que tu orden está lista para recoger en la panadería. ¡No podemos esperar a que la veas!
                 </p>
 
-                ${order.pickup_time ? `
+                ${pickupSummaryEs ? `
                   <div style="background: #ecfeff; border: 1px solid #a5f3fc; border-radius: 12px; padding: 18px; margin: 20px 0; text-align: center;">
                     <p style="margin: 0; color: #0f172a;">Horario sugerido:</p>
-                    <p style="margin: 6px 0 0 0; font-size: 18px; font-weight: bold; color: #0f172a;">${order.pickup_time}</p>
+                    <p style="margin: 6px 0 0 0; font-size: 18px; font-weight: bold; color: #0f172a;">${pickupSummaryEs}</p>
                   </div>
                 ` : ''}
 
@@ -423,7 +476,7 @@ serve(async (req) => {
                 <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
                   <p style="margin: 0; font-weight: bold;">Order #${order.id}</p>
                   <p style="margin: 5px 0 0 0;">Status: ${order.status}</p>
-                  ${order.pickup_time ? `<p style="margin: 5px 0 0 0;">Pickup time: ${order.pickup_time}</p>` : ''}
+                  ${pickupSummaryEn ? `<p style="margin: 5px 0 0 0;">Pickup schedule: ${pickupSummaryEn}</p>` : ''}
                 </div>
 
                 <h3 style="color: #92400e;">Customer Details:</h3>
@@ -476,7 +529,7 @@ serve(async (req) => {
                   <p style="margin: 0; font-size: 18px; font-weight: bold; color: #312e81;">Order #${order.id || 'N/A'}</p>
                   <p style="margin: 6px 0 0 0; color: #4338ca;">Initial status: ${order.status || 'pending'}</p>
                   ${order.payment_method ? `<p style="margin: 6px 0 0 0; color: #4338ca;">Payment method: ${order.payment_method}</p>` : ''}
-                  ${order.pickup_time ? `<p style="margin: 6px 0 0 0; color: #4338ca;">Pickup: ${order.pickup_time}</p>` : ''}
+                  ${pickupSummaryEn ? `<p style="margin: 6px 0 0 0; color: #4338ca;">Pickup: ${pickupSummaryEn}</p>` : ''}
                 </div>
 
                 <h3 style="color: #0f172a; margin-bottom: 12px;">Customer information</h3>
@@ -547,10 +600,10 @@ serve(async (req) => {
                   ${quote.customer_email ? `<p style="margin: 6px 0 0 0; color: #1e40af;">Email: ${quote.customer_email}</p>` : ''}
                 </div>
 
-                ${quote.pickup_time ? `
+                ${quotePickupSummaryEn ? `
                   <div style="margin-top: 20px;">
                     <p style="margin: 0; font-weight: bold; color: #1d4ed8;">Preferred pickup time:</p>
-                    <p style="margin: 4px 0 0 0; color: #1e3a8a;">${quote.pickup_time}</p>
+                    <p style="margin: 4px 0 0 0; color: #1e3a8a;">${quotePickupSummaryEn}</p>
                   </div>
                 ` : ''}
 
@@ -602,7 +655,7 @@ serve(async (req) => {
                 <div style="background: #ede9fe; border-radius: 12px; padding: 18px; border: 1px solid #ddd6fe;">
                   <p style="margin: 0; color: #4338ca; font-weight: bold;">Your reference code</p>
                   <p style="margin: 4px 0 0 0; color: #312e81; font-size: 20px; letter-spacing: 1px; font-weight: bold;">${quote.reference_code || 'Pending'}</p>
-                  ${quote.pickup_time ? `<p style="margin: 8px 0 0 0; color: #4338ca;">Preferred pickup time: ${quote.pickup_time}</p>` : ''}
+                  ${quotePickupSummaryEn ? `<p style="margin: 8px 0 0 0; color: #4338ca;">Preferred pickup time: ${quotePickupSummaryEn}</p>` : ''}
                 </div>
 
                 <div style="margin-top: 24px;">
@@ -661,9 +714,9 @@ serve(async (req) => {
                   </div>
                 ` : ''}
 
-                ${order.pickup_time ? `
+                ${pickupSummaryEn ? `
                   <p style="color: #4b5563; line-height: 1.6; text-align: center;">
-                    Estimated pickup time: <strong>${order.pickup_time}</strong>
+                    Estimated pickup time: <strong>${pickupSummaryEn}</strong>
                   </p>
                 ` : ''}
 
@@ -694,10 +747,10 @@ serve(async (req) => {
                   Great news! Your order is finished and ready for pickup at the bakery. We hope you love it!
                 </p>
 
-                ${order.pickup_time ? `
+                ${pickupSummaryEn ? `
                   <div style="background: #ecfeff; border: 1px solid #bae6fd; border-radius: 12px; padding: 18px; margin: 20px 0; text-align: center;">
                     <p style="margin: 0; color: #0f172a;">Suggested pickup time</p>
-                    <p style="margin: 6px 0 0 0; font-size: 18px; font-weight: bold; color: #0f172a;">${order.pickup_time}</p>
+                    <p style="margin: 6px 0 0 0; font-size: 18px; font-weight: bold; color: #0f172a;">${pickupSummaryEn}</p>
                   </div>
                 ` : ''}
 

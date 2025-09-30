@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { Order } from '../../lib/supabase';
+import { formatPickupDate, formatPickupDetails } from '@/lib/pickupFormatting';
 
 interface CalendarViewProps {
   orders: Order[];
@@ -240,11 +241,24 @@ export default function CalendarView({ orders, onStatusUpdate }: CalendarViewPro
                     </div>
                   </div>
                   
-                  {order.pickup_time && (
+                  {(order.pickup_date || order.pickup_time) && (
                     <div className="mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
-                      <div className="flex items-center text-blue-800">
-                        <i className="ri-time-line mr-2"></i>
-                        <span className="text-sm font-medium">Hora de entrega: {order.pickup_time}</span>
+                      <div className="flex items-center text-blue-800 justify-between gap-3">
+                        <div className="flex items-center">
+                          <i className="ri-calendar-line mr-2"></i>
+                          <span className="text-sm font-medium">
+                            {formatPickupDate(order.pickup_date) || 'Fecha por confirmar'}
+                          </span>
+                        </div>
+                        {order.pickup_time && (
+                          <div className="flex items-center text-blue-800">
+                            <i className="ri-time-line mr-2"></i>
+                            <span className="text-sm font-medium">{order.pickup_time}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-xs text-blue-700 mt-1">
+                        {formatPickupDetails(order.pickup_date, order.pickup_time) || 'Horario pendiente de confirmar'}
                       </div>
                     </div>
                   )}

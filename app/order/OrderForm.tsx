@@ -8,6 +8,7 @@ import { createSquarePayment } from '@/lib/square/payments';
 import { createP2POrder, p2pPaymentConfig } from '@/lib/square/p2p';
 import { showCartNotification } from '@/lib/cartNotification';
 import { notifyBusinessAboutOrder } from '@/lib/orderNotifications';
+import { formatPickupDetails } from '@/lib/pickupFormatting';
 import Script from 'next/script';
 
 interface CartItem {
@@ -45,36 +46,6 @@ const toDateInputValue = (date: Date) => {
   const offset = date.getTimezoneOffset();
   const adjusted = new Date(date.getTime() - offset * 60 * 1000);
   return adjusted.toISOString().split('T')[0];
-};
-
-const formatPickupDetails = (rawDate?: string | null, rawTime?: string | null) => {
-  const dateValue = (rawDate || '').trim();
-  const timeValue = (rawTime || '').trim();
-
-  if (!dateValue && !timeValue) {
-    return '';
-  }
-
-  let formattedDate = '';
-
-  if (dateValue) {
-    const parsedDate = new Date(`${dateValue}T00:00:00`);
-    if (!Number.isNaN(parsedDate.getTime())) {
-      try {
-        formattedDate = new Intl.DateTimeFormat('es-ES', { dateStyle: 'long' }).format(parsedDate);
-      } catch {
-        formattedDate = dateValue;
-      }
-    } else {
-      formattedDate = dateValue;
-    }
-  }
-
-  if (timeValue) {
-    return formattedDate ? `${formattedDate} a las ${timeValue}` : timeValue;
-  }
-
-  return formattedDate;
 };
 
 const parseSpecialRequestSections = (raw: string | null | undefined) => {
@@ -967,7 +938,9 @@ const initSquareCard = useCallback(async () => {
           customerName: customerName,
           customerPhone: customerPhone,
           customerEmail: customerEmail || undefined,
-          pickupTime: pickupSummaryLabel || null,
+          pickupDate: formData.pickupDate || null,
+          pickupTime: formData.pickupTime || null,
+          pickupSummary: pickupSummaryLabel || null,
           specialRequests: orderPayload.special_requests,
           subtotal: orderPayload.subtotal,
           tax: orderPayload.tax,
@@ -1212,7 +1185,9 @@ const initSquareCard = useCallback(async () => {
           customerName: (currentUser?.full_name || currentUser?.fullName || 'Cliente').trim(),
           customerPhone: customerPhone,
           customerEmail: currentUser?.email || undefined,
-          pickupTime: pickupNotificationLabel || null,
+          pickupDate: pickupDateValue || null,
+          pickupTime: pickupTimeValue || null,
+          pickupSummary: pickupNotificationLabel || null,
           specialRequests: formData.specialRequests?.trim() || null,
           subtotal,
           tax,
@@ -1357,7 +1332,9 @@ const initSquareCard = useCallback(async () => {
         customerName: (currentUser?.full_name || currentUser?.fullName || 'Cliente').trim(),
         customerPhone: customerPhone,
         customerEmail: currentUser?.email || undefined,
-        pickupTime: pickupNotificationLabel || null,
+        pickupDate: pickupDateValue || null,
+        pickupTime: pickupTimeValue || null,
+        pickupSummary: pickupNotificationLabel || null,
         specialRequests: formData.specialRequests?.trim() || null,
         subtotal,
         tax: 0,

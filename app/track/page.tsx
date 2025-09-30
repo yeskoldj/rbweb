@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import Header from '../../components/Header';
 import TabBar from '../../components/TabBar';
+import { formatPickupDate, formatPickupDetails } from '@/lib/pickupFormatting';
 
 interface OrderItem {
   name: string;
@@ -30,6 +31,7 @@ interface Order {
   status: 'pending' | 'baking' | 'decorating' | 'ready' | 'completed' | 'cancelled';
   payment_status: 'pending' | 'completed' | 'failed' | 'paid';
   pickup_time?: string;
+  pickup_date?: string | null;
   special_requests?: string;
   order_date: string;
   created_at: string;
@@ -392,6 +394,9 @@ export default function TrackOrderPage() {
             ) : (
               orders.map(order => {
                 const specialRequests = formatSpecialRequests(order.special_requests);
+                const pickupSummary = formatPickupDetails(order.pickup_date, order.pickup_time, 'en-US') || null;
+                const pickupDateLabel = formatPickupDate(order.pickup_date, 'en-US');
+                const pickupTimeLabel = (order.pickup_time || '').trim();
 
                 return (
                   <div key={order.id} className="bg-white rounded-xl shadow-lg overflow-hidden">
@@ -482,15 +487,23 @@ export default function TrackOrderPage() {
                         </div>
                       </div>
 
-                      {order.pickup_time && (
+                      {(pickupSummary || pickupDateLabel || pickupTimeLabel) && (
                         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 mb-4 border border-blue-200">
                           <div className="flex items-center">
                             <div className="w-10 h-10 flex items-center justify-center bg-blue-100 rounded-full mr-3">
                               <i className="ri-calendar-line text-blue-600"></i>
                             </div>
                             <div>
-                              <p className="font-semibold text-blue-800">Pickup Time</p>
-                              <p className="text-blue-700">{order.pickup_time}</p>
+                              <p className="font-semibold text-blue-800">Pickup Schedule</p>
+                              {pickupDateLabel && (
+                                <p className="text-blue-700">{pickupDateLabel}</p>
+                              )}
+                              {pickupTimeLabel && (
+                                <p className="text-blue-700">{pickupTimeLabel}</p>
+                              )}
+                              {pickupSummary && pickupSummary !== pickupTimeLabel && (
+                                <p className="text-xs text-blue-600 mt-1">{pickupSummary}</p>
+                              )}
                             </div>
                           </div>
                         </div>

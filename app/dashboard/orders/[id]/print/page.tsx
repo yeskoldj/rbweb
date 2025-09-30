@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import SafeImage from '@/components/SafeImage';
 import { extractItemDetails, getItemPhotoUrl } from '@/lib/orderItemFormatting';
 import { withSignedPhotoUrls } from '@/lib/orderPhotoStorage';
+import { formatPickupDate, formatPickupDetails } from '@/lib/pickupFormatting';
 
 interface OrderItem {
   name: string;
@@ -27,6 +28,7 @@ interface Order {
   items: OrderItem[];
   total: number;
   order_date: string;
+  pickup_date?: string | null;
   pickup_time?: string;
   special_requests?: string;
 }
@@ -107,6 +109,8 @@ export default function PrintOrderPage({ params }: { params: { id: string } }) {
 
   const printableItems = Array.isArray(order.items) ? order.items : [];
   const orderReference = order.p2p_reference ?? order.id.slice(-8);
+  const pickupDateLabel = formatPickupDate(order.pickup_date);
+  const pickupSummaryLabel = formatPickupDetails(order.pickup_date, order.pickup_time);
 
   return (
     <div className="p-4 print:p-0">
@@ -145,9 +149,10 @@ export default function PrintOrderPage({ params }: { params: { id: string } }) {
           <p>
             <span className="font-semibold text-gray-900">Fecha de creación:</span> {order.order_date}
           </p>
-          {order.pickup_time && (
+          {(pickupDateLabel || order.pickup_time) && (
             <p>
-              <span className="font-semibold text-gray-900">Hora de retiro:</span> {order.pickup_time}
+              <span className="font-semibold text-gray-900">Programación de retiro:</span>{' '}
+              {pickupSummaryLabel || pickupDateLabel || order.pickup_time}
             </p>
           )}
         </div>
