@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, type MouseEvent } from 'react';
 import Link from 'next/link';
 import SafeImage from '@/components/SafeImage';
 
@@ -35,6 +35,49 @@ interface OrderCardProps {
 
 export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+
+  const handlePhotoPrint = (event: MouseEvent<HTMLButtonElement>, photoUrl: string) => {
+    event.stopPropagation();
+
+    const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=800,height=600');
+
+    if (!printWindow) {
+      console.error('Unable to open print window for photo');
+      return;
+    }
+
+    const escapedUrl = photoUrl.replace(/"/g, '&quot;');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Imprimir foto de referencia</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <style>
+            body { margin: 0; display: flex; align-items: center; justify-content: center; background: #ffffff; }
+            img { max-width: 100%; max-height: 100vh; }
+          </style>
+        </head>
+        <body>
+          <img id="order-photo" src="${escapedUrl}" alt="Foto de referencia" />
+          <script>
+            const image = document.getElementById('order-photo');
+            if (image) {
+              image.onload = () => {
+                window.focus();
+                window.print();
+              };
+              image.onerror = () => {
+                window.close();
+              };
+            } else {
+              window.print();
+            }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
@@ -208,22 +251,44 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
                       <p className="text-xs text-gray-500 mt-1 ml-6">{item.details}</p>
                     )}
                     {item.photoUrl && (
-                      <a
-                        href={item.photoUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block mt-2 ml-6"
-                      >
-                        <div className="relative h-24 w-24 overflow-hidden rounded">
-                          <SafeImage
-                            src={item.photoUrl}
-                            alt={item.name}
-                            fill
-                            className="object-cover"
-                            sizes="96px"
-                          />
+                      <div className="mt-2 ml-6 space-y-2">
+                        <a
+                          href={item.photoUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <div className="relative h-24 w-24 overflow-hidden rounded">
+                            <SafeImage
+                              src={item.photoUrl}
+                              alt={item.name}
+                              fill
+                              className="object-cover"
+                              sizes="96px"
+                            />
+                          </div>
+                        </a>
+                        <div className="flex flex-wrap gap-2">
+                          <a
+                            href={item.photoUrl}
+                            download
+                            className="inline-flex items-center rounded-lg bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-200"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <i className="ri-download-line mr-1"></i>
+                            Descargar foto
+                          </a>
+                          <button
+                            type="button"
+                            onClick={(event) => handlePhotoPrint(event, item.photoUrl!)}
+                            className="inline-flex items-center rounded-lg bg-pink-100 px-3 py-1 text-xs font-medium text-pink-700 transition-colors hover:bg-pink-200"
+                          >
+                            <i className="ri-printer-line mr-1"></i>
+                            Imprimir foto
+                          </button>
                         </div>
-                      </a>
+                      </div>
                     )}
                   </div>
                   <span className="font-medium">${item.price}</span>
