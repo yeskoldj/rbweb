@@ -47,17 +47,47 @@ export async function GET(request: Request) {
     return supabaseAdmin;
   }
 
-  const { data, error } = await supabaseAdmin
-    .from('profiles')
-    .select('id, email, full_name, phone, role, created_at')
-    .order('created_at', { ascending: false })
-    .limit(100);
+  const {
+    data: { users },
+    error: authError,
+  } = await supabaseAdmin.auth.admin.listUsers({ perPage: 100 });
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (authError) {
+    return NextResponse.json({ error: authError.message }, { status: 500 });
   }
 
-  return NextResponse.json({ data });
+  if (!users || users.length === 0) {
+    return NextResponse.json({ data: [] });
+  }
+
+  const userIds = users.map((user) => user.id);
+  const { data: profiles, error: profilesError } = await supabaseAdmin
+    .from('profiles')
+    .select('id, full_name, phone, role, created_at')
+    .in('id', userIds);
+
+  if (profilesError) {
+    return NextResponse.json({ error: profilesError.message }, { status: 500 });
+  }
+
+  const profileMap = new Map(profiles?.map((profile) => [profile.id, profile]));
+  const combined = users
+    .map((user) => {
+      const profile = profileMap.get(user.id);
+
+      return {
+        id: user.id,
+        email: user.email ?? '',
+        full_name: profile?.full_name ?? '',
+        phone: profile?.phone ?? '',
+        role: profile?.role ?? 'customer',
+        created_at: profile?.created_at ?? user.created_at,
+      };
+    })
+    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
+    .slice(0, 100);
+
+  return NextResponse.json({ data: combined });
 }
 
 export async function PUT(request: Request) {
