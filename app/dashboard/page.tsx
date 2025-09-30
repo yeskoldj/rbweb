@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type MouseEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase, Order, OrderStatus } from '../../lib/supabase';
 import Header from '../../components/Header';
@@ -17,6 +17,7 @@ import {
 } from '@/lib/orderPhotoStorage';
 import CalendarView from './CalendarView';
 import UserManagement from './UserManagement';
+import { openPhotoPrintWindow } from '@/lib/photoPrinting';
 
 type QuoteStatus = 'pending' | 'responded' | 'accepted' | 'rejected';
 
@@ -41,7 +42,7 @@ interface Quote {
   admin_notes?: string | null;
   responded_at?: string | null;
   updated_at?: string | null;
-  cart_items?: any[];
+  cart_items?: OrderItem[] | null;
   requires_cake_quote?: boolean;
   pickup_time?: string | null;
   special_requests?: string | null;
@@ -58,6 +59,7 @@ interface OrderItem {
   photoUrl?: string | null;
   type?: string | null;
   customization?: Record<string, unknown> | null;
+  photoStoragePath?: string | null;
 }
 
 const quoteStatusColors: Record<QuoteStatus, string> = {
@@ -699,7 +701,14 @@ export default function DashboardPage() {
       const quotesWithUrls: Quote[] = await Promise.all(
         (quotesData || []).map(async (quote: Quote) => {
           const signedUrl = await getSignedQuotePhotoUrl(quote.reference_photo_url);
-          return { ...quote, reference_photo_url: signedUrl || null };
+          const cartItems = Array.isArray(quote.cart_items) ? (quote.cart_items as Record<string, any>[]) : [];
+          const cartItemsWithUrls = cartItems.length > 0 ? await withSignedPhotoUrls(cartItems) : [];
+
+          return {
+            ...quote,
+            reference_photo_url: signedUrl || null,
+            cart_items: cartItemsWithUrls as OrderItem[],
+          };
         })
       );
 
@@ -1939,6 +1948,11 @@ function QuoteCard({ quote, onStatusUpdate, onFinalize, onDelete }: { quote: Quo
   );
   const [adminNotes, setAdminNotes] = useState(quote.admin_notes || '');
 
+  const handlePhotoPrint = (event: MouseEvent<HTMLButtonElement>, photoUrl: string) => {
+    event.stopPropagation();
+    openPhotoPrintWindow(photoUrl);
+  };
+
   const getStatusText = (status: string) => {
     const statusMap: { [key: string]: string } = {
       pending: 'Pendiente',
@@ -2025,19 +2039,45 @@ function QuoteCard({ quote, onStatusUpdate, onFinalize, onDelete }: { quote: Quo
       )}
 
       {quote.has_reference_photo && quote.photo_description && (
-        <div className="mb-4 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
+        <div className="mb-4 rounded-lg border-l-4 border-blue-400 bg-blue-50 p-3">
           <p className="text-sm font-medium text-blue-800 mb-1">Foto de Referencia:</p>
           <p className="text-sm text-blue-700">{quote.photo_description}</p>
           {quote.reference_photo_url && (
-            <div className="mt-2">
-              <SafeImage
-                src={quote.reference_photo_url}
-                alt="Referencia"
-                width={320}
-                height={128}
-                className="max-w-full h-32 object-cover rounded"
-                sizes="(max-width: 768px) 90vw, 320px"
-              />
+            <div className="mt-3 space-y-2">
+              <a
+                href={quote.reference_photo_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block"
+              >
+                <div className="relative h-32 w-full overflow-hidden rounded border border-blue-100">
+                  <SafeImage
+                    src={quote.reference_photo_url}
+                    alt="Referencia"
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 90vw, 320px"
+                  />
+                </div>
+              </a>
+              <div className="flex flex-wrap gap-2">
+                <a
+                  href={quote.reference_photo_url}
+                  download
+                  className="inline-flex items-center rounded-lg bg-white px-3 py-1 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100"
+                >
+                  <i className="ri-download-line mr-1"></i>
+                  Descargar foto
+                </a>
+                <button
+                  type="button"
+                  onClick={(event) => handlePhotoPrint(event, quote.reference_photo_url!)}
+                  className="inline-flex items-center rounded-lg bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-200"
+                >
+                  <i className="ri-printer-line mr-1"></i>
+                  Imprimir foto
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -2059,24 +2099,85 @@ function QuoteCard({ quote, onStatusUpdate, onFinalize, onDelete }: { quote: Quo
             )}
           </div>
           <div className="space-y-2">
-            {(quote.cart_items || []).map((item, index) => (
-              <div key={`${quote.id}-item-${index}`} className="bg-white rounded-md p-2 shadow-sm border border-pink-100">
-                <p className="text-sm font-semibold text-gray-800">
-                  {item.quantity || 1}x {item.name}
-                </p>
-                {item.details && (
-                  <p className="text-xs text-gray-600 whitespace-pre-line mt-1">{item.details}</p>
-                )}
-                {!item.details && item.customization && (
-                  <p className="text-xs text-gray-600 mt-1">
-                    {Object.entries(item.customization)
-                      .filter(([, value]) => value && typeof value === 'string')
-                      .map(([key, value]) => `${key}: ${value}`)
-                      .join(' | ')}
-                  </p>
-                )}
-              </div>
-            ))}
+            {(quote.cart_items || []).map((item, index) => {
+              const detailEntries = extractItemDetails(item);
+              const photoSource = getItemPhotoUrl(item);
+
+              return (
+                <div
+                  key={`${quote.id}-item-${index}`}
+                  className="space-y-2 rounded-md border border-pink-100 bg-white p-3 shadow-sm"
+                >
+                  <div className="text-sm font-semibold text-gray-800">
+                    {item.quantity || 1}x {item.name}
+                  </div>
+
+                  {detailEntries.length > 0 && (
+                    <ul className="space-y-1 text-xs text-gray-600">
+                      {detailEntries.map((detail, detailIndex) => (
+                        <li
+                          key={`${quote.id}-item-${index}-detail-${detailIndex}`}
+                          className="flex items-start gap-1.5"
+                        >
+                          <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-pink-300"></span>
+                          <span>
+                            {detail.label ? (
+                              <>
+                                <span className="font-medium text-gray-700">{detail.label}:</span>{' '}
+                                <span className={detail.emphasis ? 'font-semibold text-gray-800' : undefined}>
+                                  {detail.value}
+                                </span>
+                              </>
+                            ) : (
+                              detail.value
+                            )}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {photoSource && (
+                    <div className="space-y-2">
+                      <a
+                        href={photoSource}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block"
+                      >
+                        <div className="relative h-32 w-full overflow-hidden rounded border border-pink-100">
+                          <SafeImage
+                            src={photoSource}
+                            alt={`Referencia de ${item.name}`}
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 768px) 90vw, 320px"
+                          />
+                        </div>
+                      </a>
+                      <div className="flex flex-wrap gap-2">
+                        <a
+                          href={photoSource}
+                          download
+                          className="inline-flex items-center rounded-lg bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-200"
+                        >
+                          <i className="ri-download-line mr-1"></i>
+                          Descargar foto
+                        </a>
+                        <button
+                          type="button"
+                          onClick={(event) => handlePhotoPrint(event, photoSource)}
+                          className="inline-flex items-center rounded-lg bg-pink-100 px-3 py-1 text-xs font-medium text-pink-700 transition-colors hover:bg-pink-200"
+                        >
+                          <i className="ri-printer-line mr-1"></i>
+                          Imprimir foto
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
           {quote.pickup_time && (
             <p className="text-xs text-pink-700 mt-2">
