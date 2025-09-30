@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../lib/languageContext';
 import { languages } from '../lib/languages';
 import SafeImage from './SafeImage';
@@ -14,6 +14,33 @@ interface LanguageSelectorProps {
 export default function LanguageSelector({ showWelcome = false, onComplete }: LanguageSelectorProps) {
   const { language, setLanguage, t } = useLanguage();
   const [showDropdown, setShowDropdown] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showDropdown) {
+      return;
+    }
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showDropdown]);
 
   const handleLanguageSelect = (langCode: string) => {
     setLanguage(langCode);
@@ -64,10 +91,14 @@ export default function LanguageSelector({ showWelcome = false, onComplete }: La
   }
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <button
         onClick={() => setShowDropdown(!showDropdown)}
         className="w-10 h-10 flex items-center justify-center"
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={showDropdown}
+        aria-label={t('languageSelectorAriaLabel') ?? 'Select language'}
       >
         <i className="ri-global-line text-white text-xl drop-shadow-sm"></i>
       </button>
