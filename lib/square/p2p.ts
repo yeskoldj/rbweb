@@ -26,6 +26,7 @@ export async function createP2POrder(orderData: {
   customerInfo: { name: string; phone: string; email?: string; billingAddress?: string };
   paymentMethod: 'zelle';
   userId: string;
+  pickupDate?: string | null;
   pickupTime?: string;
   specialRequests?: string;
   orderId?: string;

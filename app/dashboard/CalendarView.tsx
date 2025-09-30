@@ -13,6 +13,23 @@ export default function CalendarView({ orders, onStatusUpdate }: CalendarViewPro
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
 
+  const formatPickupDate = (value?: string | null) => {
+    if (!value) {
+      return null;
+    }
+
+    try {
+      const parsed = new Date(`${value}T00:00:00`);
+      return parsed.toLocaleDateString('es-ES', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+      });
+    } catch {
+      return value;
+    }
+  };
+
   const getOrdersForDate = (date: string) => {
     return orders.filter(order => order.order_date === date);
   };
@@ -240,11 +257,18 @@ export default function CalendarView({ orders, onStatusUpdate }: CalendarViewPro
                     </div>
                   </div>
                   
-                  {order.pickup_time && (
+                  {(order.pickup_time || order.pickup_date) && (
                     <div className="mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
-                      <div className="flex items-center text-blue-800">
-                        <i className="ri-time-line mr-2"></i>
-                        <span className="text-sm font-medium">Hora de entrega: {order.pickup_time}</span>
+                      <div className="flex items-start text-blue-800">
+                        <i className="ri-time-line mr-2 mt-0.5"></i>
+                        <div className="space-y-1 text-sm font-medium">
+                          {order.pickup_date && (
+                            <div>Fecha de entrega: {formatPickupDate(order.pickup_date)}</div>
+                          )}
+                          {order.pickup_time && (
+                            <div>Hora de entrega: {order.pickup_time}</div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
