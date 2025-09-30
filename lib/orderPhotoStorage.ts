@@ -1,8 +1,16 @@
+import { ORDER_PHOTO_BUCKETS, ORDER_PHOTO_FOLDER_PREFIX } from './orderPhotoConfig';
 import { supabase } from './supabase';
 
-const STORAGE_BUCKET = 'temp-uploads';
-const PHOTO_FOLDER_PREFIX = 'photo-cakes/';
 const SIGNED_URL_TTL_SECONDS = 60 * 60; // 1 hour
+
+const STORAGE_BUCKETS = ORDER_PHOTO_BUCKETS.length > 0 ? ORDER_PHOTO_BUCKETS : ['temp-uploads'];
+
+const resolveStorageFolderPrefix = () => {
+  const prefix = ORDER_PHOTO_FOLDER_PREFIX || '';
+  return prefix ? prefix.replace(/\/+$/g, '') + '/' : '';
+};
+
+const PHOTO_FOLDER_PREFIX = resolveStorageFolderPrefix();
 
 const isHttpUrl = (value: string) => /^https?:\/\//i.test(value.trim());
 
@@ -18,16 +26,25 @@ const normalizePhotoPath = (rawPath: string) => {
 };
 
 const resolveSignedUrl = async (storagePath: string) => {
-  const { data, error } = await supabase.storage
-    .from(STORAGE_BUCKET)
-    .createSignedUrl(storagePath, SIGNED_URL_TTL_SECONDS);
+  let lastError: any = null;
 
-  if (error) {
-    console.error('Error creating signed URL for order photo:', error);
-    return null;
+  for (const bucket of STORAGE_BUCKETS) {
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .createSignedUrl(storagePath, SIGNED_URL_TTL_SECONDS);
+
+    if (!error && data?.signedUrl) {
+      return data.signedUrl;
+    }
+
+    lastError = error ?? null;
   }
 
-  return data?.signedUrl ?? null;
+  if (lastError) {
+    console.error('Error creating signed URL for order photo:', lastError);
+  }
+
+  return null;
 };
 
 const cloneCustomization = (customization: unknown) =>
