@@ -295,11 +295,17 @@ export default function UserManagement() {
   const sendNotificationEmail = async () => {
     try {
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      if (!accessToken) {
+        throw new Error('User not authenticated');
+      }
+
       const response = await fetch(`${supabaseUrl}/functions/v1/send-notification-email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
+          Authorization: `Bearer ${accessToken}`
         },
         body: JSON.stringify({
           to: 'rangerbakery@gmail.com',

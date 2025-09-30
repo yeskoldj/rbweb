@@ -806,6 +806,11 @@ const initSquareCard = useCallback(async () => {
       }
 
       const insertedOrder = insertedData || {};
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      if (!accessToken) {
+        throw new Error('User not authenticated');
+      }
       const finalReference = referenceCode;
 
       try {
@@ -827,7 +832,7 @@ const initSquareCard = useCallback(async () => {
             price: getItemPrice(item),
           })),
           paymentMethod: 'manual_quote',
-        });
+        }, { accessToken });
       } catch (notificationError) {
         console.log('No se pudo notificar al negocio sobre la orden personalizada:', notificationError);
       }
@@ -840,7 +845,7 @@ const initSquareCard = useCallback(async () => {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+                Authorization: `Bearer ${accessToken}`,
               },
               body: JSON.stringify({
                 to: customerEmail,
@@ -1012,7 +1017,8 @@ const initSquareCard = useCallback(async () => {
 
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id;
-      if (!userId) {
+      const accessToken = session?.access_token;
+      if (!userId || !accessToken) {
         throw new Error('User not authenticated');
       }
 
@@ -1048,7 +1054,7 @@ const initSquareCard = useCallback(async () => {
         pickupTime: effectivePickupTime || undefined,
         specialRequests: (existingOrder?.special_requests || formData.specialRequests)?.trim() || undefined,
         orderId: existingOrder?.id,
-      });
+      }, { accessToken });
 
       if (paymentResult.success) {
         const subtotal = Number(calculateSubtotal().toFixed(2));
@@ -1073,7 +1079,7 @@ const initSquareCard = useCallback(async () => {
             quantity: item.quantity,
             price: getItemPrice(item),
           })),
-        });
+        }, { accessToken });
 
         if (!notificationResult.success) {
           console.warn('No se pudo enviar la notificación de la orden al negocio');
@@ -1193,7 +1199,7 @@ const initSquareCard = useCallback(async () => {
         pickupTime: effectivePickupTime || undefined,
         specialRequests: (existingOrder?.special_requests || formData.specialRequests)?.trim() || undefined,
         orderId: existingOrder?.id,
-      });
+      }, { accessToken });
 
       if (!result || !result.success) {
         throw new Error(result?.error || 'Error creando la orden');
@@ -1220,7 +1226,7 @@ const initSquareCard = useCallback(async () => {
           quantity: item.quantity,
           price: getItemPrice(item),
         })),
-      });
+      }, { accessToken });
 
       if (!notificationResult.success) {
         console.warn('No se pudo enviar la notificación de la orden al negocio');

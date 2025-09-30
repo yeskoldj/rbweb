@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { requireUser, isStaffRole } from '../_shared/auth.ts'
 
 // === CONFIG ===========
 const ENV = Deno.env.get("SQUARE_ENV") || "production";
@@ -28,6 +29,21 @@ const corsHeaders = {
     'authorization, x-client-info, apikey, content-type',
 };
 
+const buildCorsHeaders = (origin: string | null) => {
+  if (ALLOWED_ORIGIN === '*') {
+    return { ...corsHeaders, 'Access-Control-Allow-Origin': '*' };
+  }
+
+  if (origin && origin === ALLOWED_ORIGIN) {
+    return { ...corsHeaders, 'Access-Control-Allow-Origin': origin };
+  }
+
+  return {
+    ...corsHeaders,
+    'Access-Control-Allow-Origin': ALLOWED_ORIGIN || 'null',
+  };
+};
+
 const toCents = (amount: number) => Math.round(amount * 100);
 
 // Helper to verify if a string is a valid UUID
@@ -44,22 +60,32 @@ const isMissingBillingColumn = (error: any): boolean => {
 // ======================
 
 serve(async (req) => {
-  const origin = req.headers.get('origin') || '';
-  if (ALLOWED_ORIGIN !== '*' && origin && origin !== ALLOWED_ORIGIN) {
-    console.warn(`Blocked request from origin: ${origin}`);
-    return new Response('Forbidden', { status: 403, headers: corsHeaders });
+  const origin = req.headers.get('origin');
+  const responseCorsHeaders = buildCorsHeaders(origin);
+
+  if (ALLOWED_ORIGIN !== '*' && origin !== ALLOWED_ORIGIN) {
+    console.warn(`Blocked request from origin: ${origin || 'unknown'}`);
+    return new Response('Forbidden', { status: 403, headers: responseCorsHeaders });
   }
 
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response('ok', { headers: responseCorsHeaders });
   }
 
   try {
     if (req.method !== 'POST') {
       return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-        status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        status: 405, headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' }
       });
     }
+
+    const auth = await requireUser(req, supabaseAdmin, responseCorsHeaders);
+    if (auth instanceof Response) {
+      return auth;
+    }
+
+    const { userId: requesterId, role } = auth;
+    const staffUser = isStaffRole(role);
 
     const body = await req.json();
     const action   = body?.action ?? 'create_payment';
@@ -70,6 +96,11 @@ serve(async (req) => {
       if (typeof orderData.amount !== 'number') {
         throw new Error('Missing or invalid amount');
       }
+
+      const providedUserId = orderData?.userId;
+      const userId = staffUser && isValidUUID(providedUserId)
+        ? providedUserId
+        : requesterId;
 
       const idempotencyKey = `PAY_${Date.now()}_${crypto.randomUUID()}`;
       let paymentResult: any;
@@ -147,6 +178,23 @@ serve(async (req) => {
       const billingAddressValue = orderData?.customerInfo?.billingAddress?.trim() || null;
       const existingOrderId = orderData?.orderId;
       if (existingOrderId && isValidUUID(existingOrderId)) {
+        const { data: existingOrder, error: existingError } = await supabaseAdmin
+          .from('orders')
+          .select('user_id')
+          .eq('id', existingOrderId)
+          .single();
+
+        if (existingError) {
+          throw new Error('Order not found for update');
+        }
+
+        if (!staffUser && existingOrder?.user_id && existingOrder.user_id !== requesterId) {
+          return new Response(JSON.stringify({ error: 'Forbidden' }), {
+            status: 403,
+            headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
         const updateData: Record<string, any> = {
           items: orderData.items || [],
           subtotal: normalizedSubtotal,
@@ -201,11 +249,11 @@ serve(async (req) => {
           throw new Error(`Payment ok but DB update error: ${updateError.message}`);
         }
 
-        if (orderData?.userId && isValidUUID(orderData.userId) && customerPhoneValue) {
+        if (userId && customerPhoneValue) {
           const { error: phoneUpdateError } = await supabaseAdmin
             .from('profiles')
             .update({ phone: customerPhoneValue, updated_at: new Date().toISOString() })
-            .eq('id', orderData.userId);
+            .eq('id', userId);
 
           if (phoneUpdateError) {
             console.warn('⚠️ No se pudo actualizar el teléfono del perfil (Square update):', phoneUpdateError.message);
@@ -224,11 +272,10 @@ serve(async (req) => {
           environment: ENV,
           paymentMethod: orderData.paymentMethod,
           isSimulated: !ACCESS_TOKEN || !APPLICATION_ID,
-        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }), { headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' } });
       }
 
       // === Guardar orden nueva en DB ===
-      const userId = orderData?.userId;
       if (!userId || !isValidUUID(userId)) {
         throw new Error('Invalid or missing userId');
       }
@@ -323,11 +370,18 @@ serve(async (req) => {
         environment: ENV,
         paymentMethod: orderData.paymentMethod,
         isSimulated: !ACCESS_TOKEN || !APPLICATION_ID,
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }), { headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // === Refund ===
     if (action === 'refund') {
+      if (!staffUser) {
+        return new Response(JSON.stringify({ error: 'Forbidden' }), {
+          status: 403,
+          headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
       const paymentId = orderData?.paymentId;
       const amount    = orderData?.amount;
 
@@ -339,7 +393,7 @@ serve(async (req) => {
           amount,
           environment: ENV,
           isSimulated: true,
-        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }), { headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' } });
       }
 
       const refundReq: any = {
@@ -369,11 +423,18 @@ serve(async (req) => {
         amount: (data.refund.amount_money?.amount || 0) / 100,
         environment: ENV,
         isSimulated: false,
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }), { headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // === Get status ===
     if (action === 'get_status') {
+      if (!staffUser) {
+        return new Response(JSON.stringify({ error: 'Forbidden' }), {
+          status: 403,
+          headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
       const paymentId = orderData?.paymentId;
 
       if (!ACCESS_TOKEN || !APPLICATION_ID) {
@@ -386,7 +447,7 @@ serve(async (req) => {
           created: new Date().toISOString(),
           environment: ENV,
           isSimulated: true,
-        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }), { headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' } });
       }
 
       const resp = await fetch(`${SQUARE_BASE_URL}/v2/payments/${paymentId}`, {
@@ -407,11 +468,11 @@ serve(async (req) => {
         created: data.payment.created_at,
         environment: ENV,
         isSimulated: false,
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }), { headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' } });
     }
 
     return new Response(JSON.stringify({ error: 'Invalid action' }), {
-      status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      status: 400, headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (err: any) {
@@ -419,6 +480,6 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       success: false,
       error: err?.message || 'Square payment error',
-    }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }), { status: 500, headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' } });
   }
 });

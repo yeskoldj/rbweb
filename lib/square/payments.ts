@@ -1,6 +1,7 @@
 // lib/square/payments.ts
 
 import { EDGE_FUNCTIONS } from './config';
+import { getCurrentAccessToken } from '@/lib/supabaseAuth';
 
 // ---- Helpers ----
 export const formatAmountForSquare = (amount: number): number => {
@@ -53,7 +54,7 @@ export interface SquareOrderData {
 }
 
 // ---- Square payment (calls Supabase Edge Function) ----
-export async function createSquarePayment(orderData: SquareOrderData) {
+export async function createSquarePayment(orderData: SquareOrderData, options?: { accessToken?: string }) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (!supabaseUrl) throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL');
@@ -68,6 +69,11 @@ export async function createSquarePayment(orderData: SquareOrderData) {
       currency: orderData.currency ?? 'USD',
       // DO NOT send raw card data; we use sourceId from the SDK
     };
+
+    const accessToken = await getCurrentAccessToken(options?.accessToken);
+    if (!accessToken) {
+      throw new Error('User not authenticated');
+    }
 
     // Abort the request if the Edge Function takes too long to respond
     async function fetchWithTimeout(url: string, options: RequestInit, timeout = 15000) {
@@ -84,8 +90,7 @@ export async function createSquarePayment(orderData: SquareOrderData) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        // anon key is public; the edge function still enforces server-side security
-        Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+        Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({
         action: 'create_payment',
@@ -128,18 +133,23 @@ export async function createSquarePayment(orderData: SquareOrderData) {
 }
 
 // ---- Refund (calls Square edge function) ----
-export async function processRefund(paymentId: string, amount?: number) {
+export async function processRefund(paymentId: string, amount?: number, options?: { accessToken?: string }) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (!supabaseUrl) throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL');
 
     const functionUrl = `${supabaseUrl}/functions/v1/${EDGE_FUNCTIONS.square}`;
 
+    const accessToken = await getCurrentAccessToken(options?.accessToken);
+    if (!accessToken) {
+      throw new Error('User not authenticated');
+    }
+
     const res = await fetch(functionUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+        Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({
         action: 'refund',
@@ -166,18 +176,23 @@ export async function processRefund(paymentId: string, amount?: number) {
 }
 
 // ---- Status (calls Square edge function) ----
-export async function getPaymentStatus(paymentId: string) {
+export async function getPaymentStatus(paymentId: string, options?: { accessToken?: string }) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (!supabaseUrl) throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL');
 
     const functionUrl = `${supabaseUrl}/functions/v1/${EDGE_FUNCTIONS.square}`;
 
+    const accessToken = await getCurrentAccessToken(options?.accessToken);
+    if (!accessToken) {
+      throw new Error('User not authenticated');
+    }
+
     const res = await fetch(functionUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+        Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({
         action: 'get_status',

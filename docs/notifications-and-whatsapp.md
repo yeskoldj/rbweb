@@ -16,7 +16,10 @@
 **Supabase Edge Function secrets**
 - `RESEND_API_KEY` – API key used by `send-notification-email` to dispatch HTML emails via Resend.【F:supabase/functions/send-notification-email/index.ts†L12-L53】【F:supabase/functions/send-notification-email/index.ts†L1004-L1034】
 - `PUBLIC_APP_BASE_URL` – Base URL for generating payment/tracking links that are embedded in the email templates.【F:supabase/functions/send-notification-email/index.ts†L14-L33】
+- `BUSINESS_NOTIFICATION_ALLOWLIST` – Comma-separated list of internal inboxes permitted to receive operational alerts. Any recipient outside of this allowlist is rejected by the function, so include both the primary bakery inbox and every employee alias you expect to notify.【F:supabase/functions/send-notification-email/index.ts†L35-L107】【F:supabase/functions/send-notification-email/index.ts†L320-L387】
 - Optionally configure `WHATSAPP_TEMPLATE_*` secrets if you also want WhatsApp pushes (see below). When these values are missing the function simply skips the WhatsApp calls and still sends the email.【F:supabase/functions/send-notification-email/index.ts†L18-L245】
+
+All clients invoking the Edge Function must now send a valid Supabase access token in the `Authorization` header; helpers such as `notifyBusinessAboutOrder` automatically retrieve the current session token before posting the payload.【F:lib/orderNotifications.ts†L54-L88】【F:supabase/functions/send-notification-email/index.ts†L312-L372】
 
 During development you can leave `RESEND_API_KEY` unset to exercise the flow without sending real emails—the function will short-circuit after logging the payload and return `success: true`. In production set the secret through `supabase secrets set` so that Resend receives the request and delivers the notifications.【F:supabase/functions/send-notification-email/index.ts†L334-L367】【F:supabase/functions/send-notification-email/index.ts†L1004-L1034】
 
