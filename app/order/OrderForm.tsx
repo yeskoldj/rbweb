@@ -382,7 +382,7 @@ useEffect(() => {
       details.push(`Niveles: ${customization.layers}`);
     }
     if (customization.flavors) {
-      details.push(`Sabores: ${customization.flavors}`);
+      details.push(`Masa: ${customization.flavors}`);
     }
     if (customization.colors) {
       details.push(`Colores: ${customization.colors}`);

@@ -134,7 +134,8 @@ export default function PrintOrderPage({ params }: { params: { id: string } }) {
             <span className="font-semibold text-gray-900">Cliente:</span> {order.customer_name}
           </p>
           <p>
-            <span className="font-semibold text-gray-900">Teléfono:</span> {order.customer_phone}
+            <span className="font-semibold text-gray-900">Teléfono (contacto principal):</span>{' '}
+            {order.customer_phone}
           </p>
           {order.customer_email && (
             <p>

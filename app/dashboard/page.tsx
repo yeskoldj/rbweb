@@ -1389,7 +1389,10 @@ export default function DashboardPage() {
                                 <div>
                                   <p className="text-sm font-semibold text-gray-600">Cliente</p>
                                   <p className="text-lg font-bold text-gray-900">{order.customer_name}</p>
-                                  <p className="text-sm text-gray-500">{order.customer_phone}</p>
+                                  <p className="text-sm text-gray-500">
+                                    <span className="font-medium">Teléfono principal:</span>{' '}
+                                    {order.customer_phone}
+                                  </p>
                                 </div>
                                 <div className="text-right">
                                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total</p>
@@ -1979,7 +1982,10 @@ function QuoteCard({ quote, onStatusUpdate, onFinalize, onDelete }: { quote: Quo
           <div className="flex items-center space-x-4 text-sm text-gray-600">
             <div className="flex items-center">
               <i className="ri-phone-line mr-1"></i>
-              <span>{quote.customer_phone}</span>
+              <span>
+                <span className="font-medium">Teléfono principal:</span>{' '}
+                {quote.customer_phone}
+              </span>
             </div>
             {quote.customer_email && (
               <div className="flex items-center">

@@ -190,7 +190,10 @@ export default function OrderCard({ order, onStatusChange }: OrderCardProps) {
             <div className="space-y-1 text-sm text-gray-600">
               <div className="flex items-center">
                 <i className="ri-phone-line mr-2 w-4"></i>
-                <span>{order.customer_phone}</span>
+                <span>
+                  <span className="font-medium">Teléfono principal:</span>{' '}
+                  {order.customer_phone}
+                </span>
               </div>
               {order.customer_email && (
                 <div className="flex items-center">

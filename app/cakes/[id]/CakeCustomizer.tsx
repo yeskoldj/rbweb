@@ -735,7 +735,7 @@ export default function CakeCustomizer({ cakeId }: CakeCustomizerProps) {
     const summaryParts = [
       selectedOptions.shape ? `Forma: ${shapeOptions.find(s => s.id === selectedOptions.shape)?.name}` : null,
       layerDescriptions ? `Capas: ${layerDescriptions}` : null,
-      flavorNames ? `Sabores: ${flavorNames}` : null,
+      flavorNames ? `Masa: ${flavorNames}` : null,
       selectedOptions.colors.length ? `Colores: ${selectedOptions.colors.map(id => colorOptions.find(c => c.id === id)?.name).filter(Boolean).join(', ')}` : null,
       customizerMode === 'advanced' && selectedOptions.fillings.length
         ? `Rellenos: ${selectedOptions.fillings.map(id => fillingOptions.find(f => f.id === id)?.name).filter(Boolean).join(', ')}`

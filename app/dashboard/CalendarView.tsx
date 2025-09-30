@@ -221,7 +221,10 @@ export default function CalendarView({ orders, onStatusUpdate }: CalendarViewPro
                         <h4 className="font-bold text-gray-800">{order.customer_name}</h4>
                         <div className="flex items-center space-x-2 text-sm text-gray-600">
                           <i className="ri-phone-line"></i>
-                          <span>{order.customer_phone}</span>
+                          <span>
+                            <span className="font-medium">Teléfono principal:</span>{' '}
+                            {order.customer_phone}
+                          </span>
                         </div>
                       </div>
                     </div>
