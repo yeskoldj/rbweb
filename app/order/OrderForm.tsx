@@ -106,9 +106,6 @@ useEffect(() => {
     email: '',
     phone: ''
   });
-  const [billingPostalCode, setBillingPostalCode] = useState('');
-  const billingAddress = billingPostalCode.trim();
-  const [saveBillingAddress, setSaveBillingAddress] = useState(true);
   const hasPendingPrice = cartItems.some(item => {
     if (existingOrder) return false;
     if (item.isPricePending) return true;
@@ -261,14 +258,6 @@ useEffect(() => {
         setSystemStatusMessage(parsedSpecial.statusMessage);
         setQuoteReference(parsedSpecial.referenceCode);
 
-        if (typeof data.billing_address === 'string') {
-          const rawBilling = data.billing_address.trim();
-          if (rawBilling) {
-            const parts = rawBilling.split(',').map((part: string) => part.trim()).filter(Boolean);
-            const postalCode = parts.length > 0 ? parts[parts.length - 1] : rawBilling;
-            setBillingPostalCode(postalCode);
-          }
-        }
       } catch (err: any) {
         console.error('Error loading existing order:', err);
         showNotification(
@@ -443,22 +432,6 @@ const initSquareCard = useCallback(async () => {
         } catch {
           setFormData({ specialRequests: '', pickupDate: '', pickupTime: '' });
         }
-      }
-    }
-
-    const savedBilling = localStorage.getItem('bakery-billing-address');
-    if (savedBilling) {
-      try {
-        const parsed = JSON.parse(savedBilling);
-        if (typeof parsed === 'string') {
-          setBillingPostalCode(parsed);
-        } else if (parsed && typeof parsed === 'object') {
-          setBillingPostalCode(parsed.postalCode || parsed.zip || '');
-        }
-      } catch {
-        const parts = savedBilling.split(',').map(p => p.trim()).filter(Boolean);
-        const lastPart = parts.length > 0 ? parts[parts.length - 1] : savedBilling.trim();
-        setBillingPostalCode(lastPart);
       }
     }
 
@@ -760,7 +733,6 @@ const initSquareCard = useCallback(async () => {
         customer_name: customerName,
         customer_phone: customerPhone,
         customer_email: customerEmail || null,
-        billing_address: billingAddress.trim() ? billingAddress.trim() : null,
         items: formattedItems,
         subtotal: Number(subtotalValue.toFixed(2)),
         tax: Number(taxValue.toFixed(2)),
@@ -778,8 +750,6 @@ const initSquareCard = useCallback(async () => {
         orderPayload.user_id = supabaseUserId;
       }
 
-      const storedBillingValue = orderPayload.billing_address ?? null;
-
       let {
         data: insertedData,
         error: insertError,
@@ -794,7 +764,6 @@ const initSquareCard = useCallback(async () => {
           "La columna 'billing_address' no existe en la tabla orders. Reintentando sin esa columna."
         );
         const fallbackPayload = { ...orderPayload };
-        delete fallbackPayload.billing_address;
         const retryResponse = await supabase
           .from('orders')
           .insert([fallbackPayload])
@@ -802,9 +771,7 @@ const initSquareCard = useCallback(async () => {
           .single();
 
         insertError = retryResponse.error;
-        insertedData = retryResponse.data
-          ? { ...retryResponse.data, billing_address: storedBillingValue }
-          : retryResponse.data;
+        insertedData = retryResponse.data;
       }
 
       if (insertError) {
@@ -950,7 +917,6 @@ const initSquareCard = useCallback(async () => {
     try {
       console.log('🔥 Iniciando proceso de pago:', selectedPaymentMethod);
 
-      const postalCode = billingPostalCode.trim();
       const contactPhoneValue = contactInfo.phone.trim();
       const existingOrderPhone = (existingOrder?.customer_phone || '').trim();
       const customerPhone = contactPhoneValue || profilePhoneFromState || existingOrderPhone;
@@ -969,15 +935,6 @@ const initSquareCard = useCallback(async () => {
       const effectivePickupDate = existingOrder?.pickup_date || formData.pickupDate || null;
       const effectivePickupTime = existingOrder?.pickup_time || formData.pickupTime || null;
 
-      if (saveBillingAddress && postalCode) {
-        localStorage.setItem(
-          'bakery-billing-address',
-          JSON.stringify({ postalCode })
-        );
-      } else {
-        localStorage.removeItem('bakery-billing-address');
-      }
-
       if (isP2PEnabled && selectedPaymentMethod === 'zelle') {
         const totalAmount = Number(calculateTotalValue().toFixed(2));
         setP2PInstructions({
@@ -992,17 +949,6 @@ const initSquareCard = useCallback(async () => {
         setShowCardForm(false);
         return;
       }
-
-
-      if (selectedPaymentMethod === 'card' && !postalCode) {
-        showNotification(
-          'warning',
-          'Código postal requerido',
-          'Square necesita un código postal de facturación para procesar tu pago.'
-        );
-        return;
-      }
-
 
 
       // Tokenizar con Square según el método seleccionado
@@ -1050,7 +996,6 @@ const initSquareCard = useCallback(async () => {
           name: (currentUser?.full_name || currentUser?.fullName || '').trim(),
           phone: customerPhone,
           email: currentUser?.email || '',
-          billingAddress: postalCode,
         },
         paymentMethod: 'card',
         sourceId,
@@ -1118,7 +1063,7 @@ const initSquareCard = useCallback(async () => {
               type: item.type,
             })),
             customer_phone: customerPhone,
-            billing_address: postalCode,
+            billing_address: existingOrder?.billing_address ?? null,
             pickup_date: effectivePickupDate,
             pickup_time: effectivePickupTime,
           } as Order);
@@ -1148,7 +1093,6 @@ const initSquareCard = useCallback(async () => {
     setIsSubmitting(true);
 
     try {
-      const postalCode = billingPostalCode.trim();
       const contactPhoneValue = contactInfo.phone.trim();
       const existingOrderPhone = (existingOrder?.customer_phone || '').trim();
       const customerPhone = contactPhoneValue || profilePhoneFromState || existingOrderPhone;
@@ -1163,15 +1107,6 @@ const initSquareCard = useCallback(async () => {
       }
 
       await persistPhoneToProfile(customerPhone);
-
-      if (saveBillingAddress && postalCode) {
-        localStorage.setItem(
-          'bakery-billing-address',
-          JSON.stringify({ postalCode })
-        );
-      } else {
-        localStorage.removeItem('bakery-billing-address');
-      }
 
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id;
@@ -1198,7 +1133,6 @@ const initSquareCard = useCallback(async () => {
           name: (currentUser?.full_name || currentUser?.fullName || '').trim(),
           phone: customerPhone,
           email: currentUser?.email || '',
-          billingAddress: postalCode,
         },
         paymentMethod: 'zelle',
         userId,
@@ -1261,7 +1195,7 @@ const initSquareCard = useCallback(async () => {
             type: item.type,
           })),
           customer_phone: customerPhone,
-          billing_address: postalCode,
+          billing_address: existingOrder?.billing_address ?? null,
           pickup_date: effectivePickupDate,
           pickup_time: effectivePickupTime,
         } as Order);
@@ -1537,29 +1471,6 @@ const initSquareCard = useCallback(async () => {
             Los datos de tu tarjeta son procesados de forma segura por Square
           </p>
         </div>
-        <div className="bg-white rounded-xl p-4 mb-6">
-          <h4 className="font-semibold text-gray-800 mb-3">Código postal de facturación</h4>
-          <p className="text-xs text-gray-500 mb-2">
-            Square solo requiere el código postal asociado a tu tarjeta para verificar el pago.
-          </p>
-          <input
-            className="w-full border rounded-lg p-3"
-            placeholder="Código postal"
-            inputMode="numeric"
-            value={billingPostalCode}
-            onChange={(e) => setBillingPostalCode(e.target.value)}
-          />
-          <label className="flex items-center mt-2 text-sm text-gray-600">
-            <input
-              type="checkbox"
-              className="mr-2"
-              checked={saveBillingAddress}
-              onChange={(e) => setSaveBillingAddress(e.target.checked)}
-            />
-            Guardar este código postal para futuras compras
-          </label>
-        </div>
-
         <div className="bg-gray-50 rounded-xl p-4">
           <h4 className="font-semibold text-gray-800 mb-3">Resumen del Pago</h4>
               <div className="space-y-2 text-sm">
