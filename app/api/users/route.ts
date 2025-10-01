@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
 
 const ALLOWED_ROLES = new Set(['owner', 'employee', 'customer', 'pending']);
@@ -11,6 +12,55 @@ function isValidUuid(value: unknown): value is string {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
+function extractAccessToken(request: Request): string | null {
+  const headerToken = request.headers.get('Authorization');
+  if (headerToken) {
+    const bearerToken = headerToken.replace(/bearer\s+/i, '').trim();
+    if (bearerToken) {
+      return bearerToken;
+    }
+  }
+
+  try {
+    const cookieStore = cookies();
+    const directToken = cookieStore.get('sb-access-token')?.value?.trim();
+    if (directToken) {
+      return directToken;
+    }
+
+    const authCookie = cookieStore
+      .getAll()
+      .find((cookie) => /sb-.*-auth-token$/.test(cookie.name));
+
+    if (authCookie?.value) {
+      let decodedValue = authCookie.value;
+      try {
+        decodedValue = decodeURIComponent(authCookie.value);
+      } catch (error) {
+        console.warn('Unable to decode Supabase auth cookie value:', error);
+      }
+
+      try {
+        const parsed = JSON.parse(decodedValue);
+        const cookieToken =
+          parsed?.access_token ||
+          parsed?.currentSession?.access_token ||
+          parsed?.session?.access_token;
+
+        if (typeof cookieToken === 'string' && cookieToken.trim().length > 0) {
+          return cookieToken.trim();
+        }
+      } catch (error) {
+        console.warn('Unable to parse Supabase auth cookie:', error);
+      }
+    }
+  } catch (error) {
+    console.warn('Unable to read Supabase auth cookies:', error);
+  }
+
+  return null;
+}
+
 async function getAuthorizedClient(request: Request) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -19,7 +69,7 @@ async function getAuthorizedClient(request: Request) {
     return NextResponse.json({ error: 'Missing Supabase configuration' }, { status: 500 });
   }
 
-  const token = request.headers.get('Authorization')?.replace('Bearer ', '');
+  const token = extractAccessToken(request);
   if (!token) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
