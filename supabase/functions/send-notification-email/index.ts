@@ -81,6 +81,41 @@ function isValidUUID(value: string | undefined | null): boolean {
   return uuidRegex.test(value)
 }
 
+const HTML_ESCAPE_REGEX = /[&<>'"`]/g
+const HTML_ESCAPE_MAP: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  "'": '&#39;',
+  '"': '&quot;',
+  '`': '&#96;',
+}
+
+function escapeHtml(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  const stringValue = String(value)
+  return stringValue.replace(HTML_ESCAPE_REGEX, (char) => HTML_ESCAPE_MAP[char] || char)
+}
+
+function sanitizePlainText(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'string') {
+    return escapeHtml(value)
+  }
+  return escapeHtml(String(value))
+}
+
+function sanitizeMultiline(value: unknown): string {
+  const sanitized = sanitizePlainText(value)
+  return sanitized
+}
+
+function sanitizeLink(value: unknown): string {
+  if (typeof value !== 'string') return ''
+  const ensuredUrl = ensureAppUrl(value)
+  return ensuredUrl ? escapeHtml(ensuredUrl) : ''
+}
+
 function buildCustomerWhatsAppMessage(
   type: string,
   language: string,
@@ -342,7 +377,9 @@ serve(async (req) => {
   try {
     const body = await req.json()
     let { to, type = 'order_confirmation' } = body || {}
-    const subject = body?.subject
+    const subject = typeof body?.subject === 'string'
+      ? body.subject.replace(/[\r\n]+/g, ' ').trim()
+      : undefined
     const language = typeof body?.language === 'string' ? body.language : 'es'
     let orderData = body?.orderData || {}
     let quoteData = body?.quoteData || {}
@@ -364,6 +401,13 @@ serve(async (req) => {
     let finalRecipient = rawRecipient
 
     if (isBusinessType) {
+      if (!isStaff) {
+        return new Response(JSON.stringify({ error: 'Forbidden' }), {
+          status: 403,
+          headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
       if (!rawRecipient) {
         return new Response(JSON.stringify({ error: 'Missing recipient' }), {
           status: 400,
@@ -528,18 +572,86 @@ serve(async (req) => {
       customer_phone: quoteData?.customer_phone || quoteData?.contactInfo?.phone || '',
       customer_email: quoteData?.customer_email || quoteData?.contactInfo?.email || '',
     }
+    const sanitizedOrder = {
+      id: sanitizePlainText(order.id),
+      status: sanitizePlainText(order.status),
+      pickup_time: sanitizePlainText(order.pickup_time),
+      pickup_date: sanitizePlainText(order.pickup_date),
+      customer_name: sanitizePlainText(order.customer_name),
+      customer_phone: sanitizePlainText(order.customer_phone),
+      customer_email: sanitizePlainText(order.customer_email),
+      payment_method: sanitizePlainText(order.payment_method || order.payment_type),
+      payment_type: sanitizePlainText(order.payment_type),
+      payment_status: sanitizePlainText(order.payment_status),
+      payment_url: sanitizeLink(order.payment_url),
+      tracking_url: sanitizeLink(order.tracking_url),
+      payment_reference: sanitizePlainText(order.payment_reference),
+      p2p_reference: sanitizePlainText(order.p2p_reference),
+      special_requests: sanitizeMultiline(order.special_requests),
+    }
+    const sanitizedQuote = {
+      reference_code: sanitizePlainText(quote.reference_code),
+      customer_name: sanitizePlainText(quote.customer_name),
+      customer_phone: sanitizePlainText(quote.customer_phone),
+      customer_email: sanitizePlainText(quote.customer_email),
+      occasion: sanitizePlainText(quote.occasion),
+      theme: sanitizePlainText(quote.theme),
+      event_date: sanitizePlainText(quote.event_date),
+      event_details: sanitizeMultiline(quote.event_details),
+      pickup_time: sanitizePlainText(quote.pickup_time),
+      special_requests: sanitizeMultiline(quote.special_requests),
+    }
+    const orderItems = Array.isArray(order.items) ? (order.items as any[]) : []
+    const orderItemsHtml = orderItems.length
+      ? orderItems
+          .map((item: any) => {
+            const quantityNumber = Number(item?.quantity ?? 1)
+            const safeQuantity = Number.isFinite(quantityNumber) ? quantityNumber : 1
+            const priceNumber = Number(item?.price ?? 0)
+            const safePrice = Number.isFinite(priceNumber) ? priceNumber : 0
+            return `
+              <li>${sanitizePlainText(item?.name || 'Artículo')} x${escapeHtml(String(safeQuantity))} - $${safePrice.toFixed(2)}</li>
+            `
+          })
+          .join('')
+      : '<li>Sin productos adjuntos.</li>'
+    const orderItemsTableHtml = orderItems.length
+      ? orderItems
+          .map((item: any) => {
+            const quantityNumber = Number(item?.quantity ?? 1)
+            const safeQuantity = Number.isFinite(quantityNumber) ? quantityNumber : 1
+            const priceNumber = Number(item?.price ?? 0)
+            const safePrice = Number.isFinite(priceNumber) ? priceNumber : 0
+            return `
+              <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #f1f5f9; color: #334155;">${sanitizePlainText(item?.name || 'Artículo')}</td>
+                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #f1f5f9; color: #475569;">${escapeHtml(String(safeQuantity))}</td>
+                <td style="padding: 10px; text-align: right; border-bottom: 1px solid #f1f5f9; color: #475569;">$${safePrice.toFixed(2)}</td>
+              </tr>
+            `
+          })
+          .join('')
+      : '<tr><td colspan="3" style="padding: 10px; text-align: center; color: #6b7280;">Sin productos adjuntos.</td></tr>'
     const quoteItems = Array.isArray(quote.cart_items) ? (quote.cart_items as any[]) : []
     const quoteItemsHtml = quoteItems.length
-      ? quoteItems.map((item: any) => `
-          <li style="margin-bottom: 8px;">
-            <strong>${item.quantity || 1}x ${item.name || 'Artículo'}</strong>
-            ${item.price_label ? `<div style="color: #6b7280; font-size: 12px;">${item.price_label}</div>` : ''}
-            ${item.details ? `<div style="margin-top: 4px; color: #4b5563; white-space: pre-line;">${item.details}</div>` : ''}
-          </li>
-        `).join('')
+      ? quoteItems
+          .map((item: any) => {
+            const quantityNumber = Number(item?.quantity ?? 1)
+            const safeQuantity = Number.isFinite(quantityNumber) ? quantityNumber : 1
+            const priceLabel = sanitizePlainText(item?.price_label)
+            const details = sanitizeMultiline(item?.details)
+            return `
+              <li style="margin-bottom: 8px;">
+                <strong>${escapeHtml(String(safeQuantity))}x ${sanitizePlainText(item?.name || 'Artículo')}</strong>
+                ${priceLabel ? `<div style="color: #6b7280; font-size: 12px;">${priceLabel}</div>` : ''}
+                ${details ? `<div style="margin-top: 4px; color: #4b5563; white-space: pre-line;">${details}</div>` : ''}
+              </li>
+            `
+          })
+          .join('')
       : '<li style="color: #6b7280;">Sin desglose de artículos adjunto.</li>'
     const formattedQuoteSummary = typeof quote.event_details === 'string'
-      ? quote.event_details.replace(/\n/g, '<br />')
+      ? sanitizeMultiline(quote.event_details).replace(/\n/g, '<br />')
       : ''
 
     if (!RESEND_API_KEY) {
@@ -562,7 +674,7 @@ serve(async (req) => {
     const templates = {
       es: {
         order_confirmation: {
-          subject: `Confirmación de Pedido #${order.id} - Ranger's Bakery`,
+          subject: `Confirmación de Pedido #${sanitizedOrder.id || 'Sin ID'} - Ranger's Bakery`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <div style="background: linear-gradient(135deg, #f472b6, #38bdf8); padding: 20px; text-align: center;">
@@ -574,21 +686,19 @@ serve(async (req) => {
                 <h2 style="color: #92400e; margin-bottom: 20px;">Confirmación de Pedido</h2>
 
                 <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                  <p style="margin: 0; font-weight: bold;">Pedido #${order.id}</p>
-                  <p style="margin: 5px 0 0 0;">Estado: ${order.status}</p>
-                  ${order.pickup_time ? `<p style="margin: 5px 0 0 0;">Fecha de recogida: ${order.pickup_time}</p>` : ''}
+                  <p style="margin: 0; font-weight: bold;">Pedido #${sanitizedOrder.id || 'Sin ID'}</p>
+                  <p style="margin: 5px 0 0 0;">Estado: ${sanitizedOrder.status || 'pendiente'}</p>
+                  ${sanitizedOrder.pickup_time ? `<p style="margin: 5px 0 0 0;">Fecha de recogida: ${sanitizedOrder.pickup_time}</p>` : ''}
                 </div>
 
                 <h3 style="color: #92400e;">Detalles del Cliente:</h3>
-                <p>Nombre: ${order.customer_name}</p>
-                <p>Teléfono: ${order.customer_phone}</p>
-                ${order.customer_email ? `<p>Email: ${order.customer_email}</p>` : ''}
+                <p>Nombre: ${sanitizedOrder.customer_name || 'Cliente'}</p>
+                <p>Teléfono: ${sanitizedOrder.customer_phone || 'No provisto'}</p>
+                ${sanitizedOrder.customer_email ? `<p>Email: ${sanitizedOrder.customer_email}</p>` : ''}
 
                 <h3 style="color: #92400e;">Productos:</h3>
                 <ul>
-                  ${(order.items as any[]).map((item: any) =>
-                    `<li>${item.name} x${item.quantity} - $${Number(item.price).toFixed(2)}</li>`
-                  ).join('')}
+                  ${orderItemsHtml}
                 </ul>
 
                 <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin-top: 20px;">
@@ -597,9 +707,9 @@ serve(async (req) => {
                   <p style="margin: 5px 0 0 0; font-size: 18px; color: #92400e;"><strong>Total: $${Number(order.total || 0).toFixed(2)}</strong></p>
                 </div>
 
-                ${order.special_requests ? `
+                ${sanitizedOrder.special_requests ? `
                   <h3 style="color: #92400e;">Solicitudes Especiales:</h3>
-                  <p style="background: #f9fafb; padding: 10px; border-radius: 4px;">${order.special_requests}</p>
+                  <p style="background: #f9fafb; padding: 10px; border-radius: 4px; white-space: pre-wrap;">${sanitizedOrder.special_requests}</p>
                 ` : ''}
 
                 <div style="text-align: center; margin-top: 30px;">
@@ -616,7 +726,7 @@ serve(async (req) => {
           `
         },
         business_new_order: {
-          subject: `Nueva orden recibida #${order.id || 'Sin ID'} - Ranger's Bakery`,
+          subject: `Nueva orden recibida #${sanitizedOrder.id || 'Sin ID'} - Ranger's Bakery`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
               <div style="background: linear-gradient(135deg, #f97316, #ef4444); padding: 20px; text-align: center;">
@@ -626,17 +736,17 @@ serve(async (req) => {
 
               <div style="padding: 28px 24px; background: #ffffff;">
                 <div style="background: #fff7ed; border: 1px solid #fed7aa; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px;">
-                  <p style="margin: 0; font-size: 18px; font-weight: bold; color: #92400e;">Pedido #${order.id || 'Sin ID'}</p>
-                  <p style="margin: 6px 0 0 0; color: #b45309;">Estado inicial: ${order.status || 'pendiente'}</p>
-                  ${order.payment_method ? `<p style="margin: 6px 0 0 0; color: #b45309;">Método de pago: ${order.payment_method}</p>` : ''}
-                  ${order.pickup_time ? `<p style="margin: 6px 0 0 0; color: #b45309;">Recogida: ${order.pickup_time}</p>` : ''}
+                  <p style="margin: 0; font-size: 18px; font-weight: bold; color: #92400e;">Pedido #${sanitizedOrder.id || 'Sin ID'}</p>
+                  <p style="margin: 6px 0 0 0; color: #b45309;">Estado inicial: ${sanitizedOrder.status || 'pendiente'}</p>
+                  ${sanitizedOrder.payment_method ? `<p style="margin: 6px 0 0 0; color: #b45309;">Método de pago: ${sanitizedOrder.payment_method}</p>` : ''}
+                  ${sanitizedOrder.pickup_time ? `<p style="margin: 6px 0 0 0; color: #b45309;">Recogida: ${sanitizedOrder.pickup_time}</p>` : ''}
                 </div>
 
                 <h3 style="color: #0f172a; margin-bottom: 12px;">Información del cliente</h3>
                 <div style="background: #f8fafc; border-radius: 12px; padding: 16px 20px; border: 1px solid #e2e8f0;">
-                  <p style="margin: 0 0 6px 0; color: #475569;"><strong>Nombre:</strong> ${order.customer_name || 'Cliente'}</p>
-                  <p style="margin: 0 0 6px 0; color: #475569;"><strong>Teléfono:</strong> ${order.customer_phone || 'No provisto'}</p>
-                  ${order.customer_email ? `<p style="margin: 0; color: #475569;"><strong>Email:</strong> ${order.customer_email}</p>` : ''}
+                  <p style="margin: 0 0 6px 0; color: #475569;"><strong>Nombre:</strong> ${sanitizedOrder.customer_name || 'Cliente'}</p>
+                  <p style="margin: 0 0 6px 0; color: #475569;"><strong>Teléfono:</strong> ${sanitizedOrder.customer_phone || 'No provisto'}</p>
+                  ${sanitizedOrder.customer_email ? `<p style="margin: 0; color: #475569;"><strong>Email:</strong> ${sanitizedOrder.customer_email}</p>` : ''}
                 </div>
 
                 <h3 style="color: #0f172a; margin: 24px 0 12px 0;">Resumen del pedido</h3>
@@ -649,13 +759,7 @@ serve(async (req) => {
                     </tr>
                   </thead>
                   <tbody>
-                    ${(order.items as any[]).map((item: any) => `
-                      <tr>
-                        <td style="padding: 10px; border-bottom: 1px solid #f1f5f9; color: #334155;">${item.name}</td>
-                        <td style="padding: 10px; text-align: center; border-bottom: 1px solid #f1f5f9; color: #475569;">${item.quantity}</td>
-                        <td style="padding: 10px; text-align: right; border-bottom: 1px solid #f1f5f9; color: #475569;">$${Number(item.price).toFixed(2)}</td>
-                      </tr>
-                    `).join('')}
+                    ${orderItemsTableHtml}
                   </tbody>
                 </table>
 
@@ -665,10 +769,10 @@ serve(async (req) => {
                   <p style="margin: 0; font-size: 18px; font-weight: bold; color: #0f172a;"><strong>Total:</strong> $${Number(order.total || 0).toFixed(2)}</strong></p>
                 </div>
 
-                ${order.special_requests ? `
+                ${sanitizedOrder.special_requests ? `
                   <div style="margin-top: 20px; padding: 16px 20px; background: #ecfeff; border-radius: 12px; border: 1px solid #67e8f9;">
                     <h4 style="margin: 0 0 10px 0; color: #0369a1;">Notas / Solicitudes especiales</h4>
-                    <p style="margin: 0; color: #0f172a; white-space: pre-wrap;">${order.special_requests}</p>
+                    <p style="margin: 0; color: #0f172a; white-space: pre-wrap;">${sanitizedOrder.special_requests}</p>
                   </div>
                 ` : ''}
 
@@ -685,7 +789,7 @@ serve(async (req) => {
           `
         },
         new_quote: {
-          subject: subject || `Nueva cotización recibida - ${quote.reference_code || quote.customer_name || 'Cliente'}`,
+          subject: subject || `Nueva cotización recibida - ${sanitizedQuote.reference_code || sanitizedQuote.customer_name || 'Cliente'}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
               <div style="background: linear-gradient(135deg, #c084fc, #6366f1); padding: 24px; text-align: center; color: white;">
@@ -694,16 +798,16 @@ serve(async (req) => {
               </div>
               <div style="padding: 28px 24px; background: #ffffff;">
                 <div style="background: #f5f3ff; border-radius: 12px; padding: 18px; border: 1px solid #ddd6fe;">
-                  <p style="margin: 0; font-size: 18px; color: #4c1d95; font-weight: bold;">Referencia: ${quote.reference_code || 'Sin código'}</p>
-                  <p style="margin: 6px 0 0 0; color: #5b21b6;">Cliente: ${quote.customer_name || 'Cliente'}</p>
-                  ${quote.customer_phone ? `<p style="margin: 6px 0 0 0; color: #5b21b6;">Teléfono: ${quote.customer_phone}</p>` : ''}
-                  ${quote.customer_email ? `<p style="margin: 6px 0 0 0; color: #5b21b6;">Email: ${quote.customer_email}</p>` : ''}
+                  <p style="margin: 0; font-size: 18px; color: #4c1d95; font-weight: bold;">Referencia: ${sanitizedQuote.reference_code || 'Sin código'}</p>
+                  <p style="margin: 6px 0 0 0; color: #5b21b6;">Cliente: ${sanitizedQuote.customer_name || 'Cliente'}</p>
+                  ${sanitizedQuote.customer_phone ? `<p style="margin: 6px 0 0 0; color: #5b21b6;">Teléfono: ${sanitizedQuote.customer_phone}</p>` : ''}
+                  ${sanitizedQuote.customer_email ? `<p style="margin: 6px 0 0 0; color: #5b21b6;">Email: ${sanitizedQuote.customer_email}</p>` : ''}
                 </div>
 
-                ${quote.pickup_time ? `
+                ${sanitizedQuote.pickup_time ? `
                   <div style="margin-top: 20px;">
                     <p style="margin: 0; font-weight: bold; color: #4338ca;">Hora preferida de recogida:</p>
-                    <p style="margin: 4px 0 0 0; color: #312e81;">${quote.pickup_time}</p>
+                    <p style="margin: 4px 0 0 0; color: #312e81;">${sanitizedQuote.pickup_time}</p>
                   </div>
                 ` : ''}
 
@@ -721,10 +825,10 @@ serve(async (req) => {
                   </ul>
                 </div>
 
-                ${quote.special_requests ? `
+                ${sanitizedQuote.special_requests ? `
                   <div style="margin-top: 24px; background: #fffbeb; border-radius: 10px; padding: 16px; border: 1px solid #fef3c7;">
                     <h4 style="margin: 0 0 8px 0; color: #92400e;">Solicitudes especiales</h4>
-                    <p style="margin: 0; color: #92400e; white-space: pre-line;">${quote.special_requests}</p>
+                    <p style="margin: 0; color: #92400e; white-space: pre-line;">${sanitizedQuote.special_requests}</p>
                   </div>
                 ` : ''}
 
@@ -748,15 +852,15 @@ serve(async (req) => {
                 <p style="margin: 8px 0 0 0;">Estamos preparando la cotización personalizada de tu pastel.</p>
               </div>
               <div style="padding: 28px 24px; background: #ffffff;">
-                <p style="font-size: 16px; color: #1f2937;">Hola ${quote.customer_name || 'amigo/a de Ranger Bakery'},</p>
+                <p style="font-size: 16px; color: #1f2937;">Hola ${sanitizedQuote.customer_name || 'amigo/a de Ranger Bakery'},</p>
                 <p style="color: #4b5563; line-height: 1.6;">
                   Nuestro equipo revisará tu diseño y en menos de 24 horas te enviaremos el precio final por correo o teléfono.
                 </p>
 
                 <div style="background: #fdf2f8; border-radius: 12px; padding: 18px; border: 1px solid #fbcfe8;">
                   <p style="margin: 0; color: #be185d; font-weight: bold;">Tu código de referencia</p>
-                  <p style="margin: 4px 0 0 0; color: #9d174d; font-size: 20px; letter-spacing: 1px; font-weight: bold;">${quote.reference_code || 'Pendiente'}</p>
-                  ${quote.pickup_time ? `<p style="margin: 8px 0 0 0; color: #be185d;">Hora preferida de recogida: ${quote.pickup_time}</p>` : ''}
+                  <p style="margin: 4px 0 0 0; color: #9d174d; font-size: 20px; letter-spacing: 1px; font-weight: bold;">${sanitizedQuote.reference_code || 'Pendiente'}</p>
+                  ${sanitizedQuote.pickup_time ? `<p style="margin: 8px 0 0 0; color: #be185d;">Hora preferida de recogida: ${sanitizedQuote.pickup_time}</p>` : ''}
                 </div>
 
                 <div style="margin-top: 24px;">
@@ -772,10 +876,10 @@ serve(async (req) => {
                   </div>
                 ` : ''}
 
-                ${quote.special_requests ? `
+                ${sanitizedQuote.special_requests ? `
                   <div style="margin-top: 24px; background: #fff7ed; border-radius: 10px; padding: 16px; border: 1px solid #fed7aa;">
                     <h4 style="margin: 0 0 8px 0; color: #b45309;">Tus notas</h4>
-                    <p style="margin: 0; color: #b45309; white-space: pre-line;">${quote.special_requests}</p>
+                    <p style="margin: 0; color: #b45309; white-space: pre-line;">${sanitizedQuote.special_requests}</p>
                   </div>
                 ` : ''}
 
@@ -791,7 +895,7 @@ serve(async (req) => {
           `
         },
         customer_order_payment_ready: {
-          subject: `Tu orden ${order.id ? `#${order.id} ` : ''}está lista para pagar 💳`,
+          subject: `Tu orden ${sanitizedOrder.id ? `#${sanitizedOrder.id} ` : ''}está lista para pagar 💳`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
               <div style="background: linear-gradient(135deg, #fb7185, #f97316); padding: 26px; text-align: center; color: white;">
@@ -799,7 +903,7 @@ serve(async (req) => {
                 <p style="margin: 10px 0 0 0;">Ya puedes completar el pago para continuar con la preparación.</p>
               </div>
               <div style="padding: 28px 24px; background: #ffffff;">
-                <p style="font-size: 16px; color: #1f2937;">Hola ${order.customer_name || 'cliente Ranger'},</p>
+                <p style="font-size: 16px; color: #1f2937;">Hola ${sanitizedOrder.customer_name || 'cliente Ranger'},</p>
                 <p style="color: #4b5563; line-height: 1.6;">
                   Hemos revisado tu pedido y confirmamos el precio final. Completa el pago en línea para que podamos comenzar a trabajar en tu orden.
                 </p>
@@ -810,21 +914,21 @@ serve(async (req) => {
                   <p style="margin: 8px 0 0 0; color: #64748b;">Subtotal: $${Number(order.subtotal || 0).toFixed(2)} ${Number(order.tax || 0) > 0 ? `| Impuestos: $${Number(order.tax || 0).toFixed(2)}` : ''}</p>
                 </div>
 
-                ${order.payment_url ? `
+                ${sanitizedOrder.payment_url ? `
                   <div style="text-align: center; margin-bottom: 28px;">
-                    <a href="${order.payment_url}" style="display: inline-block; background: linear-gradient(135deg, #fb7185, #f97316); color: white; padding: 14px 28px; border-radius: 9999px; text-decoration: none; font-size: 16px; font-weight: bold;">Pagar mi orden</a>
+                    <a href="${sanitizedOrder.payment_url}" style="display: inline-block; background: linear-gradient(135deg, #fb7185, #f97316); color: white; padding: 14px 28px; border-radius: 9999px; text-decoration: none; font-size: 16px; font-weight: bold;">Pagar mi orden</a>
                   </div>
                 ` : ''}
 
-                ${order.pickup_time ? `
+                ${sanitizedOrder.pickup_time ? `
                   <p style="color: #4b5563; line-height: 1.6; text-align: center;">
-                    Hora estimada de recogida: <strong>${order.pickup_time}</strong>
+                    Hora estimada de recogida: <strong>${sanitizedOrder.pickup_time}</strong>
                   </p>
                 ` : ''}
 
-                ${order.tracking_url ? `
+                ${sanitizedOrder.tracking_url ? `
                   <p style="color: #6b7280; text-align: center;">
-                    Puedes seguir el estado de tu orden aquí: <a href="${order.tracking_url}" style="color: #f97316; font-weight: 600;">Ver mi orden</a>
+                    Puedes seguir el estado de tu orden aquí: <a href="${sanitizedOrder.tracking_url}" style="color: #f97316; font-weight: 600;">Ver mi orden</a>
                   </p>
                 ` : ''}
               </div>
@@ -836,7 +940,7 @@ serve(async (req) => {
           `
         },
         customer_order_ready_for_pickup: {
-          subject: `Tu orden ${order.id ? `#${order.id} ` : ''}está lista para recoger 🎉`,
+          subject: `Tu orden ${sanitizedOrder.id ? `#${sanitizedOrder.id} ` : ''}está lista para recoger 🎉`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
               <div style="background: linear-gradient(135deg, #34d399, #22d3ee); padding: 26px; text-align: center; color: white;">
@@ -844,27 +948,27 @@ serve(async (req) => {
                 <p style="margin: 10px 0 0 0;">Tu pedido ya está terminado y esperándote.</p>
               </div>
               <div style="padding: 28px 24px; background: #ffffff;">
-                <p style="font-size: 16px; color: #1f2937;">Hola ${order.customer_name || 'cliente Ranger'},</p>
+                <p style="font-size: 16px; color: #1f2937;">Hola ${sanitizedOrder.customer_name || 'cliente Ranger'},</p>
                 <p style="color: #4b5563; line-height: 1.6;">
                   Queríamos avisarte que tu orden está lista para recoger en la panadería. ¡No podemos esperar a que la veas!
                 </p>
 
-                ${order.pickup_time ? `
+                ${sanitizedOrder.pickup_time ? `
                   <div style="background: #ecfeff; border: 1px solid #a5f3fc; border-radius: 12px; padding: 18px; margin: 20px 0; text-align: center;">
                     <p style="margin: 0; color: #0f172a;">Horario sugerido:</p>
-                    <p style="margin: 6px 0 0 0; font-size: 18px; font-weight: bold; color: #0f172a;">${order.pickup_time}</p>
+                    <p style="margin: 6px 0 0 0; font-size: 18px; font-weight: bold; color: #0f172a;">${sanitizedOrder.pickup_time}</p>
                   </div>
                 ` : ''}
 
-                ${order.tracking_url ? `
+                ${sanitizedOrder.tracking_url ? `
                   <p style="color: #6b7280; text-align: center;">
-                    Revisa los detalles y el estado aquí: <a href="${order.tracking_url}" style="color: #0ea5e9; font-weight: 600;">Seguir mi orden</a>
+                    Revisa los detalles y el estado aquí: <a href="${sanitizedOrder.tracking_url}" style="color: #0ea5e9; font-weight: 600;">Seguir mi orden</a>
                   </p>
                 ` : ''}
 
-                ${order.payment_url ? `
+                ${sanitizedOrder.payment_url ? `
                   <p style="color: #f97316; text-align: center; font-weight: 600;">
-                    Si aún no has pagado, puedes hacerlo en línea: <a href="${order.payment_url}" style="color: #fb7185;">Pagar ahora</a>
+                    Si aún no has pagado, puedes hacerlo en línea: <a href="${sanitizedOrder.payment_url}" style="color: #fb7185;">Pagar ahora</a>
                   </p>
                 ` : ''}
 
@@ -883,7 +987,7 @@ serve(async (req) => {
       },
       en: {
         order_confirmation: {
-          subject: `Order Confirmation #${order.id} - Ranger's Bakery`,
+          subject: `Order Confirmation #${sanitizedOrder.id || 'N/A'} - Ranger's Bakery`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <div style="background: linear-gradient(135deg, #f472b6, #38bdf8); padding: 20px; text-align: center;">
@@ -895,21 +999,19 @@ serve(async (req) => {
                 <h2 style="color: #92400e; margin-bottom: 20px;">Order Confirmation</h2>
 
                 <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                  <p style="margin: 0; font-weight: bold;">Order #${order.id}</p>
-                  <p style="margin: 5px 0 0 0;">Status: ${order.status}</p>
-                  ${order.pickup_time ? `<p style="margin: 5px 0 0 0;">Pickup time: ${order.pickup_time}</p>` : ''}
+                  <p style="margin: 0; font-weight: bold;">Order #${sanitizedOrder.id || 'N/A'}</p>
+                  <p style="margin: 5px 0 0 0;">Status: ${sanitizedOrder.status || 'pending'}</p>
+                  ${sanitizedOrder.pickup_time ? `<p style="margin: 5px 0 0 0;">Pickup time: ${sanitizedOrder.pickup_time}</p>` : ''}
                 </div>
 
                 <h3 style="color: #92400e;">Customer Details:</h3>
-                <p>Name: ${order.customer_name}</p>
-                <p>Phone: ${order.customer_phone}</p>
-                ${order.customer_email ? `<p>Email: ${order.customer_email}</p>` : ''}
+                <p>Name: ${sanitizedOrder.customer_name || 'Customer'}</p>
+                <p>Phone: ${sanitizedOrder.customer_phone || 'Not provided'}</p>
+                ${sanitizedOrder.customer_email ? `<p>Email: ${sanitizedOrder.customer_email}</p>` : ''}
 
                 <h3 style="color: #92400e;">Items:</h3>
                 <ul>
-                  ${(order.items as any[]).map((item: any) =>
-                    `<li>${item.name} x${item.quantity} - $${Number(item.price).toFixed(2)}</li>`
-                  ).join('')}
+                  ${orderItemsHtml}
                 </ul>
 
                 <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin-top: 20px;">
@@ -918,9 +1020,9 @@ serve(async (req) => {
                   <p style="margin: 5px 0 0 0; font-size: 18px; color: #92400e;"><strong>Total: $${Number(order.total || 0).toFixed(2)}</strong></p>
                 </div>
 
-                ${order.special_requests ? `
+                ${sanitizedOrder.special_requests ? `
                   <h3 style="color: #92400e;">Special Requests:</h3>
-                  <p style="background: #f9fafb; padding: 10px; border-radius: 4px;">${order.special_requests}</p>
+                  <p style="background: #f9fafb; padding: 10px; border-radius: 4px; white-space: pre-wrap;">${sanitizedOrder.special_requests}</p>
                 ` : ''}
 
                 <div style="text-align: center; margin-top: 30px;">
@@ -937,7 +1039,7 @@ serve(async (req) => {
           `
         },
         business_new_order: {
-          subject: `New order received #${order.id || 'N/A'} - Ranger's Bakery`,
+          subject: `New order received #${sanitizedOrder.id || 'N/A'} - Ranger's Bakery`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
               <div style="background: linear-gradient(135deg, #2563eb, #7c3aed); padding: 20px; text-align: center;">
@@ -947,17 +1049,17 @@ serve(async (req) => {
 
               <div style="padding: 28px 24px; background: #ffffff;">
                 <div style="background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px;">
-                  <p style="margin: 0; font-size: 18px; font-weight: bold; color: #312e81;">Order #${order.id || 'N/A'}</p>
-                  <p style="margin: 6px 0 0 0; color: #4338ca;">Initial status: ${order.status || 'pending'}</p>
-                  ${order.payment_method ? `<p style="margin: 6px 0 0 0; color: #4338ca;">Payment method: ${order.payment_method}</p>` : ''}
-                  ${order.pickup_time ? `<p style="margin: 6px 0 0 0; color: #4338ca;">Pickup: ${order.pickup_time}</p>` : ''}
+                  <p style="margin: 0; font-size: 18px; font-weight: bold; color: #312e81;">Order #${sanitizedOrder.id || 'N/A'}</p>
+                  <p style="margin: 6px 0 0 0; color: #4338ca;">Initial status: ${sanitizedOrder.status || 'pending'}</p>
+                  ${sanitizedOrder.payment_method ? `<p style="margin: 6px 0 0 0; color: #4338ca;">Payment method: ${sanitizedOrder.payment_method}</p>` : ''}
+                  ${sanitizedOrder.pickup_time ? `<p style="margin: 6px 0 0 0; color: #4338ca;">Pickup: ${sanitizedOrder.pickup_time}</p>` : ''}
                 </div>
 
                 <h3 style="color: #0f172a; margin-bottom: 12px;">Customer information</h3>
                 <div style="background: #f8fafc; border-radius: 12px; padding: 16px 20px; border: 1px solid #e2e8f0;">
-                  <p style="margin: 0 0 6px 0; color: #475569;"><strong>Name:</strong> ${order.customer_name || 'Customer'}</p>
-                  <p style="margin: 0 0 6px 0; color: #475569;"><strong>Phone:</strong> ${order.customer_phone || 'Not provided'}</p>
-                  ${order.customer_email ? `<p style="margin: 0; color: #475569;"><strong>Email:</strong> ${order.customer_email}</p>` : ''}
+                  <p style="margin: 0 0 6px 0; color: #475569;"><strong>Name:</strong> ${sanitizedOrder.customer_name || 'Customer'}</p>
+                  <p style="margin: 0 0 6px 0; color: #475569;"><strong>Phone:</strong> ${sanitizedOrder.customer_phone || 'Not provided'}</p>
+                  ${sanitizedOrder.customer_email ? `<p style="margin: 0; color: #475569;"><strong>Email:</strong> ${sanitizedOrder.customer_email}</p>` : ''}
                 </div>
 
                 <h3 style="color: #0f172a; margin: 24px 0 12px 0;">Order summary</h3>
@@ -970,13 +1072,7 @@ serve(async (req) => {
                     </tr>
                   </thead>
                   <tbody>
-                    ${(order.items as any[]).map((item: any) => `
-                      <tr>
-                        <td style="padding: 10px; border-bottom: 1px solid #f1f5f9; color: #334155;">${item.name}</td>
-                        <td style="padding: 10px; text-align: center; border-bottom: 1px solid #f1f5f9; color: #475569;">${item.quantity}</td>
-                        <td style="padding: 10px; text-align: right; border-bottom: 1px solid #f1f5f9; color: #475569;">$${Number(item.price).toFixed(2)}</td>
-                      </tr>
-                    `).join('')}
+                    ${orderItemsTableHtml}
                   </tbody>
                 </table>
 
@@ -986,10 +1082,10 @@ serve(async (req) => {
                   <p style="margin: 0; font-size: 18px; font-weight: bold; color: #0f172a;"><strong>Total:</strong> $${Number(order.total || 0).toFixed(2)}</p>
                 </div>
 
-                ${order.special_requests ? `
+                ${sanitizedOrder.special_requests ? `
                   <div style="margin-top: 20px; padding: 16px 20px; background: #eef2ff; border-radius: 12px; border: 1px solid #c7d2fe;">
                     <h4 style="margin: 0 0 10px 0; color: #3730a3;">Notes / Special requests</h4>
-                    <p style="margin: 0; color: #0f172a; white-space: pre-wrap;">${order.special_requests}</p>
+                    <p style="margin: 0; color: #0f172a; white-space: pre-wrap;">${sanitizedOrder.special_requests}</p>
                   </div>
                 ` : ''}
 
@@ -1006,7 +1102,7 @@ serve(async (req) => {
           `
         },
         new_quote: {
-          subject: subject || `New quote request - ${quote.reference_code || quote.customer_name || 'Customer'}`,
+          subject: subject || `New quote request - ${sanitizedQuote.reference_code || sanitizedQuote.customer_name || 'Customer'}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
               <div style="background: linear-gradient(135deg, #60a5fa, #2563eb); padding: 24px; text-align: center; color: white;">
@@ -1015,16 +1111,16 @@ serve(async (req) => {
               </div>
               <div style="padding: 28px 24px; background: #ffffff;">
                 <div style="background: #dbeafe; border-radius: 12px; padding: 18px; border: 1px solid #bfdbfe;">
-                  <p style="margin: 0; font-size: 18px; color: #1d4ed8; font-weight: bold;">Reference: ${quote.reference_code || 'N/A'}</p>
-                  <p style="margin: 6px 0 0 0; color: #1e40af;">Customer: ${quote.customer_name || 'Customer'}</p>
-                  ${quote.customer_phone ? `<p style="margin: 6px 0 0 0; color: #1e40af;">Phone: ${quote.customer_phone}</p>` : ''}
-                  ${quote.customer_email ? `<p style="margin: 6px 0 0 0; color: #1e40af;">Email: ${quote.customer_email}</p>` : ''}
+                  <p style="margin: 0; font-size: 18px; color: #1d4ed8; font-weight: bold;">Reference: ${sanitizedQuote.reference_code || 'N/A'}</p>
+                  <p style="margin: 6px 0 0 0; color: #1e40af;">Customer: ${sanitizedQuote.customer_name || 'Customer'}</p>
+                  ${sanitizedQuote.customer_phone ? `<p style="margin: 6px 0 0 0; color: #1e40af;">Phone: ${sanitizedQuote.customer_phone}</p>` : ''}
+                  ${sanitizedQuote.customer_email ? `<p style="margin: 6px 0 0 0; color: #1e40af;">Email: ${sanitizedQuote.customer_email}</p>` : ''}
                 </div>
 
-                ${quote.pickup_time ? `
+                ${sanitizedQuote.pickup_time ? `
                   <div style="margin-top: 20px;">
                     <p style="margin: 0; font-weight: bold; color: #1d4ed8;">Preferred pickup time:</p>
-                    <p style="margin: 4px 0 0 0; color: #1e3a8a;">${quote.pickup_time}</p>
+                    <p style="margin: 4px 0 0 0; color: #1e3a8a;">${sanitizedQuote.pickup_time}</p>
                   </div>
                 ` : ''}
 
@@ -1042,10 +1138,10 @@ serve(async (req) => {
                   </ul>
                 </div>
 
-                ${quote.special_requests ? `
+                ${sanitizedQuote.special_requests ? `
                   <div style="margin-top: 24px; background: #fef9c3; border-radius: 10px; padding: 16px; border: 1px solid #fde047;">
                     <h4 style="margin: 0 0 8px 0; color: #92400e;">Special notes</h4>
-                    <p style="margin: 0; color: #92400e; white-space: pre-line;">${quote.special_requests}</p>
+                    <p style="margin: 0; color: #92400e; white-space: pre-line;">${sanitizedQuote.special_requests}</p>
                   </div>
                 ` : ''}
 
@@ -1068,15 +1164,15 @@ serve(async (req) => {
                 <p style="margin: 8px 0 0 0;">We are reviewing your custom cake design.</p>
               </div>
               <div style="padding: 28px 24px; background: #ffffff;">
-                <p style="font-size: 16px; color: #111827;">Hi ${quote.customer_name || 'Ranger Bakery friend'},</p>
+                <p style="font-size: 16px; color: #111827;">Hi ${sanitizedQuote.customer_name || 'Ranger Bakery friend'},</p>
                 <p style="color: #4b5563; line-height: 1.6;">
                   Our team will review your request and send the final quote within the next 24 hours.
                 </p>
 
                 <div style="background: #ede9fe; border-radius: 12px; padding: 18px; border: 1px solid #ddd6fe;">
                   <p style="margin: 0; color: #4338ca; font-weight: bold;">Your reference code</p>
-                  <p style="margin: 4px 0 0 0; color: #312e81; font-size: 20px; letter-spacing: 1px; font-weight: bold;">${quote.reference_code || 'Pending'}</p>
-                  ${quote.pickup_time ? `<p style="margin: 8px 0 0 0; color: #4338ca;">Preferred pickup time: ${quote.pickup_time}</p>` : ''}
+                  <p style="margin: 4px 0 0 0; color: #312e81; font-size: 20px; letter-spacing: 1px; font-weight: bold;">${sanitizedQuote.reference_code || 'Pending'}</p>
+                  ${sanitizedQuote.pickup_time ? `<p style="margin: 8px 0 0 0; color: #4338ca;">Preferred pickup time: ${sanitizedQuote.pickup_time}</p>` : ''}
                 </div>
 
                 <div style="margin-top: 24px;">
@@ -1092,10 +1188,10 @@ serve(async (req) => {
                   </div>
                 ` : ''}
 
-                ${quote.special_requests ? `
+                ${sanitizedQuote.special_requests ? `
                   <div style="margin-top: 24px; background: #fff7ed; border-radius: 10px; padding: 16px; border: 1px solid #fde68a;">
                     <h4 style="margin: 0 0 8px 0; color: #b45309;">Your notes</h4>
-                    <p style="margin: 0; color: #b45309; white-space: pre-line;">${quote.special_requests}</p>
+                    <p style="margin: 0; color: #b45309; white-space: pre-line;">${sanitizedQuote.special_requests}</p>
                   </div>
                 ` : ''}
 
@@ -1110,7 +1206,7 @@ serve(async (req) => {
           `
         },
         customer_order_payment_ready: {
-          subject: `Your order ${order.id ? `#${order.id} ` : ''}is ready to pay 💳`,
+          subject: `Your order ${sanitizedOrder.id ? `#${sanitizedOrder.id} ` : ''}is ready to pay 💳`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
               <div style="background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 26px; text-align: center; color: white;">
@@ -1118,7 +1214,7 @@ serve(async (req) => {
                 <p style="margin: 10px 0 0 0;">Complete the payment so we can start baking.</p>
               </div>
               <div style="padding: 28px 24px; background: #ffffff;">
-                <p style="font-size: 16px; color: #1f2937;">Hi ${order.customer_name || 'Ranger friend'},</p>
+                <p style="font-size: 16px; color: #1f2937;">Hi ${sanitizedOrder.customer_name || 'Ranger friend'},</p>
                 <p style="color: #4b5563; line-height: 1.6;">
                   We've reviewed your order and confirmed the final price. Please pay online to lock in your spot on our schedule.
                 </p>
@@ -1129,21 +1225,21 @@ serve(async (req) => {
                   <p style="margin: 8px 0 0 0; color: #6366f1;">Subtotal: $${Number(order.subtotal || 0).toFixed(2)} ${Number(order.tax || 0) > 0 ? `| Tax: $${Number(order.tax || 0).toFixed(2)}` : ''}</p>
                 </div>
 
-                ${order.payment_url ? `
+                ${sanitizedOrder.payment_url ? `
                   <div style="text-align: center; margin-bottom: 28px;">
-                    <a href="${order.payment_url}" style="display: inline-block; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 14px 28px; border-radius: 9999px; text-decoration: none; font-size: 16px; font-weight: bold;">Pay now</a>
+                    <a href="${sanitizedOrder.payment_url}" style="display: inline-block; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 14px 28px; border-radius: 9999px; text-decoration: none; font-size: 16px; font-weight: bold;">Pay now</a>
                   </div>
                 ` : ''}
 
-                ${order.pickup_time ? `
+                ${sanitizedOrder.pickup_time ? `
                   <p style="color: #4b5563; line-height: 1.6; text-align: center;">
-                    Estimated pickup time: <strong>${order.pickup_time}</strong>
+                    Estimated pickup time: <strong>${sanitizedOrder.pickup_time}</strong>
                   </p>
                 ` : ''}
 
-                ${order.tracking_url ? `
+                ${sanitizedOrder.tracking_url ? `
                   <p style="color: #6b7280; text-align: center;">
-                    Track your order anytime: <a href="${order.tracking_url}" style="color: #6366f1; font-weight: 600;">View my order</a>
+                    Track your order anytime: <a href="${sanitizedOrder.tracking_url}" style="color: #6366f1; font-weight: 600;">View my order</a>
                   </p>
                 ` : ''}
               </div>
@@ -1155,7 +1251,7 @@ serve(async (req) => {
           `
         },
         customer_order_ready_for_pickup: {
-          subject: `Your order ${order.id ? `#${order.id} ` : ''}is ready for pickup 🎉`,
+          subject: `Your order ${sanitizedOrder.id ? `#${sanitizedOrder.id} ` : ''}is ready for pickup 🎉`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
               <div style="background: linear-gradient(135deg, #22c55e, #0ea5e9); padding: 26px; text-align: center; color: white;">
@@ -1163,27 +1259,27 @@ serve(async (req) => {
                 <p style="margin: 10px 0 0 0;">Your treats are fresh and waiting for you.</p>
               </div>
               <div style="padding: 28px 24px; background: #ffffff;">
-                <p style="font-size: 16px; color: #1f2937;">Hi ${order.customer_name || 'Ranger friend'},</p>
+                <p style="font-size: 16px; color: #1f2937;">Hi ${sanitizedOrder.customer_name || 'Ranger friend'},</p>
                 <p style="color: #4b5563; line-height: 1.6;">
                   Great news! Your order is finished and ready for pickup at the bakery. We hope you love it!
                 </p>
 
-                ${order.pickup_time ? `
+                ${sanitizedOrder.pickup_time ? `
                   <div style="background: #ecfeff; border: 1px solid #bae6fd; border-radius: 12px; padding: 18px; margin: 20px 0; text-align: center;">
                     <p style="margin: 0; color: #0f172a;">Suggested pickup time</p>
-                    <p style="margin: 6px 0 0 0; font-size: 18px; font-weight: bold; color: #0f172a;">${order.pickup_time}</p>
+                    <p style="margin: 6px 0 0 0; font-size: 18px; font-weight: bold; color: #0f172a;">${sanitizedOrder.pickup_time}</p>
                   </div>
                 ` : ''}
 
-                ${order.tracking_url ? `
+                ${sanitizedOrder.tracking_url ? `
                   <p style="color: #6b7280; text-align: center;">
-                    Check details anytime: <a href="${order.tracking_url}" style="color: #0ea5e9; font-weight: 600;">Track my order</a>
+                    Check details anytime: <a href="${sanitizedOrder.tracking_url}" style="color: #0ea5e9; font-weight: 600;">Track my order</a>
                   </p>
                 ` : ''}
 
-                ${order.payment_url ? `
+                ${sanitizedOrder.payment_url ? `
                   <p style="color: #f97316; text-align: center; font-weight: 600;">
-                    Need to pay first? <a href="${order.payment_url}" style="color: #fb7185;">Pay online now</a>
+                    Need to pay first? <a href="${sanitizedOrder.payment_url}" style="color: #fb7185;">Pay online now</a>
                   </p>
                 ` : ''}
 
