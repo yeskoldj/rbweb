@@ -41,7 +41,21 @@ export const extractItemDetails = (item: ItemWithCustomization): FormattedItemDe
       .split(/\n+/)
       .map(line => line.trim())
       .filter(Boolean)
-      .forEach(line => pushUnique({ value: line }));
+      .forEach(line => {
+        const separatorIndex = line.indexOf(':');
+
+        if (separatorIndex > -1) {
+          const rawLabel = line.slice(0, separatorIndex).trim();
+          const rawValue = line.slice(separatorIndex + 1).trim();
+
+          if (isNonEmptyString(rawLabel) && isNonEmptyString(rawValue)) {
+            pushUnique({ label: rawLabel, value: rawValue });
+            return;
+          }
+        }
+
+        pushUnique({ value: line });
+      });
   }
 
   const customization = item.customization ?? null;
