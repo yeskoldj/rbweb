@@ -7,6 +7,7 @@ import Header from '@/components/Header';
 import TabBar from '@/components/TabBar';
 import OrderForm from './OrderForm';
 import { getUser } from '@/lib/authStorage';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 export default function OrderPage() {
   const searchParams = useSearchParams();
@@ -16,9 +17,35 @@ export default function OrderPage() {
   
 
   useEffect(() => {
-    const user = getUser();
-    setIsAuthenticated(Boolean(user));
-    setLoading(false);
+    let isMounted = true;
+
+    const checkAuthentication = async () => {
+      try {
+        if (isSupabaseConfigured) {
+          const { data, error } = await supabase.auth.getUser();
+
+          if (!error && data?.user) {
+            if (!isMounted) return;
+            setIsAuthenticated(true);
+            setLoading(false);
+            return;
+          }
+        }
+      } catch (error) {
+        console.warn('Unable to verify session with Supabase, falling back to local storage.', error);
+      }
+
+      const user = getUser();
+      if (!isMounted) return;
+      setIsAuthenticated(Boolean(user));
+      setLoading(false);
+    };
+
+    checkAuthentication();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   if (loading) {
