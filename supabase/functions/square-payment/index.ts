@@ -399,14 +399,17 @@ serve(async (req) => {
       const amount    = orderData?.amount;
 
       if (!squareCredentialsAvailable) {
-        return new Response(JSON.stringify({
-          success: true,
-          refundId: `REFUND_SIM_${Date.now()}`,
-          status: 'completed',
-          amount,
-          environment: ENV,
-          isSimulated: true,
-        }), { headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' } });
+        console.error('Refund requested without Square credentials.');
+        return new Response(
+          JSON.stringify({
+            error:
+              'Square refund processing is not available because SQUARE_ACCESS_TOKEN and SQUARE_APPLICATION_ID are not configured.',
+          }),
+          {
+            status: 500,
+            headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' },
+          },
+        );
       }
 
       const refundReq: any = {
@@ -435,7 +438,6 @@ serve(async (req) => {
         status: data.refund.status,
         amount: (data.refund.amount_money?.amount || 0) / 100,
         environment: ENV,
-        isSimulated: false,
       }), { headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -451,16 +453,17 @@ serve(async (req) => {
       const paymentId = orderData?.paymentId;
 
       if (!squareCredentialsAvailable) {
-        return new Response(JSON.stringify({
-          success: true,
-          paymentId,
-          status: 'COMPLETED',
-          amount: 0,
-          currency: 'USD',
-          created: new Date().toISOString(),
-          environment: ENV,
-          isSimulated: true,
-        }), { headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' } });
+        console.error('Payment status requested without Square credentials.');
+        return new Response(
+          JSON.stringify({
+            error:
+              'Square payment status checks are unavailable because SQUARE_ACCESS_TOKEN and SQUARE_APPLICATION_ID are not configured.',
+          }),
+          {
+            status: 500,
+            headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' },
+          },
+        );
       }
 
       const resp = await fetch(`${SQUARE_BASE_URL}/v2/payments/${paymentId}`, {
@@ -480,7 +483,6 @@ serve(async (req) => {
         currency: data.payment.amount_money?.currency || 'USD',
         created: data.payment.created_at,
         environment: ENV,
-        isSimulated: false,
       }), { headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' } });
     }
 
