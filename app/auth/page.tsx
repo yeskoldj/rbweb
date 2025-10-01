@@ -10,24 +10,52 @@ import TabBar from '../../components/TabBar';
 
 const isDevMode = process.env.NODE_ENV !== 'production';
 
+const sanitizeDetail = (detail: unknown) => {
+  if (!detail || typeof detail !== 'object') {
+    return detail;
+  }
+
+  if (detail instanceof Error) {
+    return {
+      name: detail.name,
+      message: detail.message,
+      status: (detail as Record<string, unknown>)?.status,
+    };
+  }
+
+  const record = detail as Record<string, unknown>;
+  const safeKeys = ['message', 'status', 'code'];
+  return safeKeys.reduce<Record<string, unknown>>((acc, key) => {
+    if (record[key] !== undefined) {
+      acc[key] = record[key];
+    }
+    return acc;
+  }, {});
+};
+
 const debugLog = (...args: unknown[]) => {
   if (isDevMode) {
-    console.log(...args);
+    console.log(...args.map(sanitizeDetail));
   }
 };
 
 const warnLog = (...args: unknown[]) => {
   if (isDevMode) {
-    console.warn(...args);
+    console.warn(...args.map(sanitizeDetail));
   }
 };
 
 const errorLog = (message: string, detail?: unknown) => {
-  if (isDevMode) {
-    console.error(message, detail);
-  } else {
-    console.error(message);
+  if (!isDevMode) {
+    return;
   }
+
+  if (detail === undefined) {
+    console.error(message);
+    return;
+  }
+
+  console.error(message, sanitizeDetail(detail));
 };
 
 export default function AuthPage() {

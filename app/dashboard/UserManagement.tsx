@@ -151,10 +151,17 @@ export default function UserManagement() {
         return;
       }
 
-      const updatedRole =
-        payload && typeof payload.role === 'string' ? payload.role : newRole;
+      if (!payload || payload.success !== true || typeof payload.role !== 'string') {
+        const unexpectedDetail =
+          payload && typeof payload.error === 'string'
+            ? payload.error
+            : 'La respuesta del servidor no es válida.';
+        console.error('Respuesta inesperada al actualizar usuario:', payload);
+        alert(`No se pudo confirmar el cambio de rol: ${unexpectedDetail}`);
+        return;
+      }
 
-      alert(`Usuario actualizado a ${updatedRole} exitosamente`);
+      alert(`Usuario actualizado a ${payload.role} exitosamente`);
       await loadUsersFromDatabase();
     } catch (error) {
       console.error('Error:', error);
