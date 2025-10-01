@@ -25,13 +25,24 @@ const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
 );
 
-const ENVIRONMENT = Deno.env.get('NODE_ENV') || 'development';
+const ENVIRONMENT = (Deno.env.get('NODE_ENV') || 'production').toLowerCase();
+const isProduction = ENVIRONMENT === 'production';
 const corsConfigurationError = getCorsConfigError();
 const allowSquareSimulation =
   (Deno.env.get('ALLOW_SQUARE_SIMULATION') || '').toLowerCase() === 'true';
 
 const squareCredentialsAvailable = Boolean(ACCESS_TOKEN && APPLICATION_ID);
-const simulationEnabled = allowSquareSimulation || ENVIRONMENT !== 'production';
+const simulationEnabled = !isProduction || allowSquareSimulation;
+const shouldSimulate = !squareCredentialsAvailable && simulationEnabled;
+
+if (!squareCredentialsAvailable) {
+  const missingCredentialsMessage = 'Square credentials are not configured. Set SQUARE_ACCESS_TOKEN and SQUARE_APPLICATION_ID.';
+  if (shouldSimulate) {
+    console.warn(`${missingCredentialsMessage} Running in simulated payment mode (${ENVIRONMENT}).`);
+  } else {
+    console.error(`${missingCredentialsMessage} Simulation is disabled and requests will fail.`);
+  }
+}
 
 const toCents = (amount: number) => Math.round(amount * 100);
 
@@ -294,7 +305,7 @@ serve(async (req) => {
           currency: 'USD',
           environment: ENV,
           paymentMethod: orderData.paymentMethod,
-          isSimulated: !ACCESS_TOKEN || !APPLICATION_ID,
+          isSimulated: !squareCredentialsAvailable,
         }), { headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' } });
       }
 
@@ -392,7 +403,7 @@ serve(async (req) => {
         currency: 'USD',
         environment: ENV,
         paymentMethod: orderData.paymentMethod,
-        isSimulated: !ACCESS_TOKEN || !APPLICATION_ID,
+        isSimulated: !squareCredentialsAvailable,
       }), { headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -408,7 +419,7 @@ serve(async (req) => {
       const paymentId = orderData?.paymentId;
       const amount    = orderData?.amount;
 
-      if (!ACCESS_TOKEN || !APPLICATION_ID) {
+      if (!squareCredentialsAvailable) {
         return new Response(JSON.stringify({
           success: true,
           refundId: `REFUND_SIM_${Date.now()}`,
@@ -460,7 +471,7 @@ serve(async (req) => {
 
       const paymentId = orderData?.paymentId;
 
-      if (!ACCESS_TOKEN || !APPLICATION_ID) {
+      if (!squareCredentialsAvailable) {
         return new Response(JSON.stringify({
           success: true,
           paymentId,
