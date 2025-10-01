@@ -16,10 +16,11 @@ const sanitizeDetail = (detail: unknown) => {
   }
 
   if (detail instanceof Error) {
+    const status = 'status' in detail ? (detail as { status?: unknown }).status : undefined;
     return {
       name: detail.name,
       message: detail.message,
-      status: (detail as Record<string, unknown>)?.status,
+      ...(status !== undefined ? { status } : {}),
     };
   }
 
