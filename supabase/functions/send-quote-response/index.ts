@@ -26,6 +26,31 @@ const isValidUUID = (value: string | undefined | null): boolean => {
   return uuidRegex.test(value)
 }
 
+const HTML_ESCAPE_REGEX = /[&<>'"`]/g
+const HTML_ESCAPE_MAP: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  "'": '&#39;',
+  '"': '&quot;',
+  '`': '&#96;',
+}
+
+function escapeHtml(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  return String(value).replace(HTML_ESCAPE_REGEX, (char) => HTML_ESCAPE_MAP[char] || char)
+}
+
+function sanitizePlainText(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  return escapeHtml(value)
+}
+
+function sanitizeMultiline(value: unknown): string {
+  const sanitized = sanitizePlainText(value)
+  return sanitized.replace(/\r?\n/g, '<br />')
+}
+
 serve(async (req) => {
   const origin = req.headers.get('origin')
   const responseCorsHeaders = getCorsHeaders(origin)
@@ -137,6 +162,11 @@ serve(async (req) => {
         ? adminNotes.trim()
         : (typeof quoteRecord.admin_notes === 'string' ? quoteRecord.admin_notes : '')
 
+    const safeCustomerName = sanitizePlainText(customerName)
+    const safeEventType = sanitizePlainText(eventType)
+    const safeEventDate = sanitizePlainText(eventDate)
+    const safeAdminNotes = sanitizeMultiline(adminNotesText)
+
     // Prepare email content
     const emailSubject = `Cotización Lista - Ranger Bakery 🎂`
     
@@ -186,25 +216,25 @@ serve(async (req) => {
         </div>
         
         <div class="content">
-            <h2 style="color: #f5576c; margin-bottom: 10px;">¡Hola ${customerName}!</h2>
+            <h2 style="color: #f5576c; margin-bottom: 10px;">¡Hola ${safeCustomerName || 'Cliente'}!</h2>
             <p style="font-size: 16px; line-height: 1.6; color: #495057;">
                 Gracias por confiar en Ranger Bakery para su evento especial. Hemos preparado su cotización personalizada con mucho cuidado.
             </p>
 
-            ${eventType || eventDate ? `
+            ${safeEventType || safeEventDate ? `
             <div class="quote-card">
                 <h4 style="color: #f5576c; margin: 0 0 15px 0;">📋 Detalles del Evento</h4>
                 <div class="details-grid" style="background: white; padding: 15px;">
-                    ${eventType ? `
+                    ${safeEventType ? `
                     <div class="detail-row">
                         <span class="detail-label">Tipo de Evento:</span>
-                        <span class="detail-value">${eventType}</span>
+                        <span class="detail-value">${safeEventType}</span>
                     </div>
                     ` : ''}
-                    ${eventDate ? `
+                    ${safeEventDate ? `
                     <div class="detail-row">
                         <span class="detail-label">Fecha del Evento:</span>
-                        <span class="detail-value">${eventDate}</span>
+                        <span class="detail-value">${safeEventDate}</span>
                     </div>
                     ` : ''}
                 </div>
@@ -216,10 +246,10 @@ serve(async (req) => {
                 <p class="label">Precio Estimado</p>
             </div>
 
-            ${adminNotesText ? `
+            ${safeAdminNotes ? `
             <div class="notes-section">
                 <h4>💬 Notas Especiales de Nuestro Chef</h4>
-                <p>${adminNotesText}</p>
+                <p>${safeAdminNotes}</p>
             </div>
             ` : ''}
 
