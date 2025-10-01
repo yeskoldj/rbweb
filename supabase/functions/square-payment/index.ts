@@ -26,22 +26,12 @@ const supabaseAdmin = createClient(
 );
 
 const ENVIRONMENT = (Deno.env.get('NODE_ENV') || 'production').toLowerCase();
-const isProduction = ENVIRONMENT === 'production';
 const corsConfigurationError = getCorsConfigError();
-const allowSquareSimulation =
-  (Deno.env.get('ALLOW_SQUARE_SIMULATION') || '').toLowerCase() === 'true';
-
 const squareCredentialsAvailable = Boolean(ACCESS_TOKEN && APPLICATION_ID);
-const simulationEnabled = !isProduction || allowSquareSimulation;
-const shouldSimulate = !squareCredentialsAvailable && simulationEnabled;
 
 if (!squareCredentialsAvailable) {
   const missingCredentialsMessage = 'Square credentials are not configured. Set SQUARE_ACCESS_TOKEN and SQUARE_APPLICATION_ID.';
-  if (shouldSimulate) {
-    console.warn(`${missingCredentialsMessage} Running in simulated payment mode (${ENVIRONMENT}).`);
-  } else {
-    console.error(`${missingCredentialsMessage} Simulation is disabled and requests will fail.`);
-  }
+  console.error(`${missingCredentialsMessage} Requests will fail until valid credentials are provided (${ENVIRONMENT}).`);
 }
 
 const toCents = (amount: number) => Math.round(amount * 100);
@@ -123,29 +113,18 @@ serve(async (req) => {
       const idempotencyKey = `PAY_${Date.now()}_${crypto.randomUUID()}`;
       let paymentResult: any;
 
-      // --- SIMULACIÓN si faltan credenciales ---
       if (!squareCredentialsAvailable) {
-        if (!simulationEnabled) {
-          console.error('Square credentials are missing and simulation mode is disabled.');
-          return new Response(
-            JSON.stringify({
-              error:
-                'Square payment gateway is not configured. Please set SQUARE_ACCESS_TOKEN and SQUARE_APPLICATION_ID.',
-            }),
-            {
-              status: 500,
-              headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' },
-            },
-          );
-        }
-
-        console.warn('Square credentials missing. Returning simulated payment response.');
-        paymentResult = {
-          id: `SIM_${idempotencyKey}`,
-          status: 'COMPLETED',
-          amount_money: { amount: toCents(orderData.amount), currency: 'USD' },
-          simulated: true,
-        };
+        console.error('Square credentials are missing. Failing payment request.');
+        return new Response(
+          JSON.stringify({
+            error:
+              'Square payment gateway is not configured. Please set SQUARE_ACCESS_TOKEN and SQUARE_APPLICATION_ID.',
+          }),
+          {
+            status: 500,
+            headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' },
+          },
+        );
       } else {
         // Pago REAL: necesitamos el token del frontend
         if (!sourceId) {

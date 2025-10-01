@@ -655,18 +655,16 @@ serve(async (req) => {
       : ''
 
     if (!RESEND_API_KEY) {
-      console.log('RESEND_API_KEY not configured, simulating email send')
-      const whatsapp = await dispatchWhatsAppNotifications(type, language, order, quote)
+      console.error('RESEND_API_KEY not configured. Email delivery is disabled.');
       return new Response(
         JSON.stringify({
-          success: true,
-          message: 'Email simulation - RESEND_API_KEY not configured',
-          data: { to, subject, type, order },
-          whatsapp,
+          success: false,
+          error: 'Email provider is not configured. Set RESEND_API_KEY to enable email notifications.',
         }),
         {
-          headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' }
-        }
+          status: 500,
+          headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' },
+        },
       )
     }
 

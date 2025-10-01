@@ -6,7 +6,7 @@
 
 ### Order and quote notifications flow
 - The web app calls `notifyBusinessAboutOrder` after a new order is submitted. The helper collects the business email plus any comma-separated employee addresses and posts to the Supabase Edge Function with the `business_new_order` template.【F:lib/orderNotifications.ts†L24-L88】
-- The Edge Function normalizes the payload, picks the correct HTML template, and sends the message through Resend. If the `RESEND_API_KEY` secret is missing, it logs a warning and returns a simulated success response so the UI can continue without failing the checkout.【F:supabase/functions/send-notification-email/index.ts†L300-L390】【F:supabase/functions/send-notification-email/index.ts†L1004-L1034】
+- The Edge Function normalizes the payload, picks the correct HTML template, and sends the message through Resend. If the `RESEND_API_KEY` secret is missing, it now logs an error and returns an explicit failure so the client surfaces the misconfiguration instead of simulating success.【F:supabase/functions/send-notification-email/index.ts†L300-L390】【F:supabase/functions/send-notification-email/index.ts†L1004-L1034】
 
 ### Required configuration for emails
 **Frontend (`.env.local`)**
@@ -21,7 +21,7 @@
 
 All clients invoking the Edge Function must now send a valid Supabase access token in the `Authorization` header; helpers such as `notifyBusinessAboutOrder` automatically retrieve the current session token before posting the payload.【F:lib/orderNotifications.ts†L54-L88】【F:supabase/functions/send-notification-email/index.ts†L312-L372】
 
-During development you can leave `RESEND_API_KEY` unset to exercise the flow without sending real emails—the function will short-circuit after logging the payload and return `success: true`. In production set the secret through `supabase secrets set` so that Resend receives the request and delivers the notifications.【F:supabase/functions/send-notification-email/index.ts†L334-L367】【F:supabase/functions/send-notification-email/index.ts†L1004-L1034】
+During development configure a Resend test key (or another provider) before exercising the flow; without `RESEND_API_KEY` the function now fails fast to highlight the missing dependency. In production set the secret through `supabase secrets set` so that Resend receives the request and delivers the notifications.【F:supabase/functions/send-notification-email/index.ts†L334-L367】【F:supabase/functions/send-notification-email/index.ts†L1004-L1034】
 
 ## Adding WhatsApp Business Cloud API push messages
 To extend the same triggers with WhatsApp messages you only need configuration plus a small fetch call to Meta's Graph API:

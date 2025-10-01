@@ -2,8 +2,8 @@
 
 ## Hallazgos Críticos
 
-1. **Simulación silenciosa de pagos Square**  
-   Cuando las variables `SQUARE_ACCESS_TOKEN` o `SQUARE_APPLICATION_ID` no están configuradas, la función Edge `square-payment` marca los pagos como completados con datos simulados. En producción, una mala configuración puede permitir confirmar pagos sin haber cobrado realmente, lo que representa un riesgo financiero severo. Se recomienda exigir credenciales válidas en producción y registrar alertas cuando se active el modo simulado.  
+1. **Simulación silenciosa de pagos Square** (resuelto)
+   Cuando las variables `SQUARE_ACCESS_TOKEN` o `SQUARE_APPLICATION_ID` no estaban configuradas, la función Edge `square-payment` marcaba los pagos como completados con datos simulados. En producción, una mala configuración podía permitir confirmar pagos sin haber cobrado realmente, lo que representaba un riesgo financiero severo. **Actualización:** la función ahora devuelve un error explícito cuando faltan las credenciales, evitando cualquier simulación silenciosa.
 2. **Política CORS demasiado restrictiva por defecto**  
    Tanto `square-payment` como `p2p-payment` bloquean cualquier origen cuando `ALLOWED_ORIGIN` no está definido (valor por defecto `''` en producción). Esto provoca errores 403 en clientes legítimos si la variable no se configura perfectamente, afectando disponibilidad. Conviene usar una lista segura de orígenes permitidos y proporcionar mensajes de configuración claros o fallar durante el despliegue.
 3. **Gestión incorrecta de errores al actualizar roles**  
