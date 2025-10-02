@@ -1835,7 +1835,16 @@ export default function DashboardPage() {
 
               {/* Calendar Tab */}
               {activeTab === 'calendar' && (
-                <CalendarView orders={orders} onStatusUpdate={handleCalendarStatusUpdate} />
+                <CalendarView
+                  orders={orders}
+                  onStatusUpdate={handleCalendarStatusUpdate}
+                  onOpenPriceModal={openPriceModal}
+                  onConfirmCashPayment={handleConfirmCashPayment}
+                  onPrintOrder={openPrintOrder}
+                  orderHasPendingPrice={orderHasPendingPrice}
+                  isPaymentConfirmed={isPaymentConfirmed}
+                  currentUserRole={currentUser?.role}
+                />
               )}
 
               {/* Users / Profile Tab */}
