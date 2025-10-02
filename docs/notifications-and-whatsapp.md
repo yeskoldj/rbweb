@@ -1,7 +1,7 @@
 # Notification Channels Overview
 
 ## Email notifications that are already live
-- **Quote approval (`send-quote-response`)** – When the bakery marks a quote as responded with a price, the dashboard calls the Supabase Edge Function `send-quote-response`. The function updates the `quotes` row and emails the customer using FormSubmit. The HTML message includes greeting, optional event details, the approved estimated price, the admin notes block, and calls to action for calling or confirming via WhatsApp.【F:app/dashboard/page.tsx†L726-L806】【F:supabase/functions/send-quote-response/index.ts†L1-L203】
+- **Quote approval (`send-quote-response`)** – When the bakery marks a quote as responded with a price, the dashboard calls the Supabase Edge Function `send-quote-response`. The function updates the `quotes` row and emails the customer through Resend using the same branded HTML template, including greeting, optional event details, the approved estimated price, the admin notes block, and calls to action for calling or confirming via WhatsApp.【F:app/dashboard/page.tsx†L726-L806】【F:supabase/functions/send-quote-response/index.ts†L1-L360】
 - **Order ready for payment (`send-notification-email`)** – When an order transitions to `payment_ready`, the app hits the `send-notification-email` Edge Function with the `customer_order_payment_ready` template. Customers receive a branded HTML email summarizing totals, notes, and a pay-now button; the bakery can reuse the same function to alert internal addresses about new orders.【F:supabase/functions/send-notification-email/index.ts†L1-L200】【F:supabase/functions/send-notification-email/index.ts†L200-L400】
 
 ### Order and quote notifications flow
@@ -14,7 +14,7 @@
 - `NEXT_PUBLIC_EMPLOYEE_NOTIFICATION_EMAILS` – Optional comma-separated list of staff addresses that should also receive alerts.【F:lib/orderNotifications.ts†L31-L48】
 
 **Supabase Edge Function secrets**
-- `RESEND_API_KEY` – API key used by `send-notification-email` to dispatch HTML emails via Resend.【F:supabase/functions/send-notification-email/index.ts†L12-L53】【F:supabase/functions/send-notification-email/index.ts†L1004-L1034】
+- `RESEND_API_KEY` – API key used by both notification functions to dispatch HTML emails via Resend.【F:supabase/functions/send-notification-email/index.ts†L12-L1403】【F:supabase/functions/send-quote-response/index.ts†L1-L360】
 - `PUBLIC_APP_BASE_URL` – Base URL for generating payment/tracking links that are embedded in the email templates.【F:supabase/functions/send-notification-email/index.ts†L14-L33】
 - `BUSINESS_NOTIFICATION_ALLOWLIST` – Comma-separated list of internal inboxes permitted to receive operational alerts. Any recipient outside of this allowlist is rejected by the function, so include both the primary bakery inbox and every employee alias you expect to notify.【F:supabase/functions/send-notification-email/index.ts†L35-L107】【F:supabase/functions/send-notification-email/index.ts†L320-L387】
 - Optionally configure `WHATSAPP_TEMPLATE_*` secrets if you also want WhatsApp pushes (see below). When these values are missing the function simply skips the WhatsApp calls and still sends the email.【F:supabase/functions/send-notification-email/index.ts†L18-L245】

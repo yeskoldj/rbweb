@@ -13,6 +13,7 @@ import {
   isOriginAllowed,
 } from '../_shared/cors.ts'
 
+const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
 const corsConfigurationError = getCorsConfigError()
 
 const supabaseAdmin = createClient(
@@ -310,22 +311,51 @@ serve(async (req) => {
 </body>
 </html>`
 
-    // Send email using FormSubmit
-    const formData = new FormData()
-    formData.append('_to', customerEmail)
-    formData.append('_cc', 'rangerbakery@gmail.com')
-    formData.append('_subject', emailSubject)
-    formData.append('_template', 'table')
-    formData.append('_captcha', 'false')
-      formData.append('message', emailBody)
+    if (!RESEND_API_KEY) {
+      console.error('RESEND_API_KEY not configured. Email delivery is disabled.')
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Email provider is not configured. Set RESEND_API_KEY to enable email notifications.',
+        }),
+        {
+          status: 500,
+          headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' },
+        },
+      )
+    }
 
-    const emailResponse = await fetch('https://formsubmit.co/ajax/rangerbakery@gmail.com', {
+    const emailResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
-      body: formData
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: "Ranger's Bakery <rangerbakery@gmail.com>",
+        to: [customerEmail],
+        cc: ['rangerbakery@gmail.com'],
+        subject: emailSubject,
+        html: emailBody,
+        reply_to: 'rangerbakery@gmail.com',
+      }),
     })
 
+    const resendResult = await emailResponse.json()
+
     if (!emailResponse.ok) {
-      throw new Error('Failed to send email')
+      console.error('Resend API error:', resendResult)
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Failed to send email',
+          details: resendResult,
+        }),
+        {
+          status: 500,
+          headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' },
+        },
+      )
     }
 
     const whatsappResults: Record<string, unknown> = {}
@@ -399,6 +429,7 @@ serve(async (req) => {
         success: true,
         message: 'Quote response sent successfully',
         emailSent: true,
+        emailId: resendResult.id,
         whatsapp: whatsappResults,
       }),
       {
