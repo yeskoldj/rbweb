@@ -9,6 +9,7 @@ import TabBar from '../../components/TabBar';
 import SafeImage from '@/components/SafeImage';
 import { extractItemDetails, getItemPhotoUrl } from '@/lib/orderItemFormatting';
 import { extractSpecialRequestNotes } from '@/lib/specialRequestParsing';
+import { normalizeOrderDate } from '@/lib/orderDateUtils';
 import {
   withSignedPhotoUrls,
   collectPhotoStoragePaths,
@@ -1982,7 +1983,9 @@ export default function DashboardPage() {
   function getTodayOrders() {
     const today = new Date().toISOString().split('T')[0];
     return orders.filter((order) => {
-      const scheduledDate = order.pickup_date || order.order_date;
+      const normalizedPickup = normalizeOrderDate(order.pickup_date);
+      const normalizedOrder = normalizeOrderDate(order.order_date);
+      const scheduledDate = normalizedPickup || normalizedOrder;
       return scheduledDate === today;
     });
   }
