@@ -33,7 +33,7 @@ These power `send-notification-email`, `send-quote-response`, and the shared Wha
 
 | Variable | Purpose | Referenced in |
 | --- | --- | --- |
-| `RESEND_API_KEY` | Sends transactional emails through Resend. | `send-notification-email`.【F:supabase/functions/send-notification-email/index.ts†L12-L1034】 |
+| `RESEND_API_KEY` | Sends transactional emails through Resend. | `send-notification-email`, `send-quote-response`.【F:supabase/functions/send-notification-email/index.ts†L12-L1403】【F:supabase/functions/send-quote-response/index.ts†L1-L360】 |
 | `PUBLIC_APP_BASE_URL` | Base URL for payment and tracking links in emails. | `send-notification-email`.【F:supabase/functions/send-notification-email/index.ts†L14-L245】 |
 | `WHATSAPP_TOKEN` | WhatsApp Business API token. | `_shared/whatsapp`.【F:supabase/functions/_shared/whatsapp.ts†L1-L111】 |
 | `WHATSAPP_PHONE_NUMBER_ID` | Sender phone number ID from Meta. | `_shared/whatsapp`.【F:supabase/functions/_shared/whatsapp.ts†L1-L111】 |
