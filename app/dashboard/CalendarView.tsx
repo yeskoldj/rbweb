@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { Order } from '../../lib/supabase';
+import { createDateFromNormalized, normalizeOrderDate } from '@/lib/orderDateUtils';
 
 interface CalendarViewProps {
   orders: Order[];
@@ -44,12 +45,14 @@ export default function CalendarView({ orders, onStatusUpdate }: CalendarViewPro
   };
 
   const formatPickupDate = (value?: string | null) => {
-    if (!value) {
-      return null;
+    const normalized = normalizeOrderDate(value);
+
+    if (!normalized) {
+      return value ?? null;
     }
 
     try {
-      const parsed = new Date(`${value}T00:00:00`);
+      const parsed = createDateFromNormalized(normalized);
       return parsed.toLocaleDateString('es-ES', {
         weekday: 'long',
         month: 'long',
@@ -62,7 +65,9 @@ export default function CalendarView({ orders, onStatusUpdate }: CalendarViewPro
 
   const getOrdersForDate = (date: string) => {
     return orders.filter((order) => {
-      const scheduledDate = order.pickup_date || order.order_date;
+      const normalizedPickup = normalizeOrderDate(order.pickup_date);
+      const normalizedOrder = normalizeOrderDate(order.order_date);
+      const scheduledDate = normalizedPickup || normalizedOrder;
       return scheduledDate === date;
     });
   };
