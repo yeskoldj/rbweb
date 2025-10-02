@@ -8,9 +8,24 @@ import { createDateFromNormalized, normalizeOrderDate } from '@/lib/orderDateUti
 interface CalendarViewProps {
   orders: Order[];
   onStatusUpdate: (orderId: string, newStatus: string) => void;
+  onOpenPriceModal: (order: Order) => void;
+  onConfirmCashPayment: (orderId: string) => void;
+  onPrintOrder: (orderId: string) => void;
+  orderHasPendingPrice: (order: Order) => boolean;
+  isPaymentConfirmed: (order: Order) => boolean;
+  currentUserRole?: string | null;
 }
 
-export default function CalendarView({ orders, onStatusUpdate }: CalendarViewProps) {
+export default function CalendarView({
+  orders,
+  onStatusUpdate,
+  onOpenPriceModal,
+  onConfirmCashPayment,
+  onPrintOrder,
+  orderHasPendingPrice,
+  isPaymentConfirmed,
+  currentUserRole,
+}: CalendarViewProps) {
   const today = new Date();
   const [selectedDate, setSelectedDate] = useState(today.toISOString().split('T')[0]);
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
@@ -349,53 +364,125 @@ export default function CalendarView({ orders, onStatusUpdate }: CalendarViewPro
                     </div>
                   </div>
                   
-                  {order.status !== 'completed' && order.status !== 'cancelled' && (
-                    <div className="flex space-x-2">
-                      {order.status === 'pending' && (
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => onPrintOrder(order.id)}
+                      className="flex-1 min-w-[160px] bg-gradient-to-r from-slate-600 to-slate-800 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-slate-700 hover:to-slate-900 transition-all transform hover:scale-105"
+                      type="button"
+                    >
+                      <i className="ri-printer-line mr-2"></i>
+                      Imprimir orden
+                    </button>
+
+                    {currentUserRole === 'owner' && orderHasPendingPrice(order) && (
+                      <button
+                        onClick={() => onOpenPriceModal(order)}
+                        className="flex-1 min-w-[160px] bg-gradient-to-r from-amber-500 to-orange-500 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-amber-600 hover:to-orange-600 transition-all transform hover:scale-105"
+                        type="button"
+                      >
+                        <i className="ri-cash-line mr-2"></i>
+                        Someter precio
+                      </button>
+                    )}
+
+                    {!isPaymentConfirmed(order) && (
+                      <button
+                        onClick={() => onConfirmCashPayment(order.id)}
+                        className="flex-1 min-w-[160px] bg-gradient-to-r from-emerald-500 to-teal-500 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-emerald-600 hover:to-teal-600 transition-all transform hover:scale-105"
+                        type="button"
+                      >
+                        <i className="ri-hand-coin-line mr-2"></i>
+                        Confirmar pago en tienda
+                      </button>
+                    )}
+
+                    {order.status === 'pending' && (
+                      <div className="flex-1 min-w-[160px]">
                         <button
-                          onClick={() => onStatusUpdate(order.id, 'baking')}
-                          className="flex-1 bg-gradient-to-r from-orange-400 to-red-400 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-orange-500 hover:to-red-500 transition-all transform hover:scale-105"
+                          onClick={() => {
+                            if (!isPaymentConfirmed(order)) {
+                              return;
+                            }
+                            onStatusUpdate(order.id, 'baking');
+                          }}
+                          disabled={!isPaymentConfirmed(order)}
+                          className={`w-full py-2 px-4 rounded-lg text-sm font-bold !rounded-button transition-all ${
+                            isPaymentConfirmed(order)
+                              ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 transform hover:scale-105'
+                              : 'bg-gray-200 text-gray-500 cursor-not-allowed opacity-80'
+                          }`}
+                          type="button"
                         >
                           <i className="ri-fire-line mr-2"></i>
-                          Comenzar a Hornear
+                          Iniciar Horneado
                         </button>
-                      )}
-                      {order.status === 'baking' && (
-                        <button
-                          onClick={() => onStatusUpdate(order.id, 'decorating')}
-                          className="flex-1 bg-gradient-to-r from-purple-400 to-pink-400 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-purple-500 hover:to-pink-500 transition-all transform hover:scale-105"
-                        >
-                          <i className="ri-brush-line mr-2"></i>
-                          Comenzar a Decorar
-                        </button>
-                      )}
-                      {order.status === 'decorating' && (
-                        <button
-                          onClick={() => onStatusUpdate(order.id, 'ready')}
-                          className="flex-1 bg-gradient-to-r from-green-400 to-emerald-400 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-green-500 hover:to-emerald-500 transition-all transform hover:scale-105"
-                        >
-                          <i className="ri-check-line mr-2"></i>
-                          Marcar como Listo
-                        </button>
-                      )}
-                      {order.status === 'ready' && (
-                        <button
-                          onClick={() => onStatusUpdate(order.id, 'completed')}
-                          className="flex-1 bg-gradient-to-r from-blue-400 to-indigo-400 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-blue-500 hover:to-indigo-500 transition-all transform hover:scale-105"
-                        >
-                          <i className="ri-check-double-line mr-2"></i>
-                          Marcar Completado
-                        </button>
-                      )}
-                      
+                        {!isPaymentConfirmed(order) && (
+                          <p className="mt-2 text-xs font-semibold text-orange-600">
+                            Confirma el pago antes de iniciar el horneado.
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {order.status === 'baking' && (
                       <button
-                        onClick={() => window.open(`tel:${order.customer_phone}`, '_self')}
-                        className="bg-gradient-to-r from-teal-400 to-blue-400 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-teal-500 hover:to-blue-500 transition-all transform hover:scale-105"
+                        onClick={() => onStatusUpdate(order.id, 'decorating')}
+                        className="flex-1 min-w-[160px] bg-gradient-to-r from-purple-500 to-pink-500 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-purple-600 hover:to-pink-600 transition-all transform hover:scale-105"
+                        type="button"
                       >
-                        <i className="ri-phone-line"></i>
+                        <i className="ri-brush-line mr-2"></i>
+                        Iniciar Decoración
                       </button>
-                    </div>
-                  )}
+                    )}
+
+                    {order.status === 'decorating' && (
+                      <button
+                        onClick={() => onStatusUpdate(order.id, 'ready')}
+                        className="flex-1 min-w-[160px] bg-gradient-to-r from-green-500 to-emerald-500 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-green-600 hover:to-emerald-600 transition-all transform hover:scale-105"
+                        type="button"
+                      >
+                        <i className="ri-check-line mr-2"></i>
+                        Marcar Listo
+                      </button>
+                    )}
+
+                    {order.status === 'ready' && (
+                      <button
+                        onClick={() => onStatusUpdate(order.id, 'completed')}
+                        className="flex-1 min-w-[160px] bg-gradient-to-r from-blue-500 to-indigo-500 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-blue-600 hover:to-indigo-600 transition-all transform hover:scale-105"
+                        type="button"
+                      >
+                        <i className="ri-check-double-line mr-2"></i>
+                        Completar Pedido
+                      </button>
+                    )}
+
+                    {order.status !== 'completed' && order.status !== 'cancelled' && (
+                      <button
+                        onClick={() => onStatusUpdate(order.id, 'cancelled')}
+                        className="bg-gradient-to-r from-red-500 to-red-600 text-white py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-red-600 hover:to-red-700 transition-all transform hover:scale-105"
+                        title={currentUserRole === 'employee' ? 'Solicitar cancelación al propietario' : 'Cancelar pedido'}
+                        type="button"
+                      >
+                        <i className="ri-close-line mr-2"></i>
+                        {currentUserRole === 'employee' ? 'Solicitar Cancelar' : 'Cancelar'}
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => {
+                        if (order.customer_phone) {
+                          window.open(`tel:${order.customer_phone}`, '_self');
+                        }
+                      }}
+                      className="flex items-center justify-center gap-2 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 py-2 px-4 rounded-lg text-sm font-bold !rounded-button hover:from-gray-200 hover:to-gray-300 transition-all transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={!order.customer_phone}
+                      type="button"
+                    >
+                      <i className="ri-phone-line"></i>
+                      Llamar
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
