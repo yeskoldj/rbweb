@@ -147,6 +147,11 @@ export const translations = {
     reviewsSetupViewDocs: "Consulta docs/google-reviews-setup.md para la guía paso a paso.",
     reviewsSetupMissingSupabase:
       "Falta configurar NEXT_PUBLIC_SUPABASE_URL para llamar al Edge Function de Google Reviews.",
+    reviewsSetupCorsErrorTitle: "Autoriza este sitio en el Edge Function de Google Reviews",
+    reviewsSetupCorsErrorDescription:
+      "Agrega {origin} a ALLOWED_ORIGINS (o NEXT_PUBLIC_SITE_URL/SITE_URL) en la configuración del Edge Function google-reviews y vuelve a desplegarlo.",
+    reviewsSetupCorsErrorDescriptionNoOrigin:
+      "Agrega la URL pública del sitio a ALLOWED_ORIGINS (o NEXT_PUBLIC_SITE_URL/SITE_URL) en la configuración del Edge Function google-reviews y vuelve a desplegarlo.",
     reviewsSetupError: "No pudimos cargar las reseñas de Google en este momento. Intenta de nuevo más tarde.",
     
     // Common
@@ -354,6 +359,11 @@ export const translations = {
     reviewsSetupViewDocs: "See docs/google-reviews-setup.md for the step-by-step guide.",
     reviewsSetupMissingSupabase:
       "NEXT_PUBLIC_SUPABASE_URL is not configured, so the site cannot call the google-reviews Edge Function.",
+    reviewsSetupCorsErrorTitle: "Allow this site to call the google-reviews Edge Function",
+    reviewsSetupCorsErrorDescription:
+      "Add {origin} to ALLOWED_ORIGINS (or NEXT_PUBLIC_SITE_URL/SITE_URL) in the google-reviews Edge Function settings and redeploy it.",
+    reviewsSetupCorsErrorDescriptionNoOrigin:
+      "Add your public site URL to ALLOWED_ORIGINS (or NEXT_PUBLIC_SITE_URL/SITE_URL) in the google-reviews Edge Function settings and redeploy it.",
     reviewsSetupError: "We couldn't load Google reviews right now. Please try again later.",
     
     // Common
