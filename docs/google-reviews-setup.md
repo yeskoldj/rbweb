@@ -52,12 +52,13 @@ This guide explains how to display Google reviews inside the Rangers Bakery webs
 ## 6. Allow customers to leave a Google review
 
 1. Edit the review link in `components/Reviews.tsx` to point to the bakery’s official Google reviews URL.
-2. When customers click **Write Review**, a new tab opens with Google’s review dialog. Google handles authentication and publishing.
+2. When customers click **Write Review**, a new tab opens with Google’s review dialog. Google handles authentication and publishing—the website cannot send a review directly to Google on behalf of the visitor.
 3. Once Google publishes the review, it will be included automatically the next time the Edge Function fetches data (the component requests fresh data whenever the page loads).
 
 ## 7. Troubleshooting tips
 
 - **No reviews appear** – Verify that both environment variables exist and have no trailing spaces. Check the Supabase Edge Function logs for details returned by Google.
+- **`401 Unauthorized`** – The website is not passing the Supabase anon key. Confirm that `NEXT_PUBLIC_SUPABASE_ANON_KEY` is defined in the web app and that the deployment is using the updated environment variable.
 - **`REQUEST_DENIED` or `API key is invalid`** – The API key is wrong, not enabled for Places API, or not allowed from the Supabase network. Adjust the key restrictions.
 - **`NOT_FOUND`** – The Place ID does not match the Google Business Profile. Repeat Section 2 to confirm the Place ID.
 - **Rate limits** – Google Places API has usage limits. If you exceed them, consider enabling billing and monitoring quotas.
