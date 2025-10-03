@@ -144,15 +144,22 @@ export const translations = {
       "Configura ALLOWED_ORIGINS (o NEXT_PUBLIC_SITE_URL/SITE_URL) con la URL pública del sitio.",
     reviewsSetupStepDeploy:
       "Vuelve a desplegar el Edge Function google-reviews después de guardar los cambios.",
+    reviewsSetupStepSupabaseAnonKey:
+      "Asegúrate de que NEXT_PUBLIC_SUPABASE_ANON_KEY esté disponible en la web para autorizar las llamadas a Supabase.",
     reviewsSetupViewDocs: "Consulta docs/google-reviews-setup.md para la guía paso a paso.",
     reviewsSetupMissingSupabase:
       "Falta configurar NEXT_PUBLIC_SUPABASE_URL para llamar al Edge Function de Google Reviews.",
+    reviewsSetupMissingSupabaseAnonKey:
+      "Falta NEXT_PUBLIC_SUPABASE_ANON_KEY, por lo que el sitio no puede autenticar las solicitudes a Supabase.",
     reviewsSetupCorsErrorTitle: "Autoriza este sitio en el Edge Function de Google Reviews",
     reviewsSetupCorsErrorDescription:
       "Agrega {origin} a ALLOWED_ORIGINS (o NEXT_PUBLIC_SITE_URL/SITE_URL) en la configuración del Edge Function google-reviews y vuelve a desplegarlo.",
     reviewsSetupCorsErrorDescriptionNoOrigin:
       "Agrega la URL pública del sitio a ALLOWED_ORIGINS (o NEXT_PUBLIC_SITE_URL/SITE_URL) en la configuración del Edge Function google-reviews y vuelve a desplegarlo.",
     reviewsSetupError: "No pudimos cargar las reseñas de Google en este momento. Intenta de nuevo más tarde.",
+    reviewsSetupErrorDetails: "Detalles: {message}",
+    reviewsGoogleOnlyDisclaimer:
+      "Google solo acepta reseñas creadas directamente en Google. Las reseñas nuevas aparecerán aquí automáticamente cuando Google las publique.",
     
     // Common
     loading: "Cargando...",
@@ -356,15 +363,22 @@ export const translations = {
       "Set ALLOWED_ORIGINS (or NEXT_PUBLIC_SITE_URL/SITE_URL) to the site's public URL.",
     reviewsSetupStepDeploy:
       "Redeploy the google-reviews Edge Function after saving the environment variables.",
+    reviewsSetupStepSupabaseAnonKey:
+      "Make sure NEXT_PUBLIC_SUPABASE_ANON_KEY is available in the web app so calls to Supabase are authorized.",
     reviewsSetupViewDocs: "See docs/google-reviews-setup.md for the step-by-step guide.",
     reviewsSetupMissingSupabase:
       "NEXT_PUBLIC_SUPABASE_URL is not configured, so the site cannot call the google-reviews Edge Function.",
+    reviewsSetupMissingSupabaseAnonKey:
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY is missing, so the site cannot authenticate requests to Supabase.",
     reviewsSetupCorsErrorTitle: "Allow this site to call the google-reviews Edge Function",
     reviewsSetupCorsErrorDescription:
       "Add {origin} to ALLOWED_ORIGINS (or NEXT_PUBLIC_SITE_URL/SITE_URL) in the google-reviews Edge Function settings and redeploy it.",
     reviewsSetupCorsErrorDescriptionNoOrigin:
       "Add your public site URL to ALLOWED_ORIGINS (or NEXT_PUBLIC_SITE_URL/SITE_URL) in the google-reviews Edge Function settings and redeploy it.",
     reviewsSetupError: "We couldn't load Google reviews right now. Please try again later.",
+    reviewsSetupErrorDetails: "Details: {message}",
+    reviewsGoogleOnlyDisclaimer:
+      "Google only accepts reviews created directly on Google. New reviews will appear here automatically after Google publishes them.",
     
     // Common
     loading: "Loading...",
