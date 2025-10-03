@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '../lib/languageContext';
 import SafeImage from './SafeImage';
 
@@ -10,10 +10,44 @@ interface Review {
   author_name: string;
   rating: number;
   text: string;
-  time: number;
+  time?: number;
   profile_photo_url?: string;
-  relative_time_description: string;
+  relative_time_description?: string;
 }
+
+const normalizeReviews = (rawReviews: unknown[]): Review[] => {
+  return rawReviews
+    .filter((review): review is Record<string, unknown> => typeof review === 'object' && review !== null)
+    .map((review, index) => {
+      const providedId = typeof review.id === 'string' ? review.id.trim() : '';
+      const time = typeof review.time === 'number' ? review.time : undefined;
+      const author = typeof review.author_name === 'string' && review.author_name.trim().length > 0
+        ? review.author_name
+        : 'Guest';
+      const rating = typeof review.rating === 'number' ? review.rating : 0;
+      const text = typeof review.text === 'string' ? review.text : '';
+      const relativeTime = typeof review.relative_time_description === 'string'
+        ? review.relative_time_description
+        : undefined;
+      const profilePhoto = typeof review.profile_photo_url === 'string'
+        ? review.profile_photo_url
+        : undefined;
+
+      return {
+        id:
+          providedId ||
+          (time !== undefined
+            ? time.toString()
+            : `${author.replace(/\s+/g, '-').toLowerCase()}-${index}`),
+        author_name: author,
+        rating,
+        text,
+        time,
+        profile_photo_url: profilePhoto,
+        relative_time_description: relativeTime,
+      };
+    });
+};
 
 export default function Reviews() {
   const { t } = useLanguage();
@@ -25,11 +59,7 @@ export default function Reviews() {
   const [missingSupabaseUrl, setMissingSupabaseUrl] = useState(false);
   const [apiError, setApiError] = useState(false);
 
-  useEffect(() => {
-    fetchGoogleReviews();
-  }, []);
-
-  const fetchGoogleReviews = async () => {
+  const fetchGoogleReviews = useCallback(async () => {
     try {
       setLoading(true);
       setSetupRequired(false);
@@ -56,7 +86,8 @@ export default function Reviews() {
       const data = await response.json().catch(() => null);
 
       if (response.ok && data?.success) {
-        setReviews(Array.isArray(data.reviews) ? data.reviews : []);
+        const normalizedReviews = Array.isArray(data.reviews) ? normalizeReviews(data.reviews) : [];
+        setReviews(normalizedReviews);
         setTotalReviews(typeof data.totalReviews === 'number' ? data.totalReviews : 0);
         setAverageRating(typeof data.averageRating === 'number' ? data.averageRating : 0);
         return;
@@ -81,7 +112,11 @@ export default function Reviews() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchGoogleReviews();
+  }, [fetchGoogleReviews]);
 
   const renderStars = (rating: number, size: string = 'text-sm') => {
     const stars = [];
