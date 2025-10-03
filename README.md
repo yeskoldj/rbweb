@@ -22,6 +22,16 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Deploying Supabase Edge Functions
+
+Use the helper script to deploy all Supabase Edge Functions once you have authenticated the Supabase CLI and exported your project reference:
+
+```bash
+npm run deploy:supabase:functions
+```
+
+See [`docs/deploy-supabase-functions.md`](./docs/deploy-supabase-functions.md) for setup instructions and troubleshooting tips.
+
 ## Square payments (solo tarjeta)
 
 The project integrates [Square Web Payments SDK](https://developer.squareup.com/docs/web-payments/overview) to accept card payments. Apple Pay y Google Pay están deshabilitados temporalmente.

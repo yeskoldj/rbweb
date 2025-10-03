@@ -10,7 +10,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "deploy:supabase:functions": "node scripts/deploy-supabase-functions.mjs"
   },
   "dependencies": {
     "react": "^18.2.0",
@@ -27,6 +28,7 @@
     "tailwindcss": "^3.4.1",
     "autoprefixer": "^10.4.16",
     "eslint": "^8.56.0",
-    "eslint-config-next": "14.2.18"
+    "eslint-config-next": "14.2.18",
+    "supabase": "^1.219.5"
   }
 }
