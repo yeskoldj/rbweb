@@ -80,12 +80,29 @@ serve(async (req) => {
     const data = await response.json()
 
     if (data.status === 'OK' && data.result) {
+      const normalizedReviews = Array.isArray(data.result.reviews)
+        ? data.result.reviews.map((review: Record<string, unknown>, index: number) => {
+            const time = typeof review.time === 'number' ? review.time : undefined
+            const providedId = typeof review.id === 'string' ? review.id.trim() : ''
+            const author = typeof review.author_name === 'string' ? review.author_name : 'review'
+
+            return {
+              ...review,
+              id:
+                providedId ||
+                (time !== undefined
+                  ? time.toString()
+                  : `${author.replace(/\s+/g, '-').toLowerCase()}-${index}`),
+            }
+          })
+        : []
+
       return new Response(
         JSON.stringify({
           success: true,
           averageRating: data.result.rating || 0,
           totalReviews: data.result.user_ratings_total || 0,
-          reviews: data.result.reviews || []
+          reviews: normalizedReviews,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
