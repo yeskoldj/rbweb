@@ -32,7 +32,9 @@ This guide explains how to display Google reviews inside the Rangers Bakery webs
 3. Add the following variables:
    - `GOOGLE_PLACES_API_KEY` – the API key created in the previous step.
    - `GOOGLE_PLACES_PLACE_ID` – the Place ID from section 2.
+   - `ALLOWED_ORIGINS` – the public URLs that can call the function (for example, `https://rangersbakery.com,https://preview.rangersbakery.com`).
    - *(Optional)* `GOOGLE_BUSINESS_NAME` – the display name you prefer to show in logs.
+   > **Tip:** If you prefer, you can instead define `NEXT_PUBLIC_SITE_URL` or `SITE_URL` with the same public URL. The CORS logic will fall back to those values when `ALLOWED_ORIGINS` is missing.
 4. Redeploy the function so the new environment variables are available:
    ```bash
    supabase functions deploy google-reviews

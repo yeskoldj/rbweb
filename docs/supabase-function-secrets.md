@@ -18,6 +18,8 @@ Set these first—they allow each Edge Function to talk to Supabase securely and
 | `NODE_ENV` | Controls environment-sensitive defaults (e.g., logging, allowed origins). | All functions.【F:supabase/functions/send-quote-response/index.ts†L9-L33】【F:supabase/functions/send-notification-email/index.ts†L12-L43】【F:supabase/functions/google-reviews/index.ts†L3-L35】 |
 | `ALLOWED_ORIGINS` | Comma-separated list of trusted domains for browser calls; falls back to `*` outside production. | All HTTP handlers.【F:supabase/functions/send-quote-response/index.ts†L1-L44】【F:supabase/functions/send-notification-email/index.ts†L1-L46】【F:supabase/functions/google-reviews/index.ts†L1-L34】 |
 
+> **Tip:** Set `ALLOWED_ORIGINS` to the public URLs that should reach your functions (for example, `https://rangersbakery.com,https://preview.rangersbakery.com`). If you skip it, the CORS helper tries `NEXT_PUBLIC_SITE_URL` or `SITE_URL` as fallbacks before allowing requests.
+
 ## 2. Square payments
 Required for the `square-payment` function and any frontend requests that create Square orders.
 
