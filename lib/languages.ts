@@ -151,6 +151,7 @@ export const translations = {
       "Falta configurar NEXT_PUBLIC_SUPABASE_URL para llamar al Edge Function de Google Reviews.",
     reviewsSetupMissingSupabaseAnonKey:
       "Falta NEXT_PUBLIC_SUPABASE_ANON_KEY, por lo que el sitio no puede autenticar las solicitudes a Supabase.",
+    reviewsSetupUnavailable: "Las reseñas de Google estarán disponibles próximamente.",
     reviewsSetupCorsErrorTitle: "Autoriza este sitio en el Edge Function de Google Reviews",
     reviewsSetupCorsErrorDescription:
       "Agrega {origin} a ALLOWED_ORIGINS (o NEXT_PUBLIC_SITE_URL/SITE_URL) en la configuración del Edge Function google-reviews y vuelve a desplegarlo.",
@@ -370,6 +371,7 @@ export const translations = {
       "NEXT_PUBLIC_SUPABASE_URL is not configured, so the site cannot call the google-reviews Edge Function.",
     reviewsSetupMissingSupabaseAnonKey:
       "NEXT_PUBLIC_SUPABASE_ANON_KEY is missing, so the site cannot authenticate requests to Supabase.",
+    reviewsSetupUnavailable: "Google reviews will be available soon.",
     reviewsSetupCorsErrorTitle: "Allow this site to call the google-reviews Edge Function",
     reviewsSetupCorsErrorDescription:
       "Add {origin} to ALLOWED_ORIGINS (or NEXT_PUBLIC_SITE_URL/SITE_URL) in the google-reviews Edge Function settings and redeploy it.",

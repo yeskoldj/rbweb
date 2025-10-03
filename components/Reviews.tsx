@@ -56,21 +56,17 @@ export default function Reviews() {
   const [averageRating, setAverageRating] = useState(0);
   const [totalReviews, setTotalReviews] = useState(0);
   const [setupRequired, setSetupRequired] = useState(false);
-  const [missingSupabaseUrl, setMissingSupabaseUrl] = useState(false);
   const [corsError, setCorsError] = useState(false);
   const [currentOrigin, setCurrentOrigin] = useState('');
   const [apiError, setApiError] = useState(false);
-  const [missingSupabaseAnonKey, setMissingSupabaseAnonKey] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   const fetchGoogleReviews = useCallback(async () => {
     try {
       setLoading(true);
       setSetupRequired(false);
-      setMissingSupabaseUrl(false);
       setApiError(false);
       setCorsError(false);
-      setMissingSupabaseAnonKey(false);
       setErrorMessage('');
 
       // Simulando delay de API para mostrar loading
@@ -79,7 +75,6 @@ export default function Reviews() {
       const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
       if (!supabaseUrl) {
-        setMissingSupabaseUrl(true);
         setSetupRequired(true);
         setReviews([]);
         setTotalReviews(0);
@@ -88,7 +83,6 @@ export default function Reviews() {
       }
 
       if (!supabaseAnonKey) {
-        setMissingSupabaseAnonKey(true);
         setSetupRequired(true);
         setReviews([]);
         setTotalReviews(0);
@@ -206,22 +200,7 @@ export default function Reviews() {
 
       {setupRequired && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-amber-900">
-          <h4 className="font-semibold mb-2">{t('reviewsSetupPendingTitle')}</h4>
-          <p className="text-sm mb-3">{t('reviewsSetupPendingDescription')}</p>
-          <ul className="list-disc pl-5 space-y-1 text-sm">
-            <li>{t('reviewsSetupStepApiKey')}</li>
-            <li>{t('reviewsSetupStepPlaceId')}</li>
-            <li>{t('reviewsSetupStepAllowedOrigins')}</li>
-            <li>{t('reviewsSetupStepDeploy')}</li>
-            <li>{t('reviewsSetupStepSupabaseAnonKey')}</li>
-          </ul>
-          <p className="text-xs mt-3">{t('reviewsSetupViewDocs')}</p>
-          {missingSupabaseUrl && (
-            <p className="text-xs mt-2 text-red-600">{t('reviewsSetupMissingSupabase')}</p>
-          )}
-          {missingSupabaseAnonKey && (
-            <p className="text-xs mt-2 text-red-600">{t('reviewsSetupMissingSupabaseAnonKey')}</p>
-          )}
+          <p className="text-sm">{t('reviewsSetupUnavailable')}</p>
         </div>
       )}
 
