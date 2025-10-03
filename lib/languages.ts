@@ -140,6 +140,8 @@ export const translations = {
       "Agrega GOOGLE_PLACES_API_KEY en las variables de entorno del Edge Function google-reviews.",
     reviewsSetupStepPlaceId:
       "Agrega GOOGLE_PLACES_PLACE_ID con el Place ID oficial de la panadería.",
+    reviewsSetupStepAllowedOrigins:
+      "Configura ALLOWED_ORIGINS (o NEXT_PUBLIC_SITE_URL/SITE_URL) con la URL pública del sitio.",
     reviewsSetupStepDeploy:
       "Vuelve a desplegar el Edge Function google-reviews después de guardar los cambios.",
     reviewsSetupViewDocs: "Consulta docs/google-reviews-setup.md para la guía paso a paso.",
@@ -345,6 +347,8 @@ export const translations = {
       "Add GOOGLE_PLACES_API_KEY to the google-reviews Edge Function environment variables.",
     reviewsSetupStepPlaceId:
       "Add GOOGLE_PLACES_PLACE_ID with the bakery's official Place ID.",
+    reviewsSetupStepAllowedOrigins:
+      "Set ALLOWED_ORIGINS (or NEXT_PUBLIC_SITE_URL/SITE_URL) to the site's public URL.",
     reviewsSetupStepDeploy:
       "Redeploy the google-reviews Edge Function after saving the environment variables.",
     reviewsSetupViewDocs: "See docs/google-reviews-setup.md for the step-by-step guide.",

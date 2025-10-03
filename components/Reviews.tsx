@@ -171,6 +171,7 @@ export default function Reviews() {
           <ul className="list-disc pl-5 space-y-1 text-sm">
             <li>{t('reviewsSetupStepApiKey')}</li>
             <li>{t('reviewsSetupStepPlaceId')}</li>
+            <li>{t('reviewsSetupStepAllowedOrigins')}</li>
             <li>{t('reviewsSetupStepDeploy')}</li>
           </ul>
           <p className="text-xs mt-3">{t('reviewsSetupViewDocs')}</p>
