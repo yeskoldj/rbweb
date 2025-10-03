@@ -133,26 +133,15 @@ export const translations = {
     shareExperience: "Compartir tu experiencia",
     viewOnGoogleMaps: "Ver en Google Maps",
     loadingReviews: "Cargando reseñas...",
-    reviewsSetupPendingTitle: "Integración con Google Reviews pendiente",
-    reviewsSetupPendingDescription:
-      "Para mostrar tus reseñas de Google aquí, conecta el perfil del negocio con el API de Google Places.",
-    reviewsSetupStepApiKey:
-      "Agrega GOOGLE_PLACES_API_KEY en las variables de entorno del Edge Function google-reviews.",
-    reviewsSetupStepPlaceId:
-      "Agrega GOOGLE_PLACES_PLACE_ID con el Place ID oficial de la panadería.",
-    reviewsSetupStepAllowedOrigins:
-      "Configura ALLOWED_ORIGINS (o NEXT_PUBLIC_SITE_URL/SITE_URL) con la URL pública del sitio.",
-    reviewsSetupStepDeploy:
-      "Vuelve a desplegar el Edge Function google-reviews después de guardar los cambios.",
-    reviewsSetupViewDocs: "Consulta docs/google-reviews-setup.md para la guía paso a paso.",
-    reviewsSetupMissingSupabase:
-      "Falta configurar NEXT_PUBLIC_SUPABASE_URL para llamar al Edge Function de Google Reviews.",
     reviewsSetupCorsErrorTitle: "Autoriza este sitio en el Edge Function de Google Reviews",
     reviewsSetupCorsErrorDescription:
       "Agrega {origin} a ALLOWED_ORIGINS (o NEXT_PUBLIC_SITE_URL/SITE_URL) en la configuración del Edge Function google-reviews y vuelve a desplegarlo.",
     reviewsSetupCorsErrorDescriptionNoOrigin:
       "Agrega la URL pública del sitio a ALLOWED_ORIGINS (o NEXT_PUBLIC_SITE_URL/SITE_URL) en la configuración del Edge Function google-reviews y vuelve a desplegarlo.",
     reviewsSetupError: "No pudimos cargar las reseñas de Google en este momento. Intenta de nuevo más tarde.",
+    reviewsSetupErrorDetails: "Detalles: {message}",
+    reviewsGoogleOnlyDisclaimer:
+      "Google solo acepta reseñas creadas directamente en Google. Las reseñas nuevas aparecerán aquí automáticamente cuando Google las publique.",
     
     // Common
     loading: "Cargando...",
@@ -345,26 +334,15 @@ export const translations = {
     shareExperience: "Share your experience",
     viewOnGoogleMaps: "View on Google Maps",
     loadingReviews: "Loading reviews...",
-    reviewsSetupPendingTitle: "Google Reviews integration pending",
-    reviewsSetupPendingDescription:
-      "Connect your Google Business Profile to the Google Places API so your reviews appear here.",
-    reviewsSetupStepApiKey:
-      "Add GOOGLE_PLACES_API_KEY to the google-reviews Edge Function environment variables.",
-    reviewsSetupStepPlaceId:
-      "Add GOOGLE_PLACES_PLACE_ID with the bakery's official Place ID.",
-    reviewsSetupStepAllowedOrigins:
-      "Set ALLOWED_ORIGINS (or NEXT_PUBLIC_SITE_URL/SITE_URL) to the site's public URL.",
-    reviewsSetupStepDeploy:
-      "Redeploy the google-reviews Edge Function after saving the environment variables.",
-    reviewsSetupViewDocs: "See docs/google-reviews-setup.md for the step-by-step guide.",
-    reviewsSetupMissingSupabase:
-      "NEXT_PUBLIC_SUPABASE_URL is not configured, so the site cannot call the google-reviews Edge Function.",
     reviewsSetupCorsErrorTitle: "Allow this site to call the google-reviews Edge Function",
     reviewsSetupCorsErrorDescription:
       "Add {origin} to ALLOWED_ORIGINS (or NEXT_PUBLIC_SITE_URL/SITE_URL) in the google-reviews Edge Function settings and redeploy it.",
     reviewsSetupCorsErrorDescriptionNoOrigin:
       "Add your public site URL to ALLOWED_ORIGINS (or NEXT_PUBLIC_SITE_URL/SITE_URL) in the google-reviews Edge Function settings and redeploy it.",
     reviewsSetupError: "We couldn't load Google reviews right now. Please try again later.",
+    reviewsSetupErrorDetails: "Details: {message}",
+    reviewsGoogleOnlyDisclaimer:
+      "Google only accepts reviews created directly on Google. New reviews will appear here automatically after Google publishes them.",
     
     // Common
     loading: "Loading...",

@@ -55,27 +55,25 @@ export default function Reviews() {
   const [loading, setLoading] = useState(true);
   const [averageRating, setAverageRating] = useState(0);
   const [totalReviews, setTotalReviews] = useState(0);
-  const [setupRequired, setSetupRequired] = useState(false);
-  const [missingSupabaseUrl, setMissingSupabaseUrl] = useState(false);
   const [corsError, setCorsError] = useState(false);
   const [currentOrigin, setCurrentOrigin] = useState('');
   const [apiError, setApiError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const fetchGoogleReviews = useCallback(async () => {
     try {
       setLoading(true);
-      setSetupRequired(false);
-      setMissingSupabaseUrl(false);
       setApiError(false);
       setCorsError(false);
+      setErrorMessage('');
 
       // Simulando delay de API para mostrar loading
       await new Promise(resolve => setTimeout(resolve, 1000));
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-      if (!supabaseUrl) {
-        setMissingSupabaseUrl(true);
-        setSetupRequired(true);
+      if (!supabaseUrl || !supabaseAnonKey) {
+        console.warn('Google Reviews integration is not fully configured.');
         setReviews([]);
         setTotalReviews(0);
         setAverageRating(0);
@@ -83,7 +81,11 @@ export default function Reviews() {
       }
 
       const response = await fetch(`${supabaseUrl}/functions/v1/google-reviews`, {
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: supabaseAnonKey,
+          Authorization: `Bearer ${supabaseAnonKey}`,
+        },
       });
 
       const data = await response.json().catch(() => null);
@@ -102,14 +104,13 @@ export default function Reviews() {
 
       if (forbiddenOrigin) {
         setCorsError(true);
-        setSetupRequired(true);
       }
 
-      if (data?.setupRequired) {
-        setSetupRequired(true);
-      } else {
-        setApiError(true);
+      if (typeof data?.message === 'string' && data.message.trim().length > 0) {
+        setErrorMessage(data.message);
       }
+
+      setApiError(true);
 
       setReviews([]);
       setTotalReviews(0);
@@ -118,6 +119,9 @@ export default function Reviews() {
     } catch (error) {
       console.error('Error fetching reviews:', error);
       setApiError(true);
+      if (error instanceof Error && error.message) {
+        setErrorMessage(error.message);
+      }
       setReviews([]);
       setTotalReviews(0);
       setAverageRating(0);
@@ -179,23 +183,6 @@ export default function Reviews() {
         {t('clientReviews')}
       </h3>
 
-      {setupRequired && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-amber-900">
-          <h4 className="font-semibold mb-2">{t('reviewsSetupPendingTitle')}</h4>
-          <p className="text-sm mb-3">{t('reviewsSetupPendingDescription')}</p>
-          <ul className="list-disc pl-5 space-y-1 text-sm">
-            <li>{t('reviewsSetupStepApiKey')}</li>
-            <li>{t('reviewsSetupStepPlaceId')}</li>
-            <li>{t('reviewsSetupStepAllowedOrigins')}</li>
-            <li>{t('reviewsSetupStepDeploy')}</li>
-          </ul>
-          <p className="text-xs mt-3">{t('reviewsSetupViewDocs')}</p>
-          {missingSupabaseUrl && (
-            <p className="text-xs mt-2 text-red-600">{t('reviewsSetupMissingSupabase')}</p>
-          )}
-        </div>
-      )}
-
       {corsError && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-red-700">
           <h4 className="font-semibold mb-2">{t('reviewsSetupCorsErrorTitle')}</h4>
@@ -207,9 +194,12 @@ export default function Reviews() {
         </div>
       )}
 
-      {apiError && !setupRequired && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-red-700 text-sm">
-          {t('reviewsSetupError')}
+      {apiError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-red-700 text-sm space-y-2">
+          <p>{t('reviewsSetupError')}</p>
+          {errorMessage && (
+            <p className="text-xs">{t('reviewsSetupErrorDetails').replace('{message}', errorMessage)}</p>
+          )}
         </div>
       )}
 
@@ -235,6 +225,9 @@ export default function Reviews() {
             <i className="ri-edit-line mr-2 text-base"></i>
             {t('writeReview')}
           </button>
+          <p className="mt-3 text-xs text-gray-500 max-w-md mx-auto">
+            {t('reviewsGoogleOnlyDisclaimer')}
+          </p>
         </div>
       </div>
 
@@ -253,6 +246,9 @@ export default function Reviews() {
               {t('shareExperience')}
               <i className="ri-arrow-right-line ml-1"></i>
             </button>
+            <p className="mt-3 text-xs text-gray-400 max-w-sm mx-auto">
+              {t('reviewsGoogleOnlyDisclaimer')}
+            </p>
           </div>
         )}
         
