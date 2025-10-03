@@ -57,6 +57,8 @@ export default function Reviews() {
   const [totalReviews, setTotalReviews] = useState(0);
   const [setupRequired, setSetupRequired] = useState(false);
   const [missingSupabaseUrl, setMissingSupabaseUrl] = useState(false);
+  const [corsError, setCorsError] = useState(false);
+  const [currentOrigin, setCurrentOrigin] = useState('');
   const [apiError, setApiError] = useState(false);
 
   const fetchGoogleReviews = useCallback(async () => {
@@ -65,6 +67,7 @@ export default function Reviews() {
       setSetupRequired(false);
       setMissingSupabaseUrl(false);
       setApiError(false);
+      setCorsError(false);
 
       // Simulando delay de API para mostrar loading
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -85,12 +88,21 @@ export default function Reviews() {
 
       const data = await response.json().catch(() => null);
 
+      const forbiddenOrigin =
+        response.status === 403 ||
+        (typeof data?.error === 'string' && data.error.toLowerCase().includes('forbidden origin'));
+
       if (response.ok && data?.success) {
         const normalizedReviews = Array.isArray(data.reviews) ? normalizeReviews(data.reviews) : [];
         setReviews(normalizedReviews);
         setTotalReviews(typeof data.totalReviews === 'number' ? data.totalReviews : 0);
         setAverageRating(typeof data.averageRating === 'number' ? data.averageRating : 0);
         return;
+      }
+
+      if (forbiddenOrigin) {
+        setCorsError(true);
+        setSetupRequired(true);
       }
 
       if (data?.setupRequired) {
@@ -115,6 +127,9 @@ export default function Reviews() {
   }, []);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setCurrentOrigin(window.location.origin);
+    }
     fetchGoogleReviews();
   }, [fetchGoogleReviews]);
 
@@ -178,6 +193,17 @@ export default function Reviews() {
           {missingSupabaseUrl && (
             <p className="text-xs mt-2 text-red-600">{t('reviewsSetupMissingSupabase')}</p>
           )}
+        </div>
+      )}
+
+      {corsError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-red-700">
+          <h4 className="font-semibold mb-2">{t('reviewsSetupCorsErrorTitle')}</h4>
+          <p className="text-sm">
+            {currentOrigin
+              ? t('reviewsSetupCorsErrorDescription').replace('{origin}', currentOrigin)
+              : t('reviewsSetupCorsErrorDescriptionNoOrigin')}
+          </p>
         </div>
       )}
 
