@@ -246,9 +246,6 @@ export default function Reviews() {
             <i className="ri-edit-line mr-2 text-base"></i>
             {t('writeReview')}
           </button>
-          <p className="mt-3 text-xs text-gray-500 max-w-md mx-auto">
-            {t('reviewsGoogleOnlyDisclaimer')}
-          </p>
         </div>
       </div>
 
@@ -267,9 +264,6 @@ export default function Reviews() {
               {t('shareExperience')}
               <i className="ri-arrow-right-line ml-1"></i>
             </button>
-            <p className="mt-3 text-xs text-gray-400 max-w-sm mx-auto">
-              {t('reviewsGoogleOnlyDisclaimer')}
-            </p>
           </div>
         )}
         

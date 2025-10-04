@@ -159,8 +159,6 @@ export const translations = {
       "Agrega la URL pública del sitio a ALLOWED_ORIGINS (o NEXT_PUBLIC_SITE_URL/SITE_URL) en la configuración del Edge Function google-reviews y vuelve a desplegarlo.",
     reviewsSetupError: "No pudimos cargar las reseñas de Google en este momento. Intenta de nuevo más tarde.",
     reviewsSetupErrorDetails: "Detalles: {message}",
-    reviewsGoogleOnlyDisclaimer:
-      "Google solo acepta reseñas creadas directamente en Google. Las reseñas nuevas aparecerán aquí automáticamente cuando Google las publique.",
     
     // Common
     loading: "Cargando...",
@@ -379,8 +377,6 @@ export const translations = {
       "Add your public site URL to ALLOWED_ORIGINS (or NEXT_PUBLIC_SITE_URL/SITE_URL) in the google-reviews Edge Function settings and redeploy it.",
     reviewsSetupError: "We couldn't load Google reviews right now. Please try again later.",
     reviewsSetupErrorDetails: "Details: {message}",
-    reviewsGoogleOnlyDisclaimer:
-      "Google only accepts reviews created directly on Google. New reviews will appear here automatically after Google publishes them.",
     
     // Common
     loading: "Loading...",
