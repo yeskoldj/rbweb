@@ -71,32 +71,9 @@ export default function Reviews() {
 
       // Simulando delay de API para mostrar loading
       await new Promise(resolve => setTimeout(resolve, 1000));
-      const supabaseUrl =
-        process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-      const supabaseAnonKey =
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
-
-      if (!supabaseUrl) {
-        setSetupRequired(true);
-        setReviews([]);
-        setTotalReviews(0);
-        setAverageRating(0);
-        return;
-      }
-
-      if (!supabaseAnonKey) {
-        setSetupRequired(true);
-        setReviews([]);
-        setTotalReviews(0);
-        setAverageRating(0);
-        return;
-      }
-
-      const response = await fetch(`${supabaseUrl}/functions/v1/google-reviews`, {
+      const response = await fetch('/api/google-reviews', {
         headers: {
           'Content-Type': 'application/json',
-          apikey: supabaseAnonKey,
-          Authorization: `Bearer ${supabaseAnonKey}`,
         },
       });
 
