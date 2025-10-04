@@ -35,8 +35,8 @@ serve(async (req) => {
   }
 
   try {
-    const apiKey = Deno.env.get('GOOGLE_PLACES_API_KEY')
-    const placeId = Deno.env.get('GOOGLE_PLACES_PLACE_ID')
+    const apiKey = (Deno.env.get('GOOGLE_PLACES_API_KEY') || '').trim()
+    const placeId = (Deno.env.get('GOOGLE_PLACES_PLACE_ID') || '').trim()
     const businessName = Deno.env.get('GOOGLE_BUSINESS_NAME') || 'Rangers Bakery'
 
     const setupInstructions = {
@@ -54,6 +54,11 @@ serve(async (req) => {
     }
 
     if (!apiKey || !placeId) {
+      console.warn('Google Reviews missing configuration', {
+        hasApiKey: Boolean(apiKey),
+        hasPlaceId: Boolean(placeId),
+        environment: Deno.env.get('SUPABASE_ENVIRONMENT') || 'unknown',
+      })
       return new Response(JSON.stringify(setupInstructions), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
